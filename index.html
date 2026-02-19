@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseNova - AI Medical Assistant</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Custom Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Typing Indicator */
+        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-900 flex flex-col min-h-screen">
+
+    <!-- NAVIGATION -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-2 cursor-pointer" onclick="app.navigate('home')">
+                    <div class="bg-blue-600 p-2 rounded-lg">
+                        <i data-lucide="activity" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <span class="text-xl font-bold bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent">
+                        PulseNova
+                    </span>
+                </div>
+
+                <!-- Desktop Nav -->
+                <div class="hidden md:flex space-x-1">
+                    <button onclick="app.navigate('home')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="home">
+                        <i data-lucide="brain" class="w-4 h-4"></i> Home
+                    </button>
+                    <button onclick="app.navigate('triage')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="triage">
+                        <i data-lucide="message-square" class="w-4 h-4"></i> Triage
+                    </button>
+                    <button onclick="app.navigate('xray')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="xray">
+                        <i data-lucide="scan-line" class="w-4 h-4"></i> X-Ray
+                    </button>
+                    <button onclick="app.navigate('labs')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="labs">
+                        <i data-lucide="microscope" class="w-4 h-4"></i> Lab Translator
+                    </button>
+                    <button onclick="app.navigate('care')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="care">
+                        <i data-lucide="map-pin" class="w-4 h-4"></i> Find Care
+                    </button>
+                    <button onclick="app.navigate('about')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="about">
+                        <i data-lucide="heart-pulse" class="w-4 h-4"></i> About
+                    </button>
+                </div>
+
+                <!-- Mobile Menu Toggle -->
+                <button class="md:hidden text-slate-600 p-2" onclick="app.toggleMobileMenu()">
+                    <i data-lucide="menu" id="menu-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Nav Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-100 py-2 shadow-lg absolute w-full left-0 top-16 z-40">
+            <button onclick="app.navigate('home')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="brain" class="w-4 h-4"></i> Home</button>
+            <button onclick="app.navigate('triage')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="message-square" class="w-4 h-4"></i> Triage</button>
+            <button onclick="app.navigate('xray')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="scan-line" class="w-4 h-4"></i> X-Ray</button>
+            <button onclick="app.navigate('labs')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="microscope" class="w-4 h-4"></i> Labs</button>
+            <button onclick="app.navigate('care')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="map-pin" class="w-4 h-4"></i> Care Finder</button>
+            <button onclick="app.navigate('about')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="heart-pulse" class="w-4 h-4"></i> About</button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="app-content" class="flex-1 relative">
+
+        <!-- PAGE: HOME -->
+        <section id="page-home" class="page-section animate-fade-in">
+            <div class="bg-gradient-to-b from-blue-50 to-white py-20 px-4">
+                <div class="max-w-4xl mx-auto text-center space-y-6">
+                    <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-semibold">
+                        <i data-lucide="brain" class="w-4 h-4"></i> AI-Powered Health Assistant
+                    </div>
+                    <h1 class="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight">
+                        Clarity for your <span class="text-blue-600">health concerns.</span>
+                    </h1>
+                    <p class="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                        PulseNova uses advanced AI to triage symptoms, analyze medical imaging, and translate complex lab results, giving you immediate guidance.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                        <button onclick="app.navigate('triage')" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:shadow-xl hover:-translate-y-0.5">
+                            Start Symptom Check <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="app.navigate('care')" class="flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
+                            Find Care Nearby
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="py-20 px-4 max-w-6xl mx-auto">
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Feature Cards -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="message-square" class="w-8 h-8 text-indigo-500"></i></div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Smart Triage</h3>
+                        <p class="text-sm text-slate-600 leading-relaxed">Interactive chat with voice & image support that understands symptoms.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="file-image" class="w-8 h-8 text-emerald-500"></i></div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">X-Ray Analysis</h3>
+                        <p class="text-sm text-slate-600 leading-relaxed">Upload scans for an instant summary of visible structures.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="microscope" class="w-8 h-8 text-purple-500"></i></div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Lab Translator</h3>
+                        <p class="text-sm text-slate-600 leading-relaxed">Understand your blood work and test results in plain English.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="map-pin" class="w-8 h-8 text-orange-500"></i></div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Care Finder</h3>
+                        <p class="text-sm text-slate-600 leading-relaxed">Instantly locate Urgent Cares and Hospitals near you.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE: TRIAGE -->
+        <section id="page-triage" class="page-section hidden h-[calc(100vh-64px)] p-4">
+            <div class="max-w-4xl mx-auto h-full flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <!-- Chat Header -->
+                <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="font-semibold text-slate-700">Triage Assistant</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="app.toggleSpeechOutput()" id="btn-speech-toggle" class="p-2 rounded-full hover:bg-slate-200 text-blue-600 transition-colors" title="Toggle Voice Response">
+                            <i data-lucide="volume-2" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="app.resetChat()" class="text-xs text-slate-500 hover:text-blue-600 underline">Reset Chat</button>
+                    </div>
+                </div>
+
+                <!-- Messages Area -->
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50"></div>
+
+                <!-- Input Area -->
+                <div class="p-4 bg-white border-t border-slate-100 flex-shrink-0">
+                    <!-- Image Preview -->
+                    <div id="chat-image-preview-container" class="hidden mb-3 relative inline-block">
+                        <img id="chat-image-preview" src="" alt="Preview" class="h-20 rounded-lg border border-slate-200 shadow-sm">
+                        <button onclick="app.clearChatImage()" class="absolute -top-2 -right-2 bg-slate-800 text-white rounded-full p-1 hover:bg-red-500 transition-colors">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-end gap-2">
+                        <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="app.handleChatImageSelect(this)">
+                        <button onclick="document.getElementById('chat-file-input').click()" class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors mb-[2px]">
+                            <i data-lucide="image" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="app.toggleListening()" id="btn-mic" class="p-3 rounded-xl transition-all mb-[2px] text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                            <i data-lucide="mic" class="w-5 h-5"></i>
+                        </button>
+                        <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+                            <textarea id="chat-input" rows="1" placeholder="Type symptoms..." class="w-full bg-transparent border-none focus:outline-none text-slate-800 resize-none max-h-32 text-sm py-2 placeholder:text-slate-400" onkeydown="if(event.key === 'Enter' && !event.shiftKey){ event.preventDefault(); app.sendMessage(); }"></textarea>
+                        </div>
+                        <button onclick="app.sendMessage()" id="btn-send" class="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 mb-[2px]">
+                            <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Small status line -->
+                    <div class="mt-2 text-[11px] text-slate-400">
+                        Backend: <span class="font-mono">/api/triage</span> & <span class="font-mono">/api/vision</span> (Amazon Nova via Bedrock)
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE: X-RAY ANALYZER -->
+        <section id="page-xray" class="page-section hidden p-4 min-h-[calc(100vh-64px)]">
+            <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8">
+                <!-- Upload -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="scan-line" class="w-5 h-5 text-blue-600"></i> Image Upload
+                        </h2>
+                        <div onclick="document.getElementById('xray-input').click()" id="xray-dropzone" class="border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-slate-50 rounded-xl h-[400px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
+                            <div id="xray-placeholder" class="text-center p-6">
+                                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i data-lucide="upload" class="w-8 h-8 text-blue-600"></i>
+                                </div>
+                                <p class="font-semibold text-slate-700">Click to upload X-Ray/MRI</p>
+                            </div>
+                            <img id="xray-preview-img" class="hidden h-full w-full object-contain bg-slate-900" />
+                            <input type="file" id="xray-input" class="hidden" accept="image/*" onchange="app.handleXrayUpload(this)">
+                        </div>
+                        <button onclick="app.analyzeXray()" id="btn-analyze-xray" disabled class="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="activity" class="w-5 h-5"></i> Analyze Scan
+                        </button>
+                    </div>
+                </div>
+                <!-- Report -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px] lg:h-auto overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i> Medical Report
+                        </h2>
+                        <button onclick="window.print()" class="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium hover:bg-slate-50 flex items-center gap-1 transition-colors">
+                            <i data-lucide="printer" class="w-3 h-3"></i> Print
+                        </button>
+                    </div>
+                    <div id="xray-result" class="flex-1 p-6 overflow-y-auto text-slate-700 prose prose-blue max-w-none">
+                        <div class="flex flex-col items-center justify-center h-full text-slate-400 gap-4 opacity-60">
+                            <i data-lucide="file-image" class="w-16 h-16"></i>
+                            <p class="text-center">Upload and scan an image to generate<br/>a detailed medical report.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE: LAB TRANSLATOR -->
+        <section id="page-labs" class="page-section hidden p-4 min-h-[calc(100vh-64px)]">
+            <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8">
+                <!-- Upload -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="microscope" class="w-5 h-5 text-purple-600"></i> Upload Lab Results
+                        </h2>
+                        <div onclick="document.getElementById('lab-input').click()" id="lab-dropzone" class="border-2 border-dashed border-slate-300 hover:border-purple-400 hover:bg-slate-50 rounded-xl h-[400px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
+                            <div id="lab-placeholder" class="text-center p-6">
+                                <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i data-lucide="upload" class="w-8 h-8 text-purple-600"></i>
+                                </div>
+                                <p class="font-semibold text-slate-700">Click to upload Report</p>
+                                <p class="text-sm text-slate-400 mt-2">Blood Work, Urine Test, etc.</p>
+                            </div>
+                            <img id="lab-preview-img" class="hidden h-full w-full object-contain" />
+                            <input type="file" id="lab-input" class="hidden" accept="image/*" onchange="app.handleLabUpload(this)">
+                        </div>
+                        <button onclick="app.analyzeLabs()" id="btn-analyze-lab" disabled class="w-full mt-4 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="activity" class="w-5 h-5"></i> Translate Report
+                        </button>
+                    </div>
+                </div>
+                <!-- Interpretation -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px] lg:h-auto overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-5 h-5 text-purple-600"></i> Interpretation
+                        </h2>
+                        <button onclick="window.print()" class="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-medium hover:bg-slate-50 flex items-center gap-1 transition-colors">
+                            <i data-lucide="printer" class="w-3 h-3"></i> Print
+                        </button>
+                    </div>
+                    <div id="lab-result" class="flex-1 p-6 overflow-y-auto text-slate-700 prose prose-purple max-w-none">
+                        <div class="flex flex-col items-center justify-center h-full text-slate-400 gap-4 opacity-60">
+                            <i data-lucide="file-text" class="w-16 h-16"></i>
+                            <p class="text-center">Upload a document to get a<br/>plain English explanation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE: CARE FINDER -->
+        <section id="page-care" class="page-section hidden p-4 animate-fade-in">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-8">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-2">Find Care Nearby</h1>
+                    <p class="text-slate-500">Locate trusted medical providers in your area.</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <i data-lucide="search" class="absolute left-3 top-3 w-5 h-5 text-slate-400"></i>
+                        <input type="text" placeholder="Search by name or zip..." class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                    </div>
+                    <select id="care-filter" onchange="app.renderProviders()" class="px-4 py-2.5 border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
+                        <option value="All">All Providers</option>
+                        <option value="ER">Emergency Room</option>
+                        <option value="Urgent Care">Urgent Care</option>
+                        <option value="Pharmacy">Pharmacy</option>
+                        <option value="Dentist">Dentist</option>
+                    </select>
+                    <button onclick="app.locateUser()" id="btn-locate" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 flex items-center gap-2 justify-center transition-colors">
+                        <i data-lucide="navigation" class="w-4 h-4"></i> Near Me
+                    </button>
+                </div>
+
+                <div id="providers-list" class="grid md:grid-cols-2 gap-4"></div>
+            </div>
+        </section>
+
+        <!-- PAGE: ABOUT -->
+        <section id="page-about" class="page-section hidden p-4 animate-fade-in">
+            <div class="max-w-4xl mx-auto py-12">
+                <div class="text-center mb-16">
+                    <h1 class="text-3xl font-bold text-slate-900 mb-4">About PulseNova</h1>
+                    <p class="text-slate-600 max-w-2xl mx-auto">
+                        We are bridging the gap between uncertainty and care. PulseNova leverages cutting-edge AI to provide accessible, immediate medical information to everyone, everywhere.
+                    </p>
+                </div>
+                <div class="space-y-12">
+                    <div class="flex flex-col md:flex-row gap-8 items-center">
+                        <div class="flex-1 space-y-4">
+                            <div class="inline-block p-3 bg-blue-100 rounded-lg text-blue-700 mb-2"><i data-lucide="heart-pulse" class="w-6 h-6"></i></div>
+                            <h2 class="text-2xl font-bold text-slate-800">Our Mission</h2>
+                            <p class="text-slate-600 leading-relaxed">To reduce medical anxiety and ER overcrowding by providing an intelligent first-line triage tool. We believe everyone deserves to know "what to do next" the moment they feel unwell.</p>
+                        </div>
+                        <div class="flex-1 bg-slate-100 h-64 w-full rounded-2xl flex items-center justify-center overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=800" alt="Medical Team" class="w-full h-full object-cover opacity-90" />
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-100"><h3 class="font-bold text-slate-900 mb-2">Accessibility</h3><p class="text-sm text-slate-600">Free, 24/7 access to medical guidance without insurance barriers.</p></div>
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-100"><h3 class="font-bold text-slate-900 mb-2">Privacy</h3><p class="text-sm text-slate-600">We do not store your personal health data. Your chats are ephemeral.</p></div>
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-100"><h3 class="font-bold text-slate-900 mb-2">Technology</h3><p class="text-sm text-slate-600">Powered by Amazon Nova (Bedrock) for text + vision.</p></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // ✅ NOVA SETUP:
+        // No browser API key needed. Frontend calls your backend:
+        //   POST /api/triage  (text + optional image)
+        //   POST /api/vision  (image + prompt)
+        //
+        // Run backend:
+        //   python -m uvicorn server:app --reload --port 8000
+        // Open:
+        //   http://127.0.0.1:8000/
+
+        class PulseNovaApp {
+            constructor() {
+                // Keep history as {role:'user'|'assistant', text:'...'}
+                this.messages = [
+                    { role: 'assistant', text: "Hello. I'm PulseNova. Please describe your symptoms in detail, or send me a photo if relevant." }
+                ];
+
+                this.chatImage = null; // base64 (no prefix)
+                this.xrayImage = null; // base64
+                this.labImage = null;  // base64
+
+                this.isListening = false;
+                this.speakOutput = true;
+                this.recognition = null;
+
+                // Mock providers (front-end only)
+                this.providers = [
+                    { id: 1, name: "City Center General Hospital", type: "ER", distance: 2.1, address: "123 Medical Center Dr", phone: "555-0199", rating: 4.2 },
+                    { id: 2, name: "Northside Urgent Care", type: "Urgent Care", distance: 0.8, address: "450 Broadway Ave", phone: "555-0123", rating: 4.5 },
+                    { id: 3, name: "Valley Health Clinic", type: "Clinic", distance: 3.5, address: "88 Valley Rd", phone: "555-0188", rating: 4.0 },
+                    { id: 4, name: "24/7 Pharmacy Plus", type: "Pharmacy", distance: 0.5, address: "12 Main St", phone: "555-0101", rating: 3.8 },
+                    { id: 5, name: "Children's Medical Group", type: "Pediatric", distance: 4.2, address: "900 Kids Way", phone: "555-0155", rating: 4.8 },
+                    { id: 6, name: "Downtown Dental", type: "Dentist", distance: 1.2, address: "200 Oak St", phone: "555-0144", rating: 4.6 },
+                ];
+
+                this.initSpeech();
+                this.renderChat();
+                this.renderProviders();
+            }
+
+            // NAVIGATION
+            navigate(pageId) {
+                document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+                document.getElementById(`page-${pageId}`).classList.remove('hidden');
+
+                document.querySelectorAll('.nav-btn').forEach(el => {
+                    if (el.dataset.page === pageId) {
+                        el.classList.add('bg-blue-50', 'text-blue-600');
+                        el.classList.remove('text-slate-500');
+                    } else {
+                        el.classList.remove('bg-blue-50', 'text-blue-600');
+                        el.classList.add('text-slate-500');
+                    }
+                });
+
+                document.getElementById('mobile-menu').classList.add('hidden');
+            }
+
+            toggleMobileMenu() {
+                document.getElementById('mobile-menu').classList.toggle('hidden');
+            }
+
+            // =========================
+            // ✅ NOVA BACKEND CALLS
+            // =========================
+            async callNovaTriage(history, userMessage, base64Image) {
+                try {
+                    const payload = {
+                        message: userMessage,
+                        history: history.map(t => ({ role: t.role, text: t.text })),
+                        image_base64: base64Image || null
+                    };
+
+                    const res = await fetch('/api/triage', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.detail || `HTTP ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    return data.text || "I didn't get a response.";
+                } catch (e) {
+                    console.error(e);
+                    return "I'm having trouble connecting to the server. If this is an emergency, call 911.";
+                }
+            }
+
+            async callNovaVision(base64Data, prompt) {
+                try {
+                    const payload = { image_base64: base64Data, prompt };
+                    const res = await fetch('/api/vision', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.detail || `HTTP ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    return data.text || "I didn't get a response.";
+                } catch (e) {
+                    console.error(e);
+                    return "Analysis failed. Please try a clearer image.";
+                }
+            }
+
+            // TRIAGE CHAT
+            renderChat() {
+                const container = document.getElementById('chat-messages');
+                container.innerHTML = '';
+
+                // UI uses "model" in your old code. Now we use "assistant".
+                this.messages.forEach(msg => {
+                    const isUser = msg.role === 'user';
+                    const div = document.createElement('div');
+                    div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+
+                    let contentHtml = `<div class="max-w-[85%] space-y-2">`;
+
+                    if (msg.image) {
+                        contentHtml += `
+                          <div class="p-2 rounded-2xl ${isUser ? 'bg-blue-600 rounded-tr-none' : 'bg-white border'}">
+                            <img src="data:image/png;base64,${msg.image}" class="max-h-48 rounded-lg object-cover">
+                          </div>`;
+                    }
+
+                    if (msg.text) {
+                        contentHtml += `
+                          <div class="rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'}">
+                            ${this.formatText(msg.text)}
+                          </div>`;
+                    }
+
+                    contentHtml += `</div>`;
+                    div.innerHTML = contentHtml;
+                    container.appendChild(div);
+                });
+
+                container.scrollTop = container.scrollHeight;
+            }
+
+            async sendMessage() {
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                const image = this.chatImage;
+
+                if (!text && !image) return;
+
+                // Add user message
+                this.messages.push({ role: 'user', text, image });
+                this.renderChat();
+
+                // Clear inputs
+                input.value = '';
+                this.clearChatImage();
+
+                // Show loading
+                this.showLoading();
+
+                // Build "history" excluding the just-added user message,
+                // and excluding images from history to keep payload smaller.
+                const history = this.messages
+                    .slice(0, -1)
+                    .map(m => ({ role: m.role, text: m.text }));
+
+                const responseText = await this.callNovaTriage(history, text, image);
+
+                this.removeLoading();
+                this.messages.push({ role: 'assistant', text: responseText });
+                this.renderChat();
+
+                if (this.speakOutput) this.speak(responseText);
+            }
+
+            showLoading() {
+                const container = document.getElementById('chat-messages');
+                const div = document.createElement('div');
+                div.id = 'chat-loading';
+                div.className = 'flex justify-start';
+                div.innerHTML = `
+                    <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-4 shadow-sm flex gap-1 items-center h-10">
+                        <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+                container.scrollTop = container.scrollHeight;
+            }
+
+            removeLoading() {
+                const el = document.getElementById('chat-loading');
+                if (el) el.remove();
+            }
+
+            handleChatImageSelect(input) {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const fullData = reader.result;
+                    this.chatImage = fullData.split(',')[1];
+                    document.getElementById('chat-image-preview').src = fullData;
+                    document.getElementById('chat-image-preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+
+            clearChatImage() {
+                this.chatImage = null;
+                document.getElementById('chat-image-preview').src = '';
+                document.getElementById('chat-image-preview-container').classList.add('hidden');
+                document.getElementById('chat-file-input').value = '';
+            }
+
+            resetChat() {
+                this.messages = [
+                    { role: 'assistant', text: "Hello. I'm PulseNova. Please describe your symptoms in detail." }
+                ];
+                this.renderChat();
+            }
+
+            // VOICE
+            initSpeech() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.lang = 'en-US';
+
+                    this.recognition.onstart = () => {
+                        this.isListening = true;
+                        document.getElementById('btn-mic').classList.add('text-red-600', 'bg-red-50', 'animate-pulse');
+                    };
+
+                    this.recognition.onend = () => {
+                        this.isListening = false;
+                        document.getElementById('btn-mic').classList.remove('text-red-600', 'bg-red-50', 'animate-pulse');
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        const t = event.results[0][0].transcript;
+                        const input = document.getElementById('chat-input');
+                        input.value = input.value ? input.value + ' ' + t : t;
+                    };
+                }
+            }
+
+            toggleListening() {
+                if (!this.recognition) return alert("Browser does not support speech.");
+                if (this.isListening) this.recognition.stop();
+                else this.recognition.start();
+            }
+
+            toggleSpeechOutput() {
+                this.speakOutput = !this.speakOutput;
+                const btn = document.getElementById('btn-speech-toggle');
+                if (this.speakOutput) {
+                    btn.classList.add('text-blue-600');
+                    btn.classList.remove('text-slate-400');
+                    btn.innerHTML = `<i data-lucide="volume-2" class="w-4 h-4"></i>`;
+                } else {
+                    btn.classList.remove('text-blue-600');
+                    btn.classList.add('text-slate-400');
+                    btn.innerHTML = `<i data-lucide="volume-x" class="w-4 h-4"></i>`;
+                }
+                lucide.createIcons();
+            }
+
+            speak(text) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                window.speechSynthesis.speak(u);
+            }
+
+            // X-RAY & LABS
+            handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
+            handleLabUpload(input) { this.handleFileUpload(input, 'lab'); }
+
+            handleFileUpload(input, type) {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const fullData = reader.result;
+                    const base64 = fullData.split(',')[1];
+
+                    if (type === 'xray') {
+                        this.xrayImage = base64;
+                        const img = document.getElementById('xray-preview-img');
+                        img.src = fullData;
+                        img.classList.remove('hidden');
+                        document.getElementById('xray-placeholder').classList.add('hidden');
+                        document.getElementById('btn-analyze-xray').disabled = false;
+                        document.getElementById('xray-dropzone').classList.add('border-blue-300', 'bg-slate-900');
+                    } else {
+                        this.labImage = base64;
+                        const img = document.getElementById('lab-preview-img');
+                        img.src = fullData;
+                        img.classList.remove('hidden');
+                        document.getElementById('lab-placeholder').classList.add('hidden');
+                        document.getElementById('btn-analyze-lab').disabled = false;
+                        document.getElementById('lab-dropzone').classList.add('border-purple-300', 'bg-slate-900');
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+
+            async analyzeXray() {
+                const btn = document.getElementById('btn-analyze-xray');
+                btn.disabled = true;
+                btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Running...`;
+
+                const prompt =
+`Analyze this X-Ray/MRI image carefully.
+Output format:
+### 🏥 Summary
+[1-2 sentences]
+### 🦴 Findings
+- **Anatomy:** ...
+- **Observations:** ...
+### 🩺 Next Steps
+[Practical next steps]
+***
+*DISCLAIMER: Not a diagnosis.*`;
+
+                const text = await this.callNovaVision(this.xrayImage, prompt);
+                document.getElementById('xray-result').innerHTML = this.formatMarkdown(text);
+
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="activity" class="w-5 h-5"></i> Analyze Scan`;
+                lucide.createIcons();
+            }
+
+            async analyzeLabs() {
+                const btn = document.getElementById('btn-analyze-lab');
+                btn.disabled = true;
+                btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Translating...`;
+
+                const prompt =
+`Analyze this medical lab report image.
+Output format:
+### 🩸 Summary
+[1-2 sentences]
+### 🔍 Key Findings
+- **[Test Name]:** [Value] — [Plain English meaning]
+### ⚠️ Flags
+[Anything out of range, if visible]
+### 📋 Next Steps
+[Practical next steps]
+***
+*DISCLAIMER: Not a diagnosis.*`;
+
+                const text = await this.callNovaVision(this.labImage, prompt);
+                document.getElementById('lab-result').innerHTML = this.formatMarkdown(text);
+
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="activity" class="w-5 h-5"></i> Translate Report`;
+                lucide.createIcons();
+            }
+
+            // CARE FINDER (mock)
+            renderProviders() {
+                const filter = document.getElementById('care-filter')?.value || 'All';
+                const list = document.getElementById('providers-list');
+                if (!list) return;
+
+                list.innerHTML = '';
+
+                const filtered = filter === 'All' ? this.providers : this.providers.filter(p => p.type === filter);
+
+                filtered.forEach(p => {
+                    const colorClass =
+                        p.type === 'ER' ? 'bg-red-100 text-red-700' :
+                        (p.type === 'Pharmacy' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
+
+                    const html = `
+                        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-bold px-2 py-1 rounded-md ${colorClass}">${p.type}</span>
+                                    <span class="text-xs text-slate-400 flex items-center gap-0.5"><span class="text-yellow-400">★</span> ${p.rating}</span>
+                                </div>
+                                <h3 class="font-bold text-slate-800 text-lg">${p.name}</h3>
+                                <p class="text-slate-500 text-sm mb-3">${p.address}</p>
+                                <div class="flex gap-2">
+                                    <button class="text-xs bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-100 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> ${p.phone}</button>
+                                    <button class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 font-medium hover:bg-blue-100 flex items-center gap-1"><i data-lucide="navigation" class="w-3 h-3"></i> Directions</button>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-xl font-bold text-slate-900">${p.distance}</span>
+                                <span class="text-xs text-slate-400">miles</span>
+                            </div>
+                        </div>
+                    `;
+                    list.innerHTML += html;
+                });
+
+                lucide.createIcons();
+            }
+
+            locateUser() {
+                const btn = document.getElementById('btn-locate');
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = `Locating...`;
+
+                setTimeout(() => {
+                    this.providers = this.providers
+                        .map(p => ({ ...p, distance: (Math.random() * 5).toFixed(1) }))
+                        .sort((a, b) => a.distance - b.distance);
+                    this.renderProviders();
+                    btn.innerHTML = originalContent;
+                    lucide.createIcons();
+                }, 1000);
+            }
+
+            // UTILS
+            formatText(text) {
+                return (text || '').replace(/\n/g, '<br>');
+            }
+
+            formatMarkdown(text) {
+                let html = (text || '')
+                    .replace(/### (.*)/g, '<h3 class="text-lg font-bold text-blue-800 mt-4 mb-2">$1</h3>')
+                    .replace(/\*\*(.*?)\*\*/g, '<span class="font-semibold text-slate-900">$1</span>')
+                    .replace(/- (.*)/g, '<li class="ml-4 list-disc mb-1">$1</li>')
+                    .replace(/\*DISCLAIMER:(.*)\*/g, '<p class="text-xs text-slate-500 italic mt-4 border-t pt-2">$1</p>')
+                    .replace(/\n/g, '<br>');
+                return html;
+            }
+        }
+
+        const app = new PulseNovaApp();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
