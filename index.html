@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PulseNova - AI Medical Assistant</title>
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -39,11 +36,9 @@
 </head>
 <body class="bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-900 flex flex-col min-h-screen">
 
-    <!-- NAVIGATION -->
     <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
-                <!-- Logo -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.navigate('home')">
                     <div class="bg-blue-600 p-2 rounded-lg">
                         <i data-lucide="activity" class="w-6 h-6 text-white"></i>
@@ -53,13 +48,15 @@
                     </span>
                 </div>
 
-                <!-- Desktop Nav -->
                 <div class="hidden md:flex space-x-1">
                     <button onclick="app.navigate('home')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="home">
                         <i data-lucide="brain" class="w-4 h-4"></i> Home
                     </button>
                     <button onclick="app.navigate('triage')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="triage">
                         <i data-lucide="message-square" class="w-4 h-4"></i> Triage
+                    </button>
+                    <button onclick="app.navigate('vitals')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="vitals">
+                        <i data-lucide="heart-pulse" class="w-4 h-4"></i> Vitals
                     </button>
                     <button onclick="app.navigate('xray')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="xray">
                         <i data-lucide="scan-line" class="w-4 h-4"></i> X-Ray
@@ -71,32 +68,29 @@
                         <i data-lucide="map-pin" class="w-4 h-4"></i> Find Care
                     </button>
                     <button onclick="app.navigate('about')" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-500 hover:text-blue-600 hover:bg-slate-50" data-page="about">
-                        <i data-lucide="heart-pulse" class="w-4 h-4"></i> About
+                        <i data-lucide="info" class="w-4 h-4"></i> About
                     </button>
                 </div>
 
-                <!-- Mobile Menu Toggle -->
                 <button class="md:hidden text-slate-600 p-2" onclick="app.toggleMobileMenu()">
                     <i data-lucide="menu" id="menu-icon"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Mobile Nav Menu -->
         <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-100 py-2 shadow-lg absolute w-full left-0 top-16 z-40">
             <button onclick="app.navigate('home')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="brain" class="w-4 h-4"></i> Home</button>
             <button onclick="app.navigate('triage')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="message-square" class="w-4 h-4"></i> Triage</button>
+            <button onclick="app.navigate('vitals')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="heart-pulse" class="w-4 h-4"></i> Vitals</button>
             <button onclick="app.navigate('xray')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="scan-line" class="w-4 h-4"></i> X-Ray</button>
             <button onclick="app.navigate('labs')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="microscope" class="w-4 h-4"></i> Labs</button>
             <button onclick="app.navigate('care')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="map-pin" class="w-4 h-4"></i> Care Finder</button>
-            <button onclick="app.navigate('about')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="heart-pulse" class="w-4 h-4"></i> About</button>
+            <button onclick="app.navigate('about')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="info" class="w-4 h-4"></i> About</button>
         </div>
     </nav>
 
-    <!-- MAIN CONTENT AREA -->
     <main id="app-content" class="flex-1 relative">
 
-        <!-- PAGE: HOME -->
         <section id="page-home" class="page-section animate-fade-in">
             <div class="bg-gradient-to-b from-blue-50 to-white py-20 px-4">
                 <div class="max-w-4xl mx-auto text-center space-y-6">
@@ -107,7 +101,7 @@
                         Clarity for your <span class="text-blue-600">health concerns.</span>
                     </h1>
                     <p class="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                        PulseNova uses advanced AI to triage symptoms, analyze medical imaging, and translate complex lab results, giving you immediate guidance.
+                        PulseNova uses advanced AI to triage symptoms, analyze medical imaging, translate complex lab results, and even check your pulse directly from your device.
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                         <button onclick="app.navigate('triage')" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:shadow-xl hover:-translate-y-0.5">
@@ -122,21 +116,20 @@
 
             <div class="py-20 px-4 max-w-6xl mx-auto">
                 <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Feature Cards -->
                     <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="message-square" class="w-8 h-8 text-indigo-500"></i></div>
                         <h3 class="text-lg font-bold text-slate-900 mb-2">Smart Triage</h3>
                         <p class="text-sm text-slate-600 leading-relaxed">Interactive chat with voice & image support that understands symptoms.</p>
                     </div>
                     <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="heart-pulse" class="w-8 h-8 text-red-500"></i></div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Pulse Check</h3>
+                        <p class="text-sm text-slate-600 leading-relaxed">Check your estimated heart rate using just your phone's camera.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="file-image" class="w-8 h-8 text-emerald-500"></i></div>
                         <h3 class="text-lg font-bold text-slate-900 mb-2">X-Ray Analysis</h3>
                         <p class="text-sm text-slate-600 leading-relaxed">Upload scans for an instant summary of visible structures.</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                        <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="microscope" class="w-8 h-8 text-purple-500"></i></div>
-                        <h3 class="text-lg font-bold text-slate-900 mb-2">Lab Translator</h3>
-                        <p class="text-sm text-slate-600 leading-relaxed">Understand your blood work and test results in plain English.</p>
                     </div>
                     <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="map-pin" class="w-8 h-8 text-orange-500"></i></div>
@@ -147,10 +140,8 @@
             </div>
         </section>
 
-        <!-- PAGE: TRIAGE -->
         <section id="page-triage" class="page-section hidden h-[calc(100vh-64px)] p-4">
             <div class="max-w-4xl mx-auto h-full flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <!-- Chat Header -->
                 <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
                     <div class="flex items-center gap-3">
                         <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -164,12 +155,9 @@
                     </div>
                 </div>
 
-                <!-- Messages Area -->
                 <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50"></div>
 
-                <!-- Input Area -->
                 <div class="p-4 bg-white border-t border-slate-100 flex-shrink-0">
-                    <!-- Image Preview -->
                     <div id="chat-image-preview-container" class="hidden mb-3 relative inline-block">
                         <img id="chat-image-preview" src="" alt="Preview" class="h-20 rounded-lg border border-slate-200 shadow-sm">
                         <button onclick="app.clearChatImage()" class="absolute -top-2 -right-2 bg-slate-800 text-white rounded-full p-1 hover:bg-red-500 transition-colors">
@@ -193,7 +181,6 @@
                         </button>
                     </div>
 
-                    <!-- Small status line -->
                     <div class="mt-2 text-[11px] text-slate-400">
                         Backend: <span class="font-mono">/api/triage</span> & <span class="font-mono">/api/vision</span> (Amazon Nova via Bedrock)
                     </div>
@@ -201,10 +188,57 @@
             </div>
         </section>
 
-        <!-- PAGE: X-RAY ANALYZER -->
+        <section id="page-vitals" class="page-section hidden p-4 min-h-[calc(100vh-64px)]">
+            <div class="max-w-3xl mx-auto space-y-6">
+                
+                <div class="text-center mb-6">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-2">Pulse Monitor</h1>
+                    <p class="text-slate-500 text-sm">Measure your estimated heart rate using your device's camera.</p>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl text-sm leading-relaxed flex gap-3 shadow-sm">
+                    <i data-lucide="info" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                    <div>
+                        <p class="font-semibold mb-1">How to use:</p>
+                        <ul class="list-disc ml-4 space-y-1 text-blue-700">
+                            <li>Place your fingertip gently over the back camera lens.</li>
+                            <li>Ensure you are in a well-lit area (or the flashlight turns on).</li>
+                            <li>Hold steady and wait for the graph to stabilize.</li>
+                        </ul>
+                        <p class="mt-2 text-xs opacity-80 border-t border-blue-200 pt-2"><strong class="font-bold">Privacy Note:</strong> Video processing happens entirely on your device. No video is recorded or sent to any server. Not a medical diagnostic tool.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col items-center p-6">
+                    
+                    <div class="w-full relative bg-slate-900 rounded-xl overflow-hidden mb-6 flex flex-col items-center justify-center min-h-[250px] shadow-inner">
+                        <canvas id="ppg-graph" class="w-full h-40 opacity-80"></canvas>
+                        
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div class="text-6xl font-bold text-white drop-shadow-md flex items-baseline gap-1">
+                                <span id="bpm-display">--</span>
+                                <span class="text-xl text-slate-300 font-normal">BPM</span>
+                            </div>
+                            <div id="vitals-status" class="text-sm text-slate-400 mt-2 bg-slate-900/60 px-3 py-1 rounded-full">Ready to start</div>
+                        </div>
+
+                        <video id="vitals-video" class="hidden" playsinline autoplay></video>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button onclick="app.startVitals()" id="btn-start-vitals" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md flex items-center gap-2">
+                            <i data-lucide="play" class="w-5 h-5"></i> Start Monitor
+                        </button>
+                        <button onclick="app.stopVitals()" id="btn-stop-vitals" class="bg-slate-100 text-slate-700 border border-slate-300 px-8 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all flex items-center gap-2 hidden">
+                            <i data-lucide="square" class="w-5 h-5"></i> Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="page-xray" class="page-section hidden p-4 min-h-[calc(100vh-64px)]">
             <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8">
-                <!-- Upload -->
                 <div class="space-y-6">
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                         <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -225,7 +259,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- Report -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px] lg:h-auto overflow-hidden">
                     <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                         <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -245,10 +278,8 @@
             </div>
         </section>
 
-        <!-- PAGE: LAB TRANSLATOR -->
         <section id="page-labs" class="page-section hidden p-4 min-h-[calc(100vh-64px)]">
             <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8">
-                <!-- Upload -->
                 <div class="space-y-6">
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                         <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -270,7 +301,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- Interpretation -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px] lg:h-auto overflow-hidden">
                     <div class="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                         <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -290,7 +320,6 @@
             </div>
         </section>
 
-        <!-- PAGE: CARE FINDER -->
         <section id="page-care" class="page-section hidden p-4 animate-fade-in">
             <div class="max-w-4xl mx-auto">
                 <div class="text-center mb-8">
@@ -319,7 +348,6 @@
             </div>
         </section>
 
-        <!-- PAGE: ABOUT -->
         <section id="page-about" class="page-section hidden p-4 animate-fade-in">
             <div class="max-w-4xl mx-auto py-12">
                 <div class="text-center mb-16">
@@ -351,16 +379,6 @@
     </main>
 
     <script>
-        // ✅ NOVA SETUP:
-        // No browser API key needed. Frontend calls your backend:
-        //   POST /api/triage  (text + optional image)
-        //   POST /api/vision  (image + prompt)
-        //
-        // Run backend:
-        //   python -m uvicorn server:app --reload --port 8000
-        // Open:
-        //   http://127.0.0.1:8000/
-
         class PulseNovaApp {
             constructor() {
                 // Keep history as {role:'user'|'assistant', text:'...'}
@@ -375,6 +393,25 @@
                 this.isListening = false;
                 this.speakOutput = true;
                 this.recognition = null;
+
+                // Vitals (PPG) State
+                this.vitals = {
+                    stream: null,
+                    video: null,
+                    canvas: null,
+                    ctx: null,
+                    processCanvas: document.createElement('canvas'),
+                    processCtx: null,
+                    animId: null,
+                    redValues: [],
+                    bpmHistory: [],
+                    lastPeakTime: 0,
+                    isMonitoring: false
+                };
+                this.vitals.processCanvas.width = 10; // low res for fast averaging
+                this.vitals.processCanvas.height = 10;
+                this.vitals.processCtx = this.vitals.processCanvas.getContext('2d', { willReadFrequently: true });
+                this.processVitalsFrame = this.processVitalsFrame.bind(this);
 
                 // Mock providers (front-end only)
                 this.providers = [
@@ -393,6 +430,11 @@
 
             // NAVIGATION
             navigate(pageId) {
+                // Shut off camera if leaving vitals page
+                if (pageId !== 'vitals' && this.vitals.isMonitoring) {
+                    this.stopVitals();
+                }
+
                 document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
                 document.getElementById(`page-${pageId}`).classList.remove('hidden');
 
@@ -414,7 +456,7 @@
             }
 
             // =========================
-            // ✅ NOVA BACKEND CALLS
+            // NOVA BACKEND CALLS
             // =========================
             async callNovaTriage(history, userMessage, base64Image) {
                 try {
@@ -470,7 +512,6 @@
                 const container = document.getElementById('chat-messages');
                 container.innerHTML = '';
 
-                // UI uses "model" in your old code. Now we use "assistant".
                 this.messages.forEach(msg => {
                     const isUser = msg.role === 'user';
                     const div = document.createElement('div');
@@ -507,19 +548,13 @@
 
                 if (!text && !image) return;
 
-                // Add user message
                 this.messages.push({ role: 'user', text, image });
                 this.renderChat();
 
-                // Clear inputs
                 input.value = '';
                 this.clearChatImage();
-
-                // Show loading
                 this.showLoading();
 
-                // Build "history" excluding the just-added user message,
-                // and excluding images from history to keep payload smaller.
                 const history = this.messages
                     .slice(0, -1)
                     .map(m => ({ role: m.role, text: m.text }));
@@ -632,6 +667,184 @@
                 window.speechSynthesis.cancel();
                 const u = new SpeechSynthesisUtterance(text);
                 window.speechSynthesis.speak(u);
+            }
+
+            // =========================
+            // HEART RATE MONITOR (PPG)
+            // =========================
+            async startVitals() {
+                this.vitals.video = document.getElementById('vitals-video');
+                this.vitals.canvas = document.getElementById('ppg-graph');
+                this.vitals.ctx = this.vitals.canvas.getContext('2d');
+                
+                // Adjust canvas resolution for graph
+                this.vitals.canvas.width = this.vitals.canvas.offsetWidth;
+                this.vitals.canvas.height = this.vitals.canvas.offsetHeight;
+
+                const statusEl = document.getElementById('vitals-status');
+                
+                try {
+                    statusEl.innerText = "Requesting camera...";
+                    
+                    // Request back camera with flashlight (torch) if supported
+                    this.vitals.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment', torch: true }
+                    });
+
+                    this.vitals.video.srcObject = this.vitals.stream;
+                    this.vitals.video.play();
+
+                    // Try to force torch on (Safari/iOS often ignores the initial constraint)
+                    const track = this.vitals.stream.getVideoTracks()[0];
+                    if (track.getCapabilities && track.getCapabilities().torch) {
+                        try {
+                            await track.applyConstraints({ advanced: [{ torch: true }] });
+                        } catch (e) {
+                            console.warn("Could not force torch:", e);
+                        }
+                    }
+
+                    document.getElementById('btn-start-vitals').classList.add('hidden');
+                    document.getElementById('btn-stop-vitals').classList.remove('hidden');
+                    
+                    this.vitals.isMonitoring = true;
+                    this.vitals.redValues = [];
+                    this.vitals.bpmHistory = [];
+                    this.vitals.lastPeakTime = 0;
+                    statusEl.innerText = "Detecting pulse...";
+                    statusEl.classList.add('text-red-400', 'animate-pulse');
+
+                    // Start loop
+                    this.processVitalsFrame();
+
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                    statusEl.innerText = "Camera access denied or unavailable.";
+                    alert("Unable to access the camera. Please ensure permissions are granted and try again.");
+                }
+            }
+
+            stopVitals() {
+                this.vitals.isMonitoring = false;
+                if (this.vitals.animId) cancelAnimationFrame(this.vitals.animId);
+                
+                if (this.vitals.stream) {
+                    this.vitals.stream.getTracks().forEach(track => track.stop());
+                }
+
+                document.getElementById('btn-stop-vitals').classList.add('hidden');
+                document.getElementById('btn-start-vitals').classList.remove('hidden');
+                
+                const statusEl = document.getElementById('vitals-status');
+                statusEl.innerText = "Stopped";
+                statusEl.classList.remove('text-red-400', 'animate-pulse');
+                document.getElementById('bpm-display').innerText = "--";
+                
+                // Clear graph
+                if(this.vitals.ctx) this.vitals.ctx.clearRect(0, 0, this.vitals.canvas.width, this.vitals.canvas.height);
+            }
+
+            processVitalsFrame() {
+                if (!this.vitals.isMonitoring) return;
+
+                const now = performance.now();
+                
+                // Draw tiny video frame to hidden canvas
+                this.vitals.processCtx.drawImage(this.vitals.video, 0, 0, 10, 10);
+                const imageData = this.vitals.processCtx.getImageData(0, 0, 10, 10).data;
+
+                // Calculate average red channel
+                let redSum = 0;
+                for (let i = 0; i < imageData.length; i += 4) {
+                    redSum += imageData[i]; // Red channel
+                }
+                const avgRed = redSum / (imageData.length / 4);
+
+                this.vitals.redValues.push({ time: now, val: avgRed });
+
+                // Keep last 3 seconds of data (assuming ~60fps)
+                if (this.vitals.redValues.length > 180) {
+                    this.vitals.redValues.shift();
+                }
+
+                this.detectHeartbeat(now);
+                this.drawPPGGraph();
+
+                this.vitals.animId = requestAnimationFrame(this.processVitalsFrame);
+            }
+
+            detectHeartbeat(now) {
+                const data = this.vitals.redValues;
+                if (data.length < 30) return; // Need some data to establish baseline
+
+                // Calculate moving average for thresholding
+                let sum = 0;
+                for (let d of data) sum += d.val;
+                const avg = sum / data.length;
+
+                // Simple Peak Detection
+                // Check if the current value is a peak compared to immediate history
+                const current = data[data.length - 1];
+                const prev = data[data.length - 2];
+                const prev2 = data[data.length - 3];
+
+                // If it's a local maximum and above the average + small threshold
+                if (prev.val > current.val && prev.val > prev2.val && prev.val > avg + 1.5) {
+                    
+                    // Ensure a realistic time has passed since last beat (e.g., min 300ms for max 200 BPM)
+                    if (now - this.vitals.lastPeakTime > 300) {
+                        const timeDiff = now - this.vitals.lastPeakTime;
+                        if (this.vitals.lastPeakTime > 0) {
+                            let instantaneousBPM = 60000 / timeDiff;
+                            
+                            // Filter wild outliers
+                            if (instantaneousBPM > 40 && instantaneousBPM < 200) {
+                                this.vitals.bpmHistory.push(instantaneousBPM);
+                                if (this.vitals.bpmHistory.length > 5) this.vitals.bpmHistory.shift();
+                                
+                                // Average the history for stability
+                                const avgBPM = this.vitals.bpmHistory.reduce((a, b) => a + b) / this.vitals.bpmHistory.length;
+                                document.getElementById('bpm-display').innerText = Math.round(avgBPM);
+                            }
+                        }
+                        this.vitals.lastPeakTime = now;
+                    }
+                }
+            }
+
+            drawPPGGraph() {
+                const ctx = this.vitals.ctx;
+                const w = this.vitals.canvas.width;
+                const h = this.vitals.canvas.height;
+                const data = this.vitals.redValues;
+
+                ctx.clearRect(0, 0, w, h);
+                if (data.length < 2) return;
+
+                // Find min/max to auto-scale the graph vertically
+                let min = Infinity, max = -Infinity;
+                for (let d of data) {
+                    if (d.val < min) min = d.val;
+                    if (d.val > max) max = d.val;
+                }
+                
+                const range = max - min || 1;
+                
+                ctx.beginPath();
+                ctx.strokeStyle = '#ef4444'; // Red-500
+                ctx.lineWidth = 3;
+                ctx.lineJoin = 'round';
+
+                for (let i = 0; i < data.length; i++) {
+                    const x = (i / (data.length - 1)) * w;
+                    // Normalize and scale to height (inverted because canvas Y goes down)
+                    const normalizedY = (data[i].val - min) / range;
+                    const y = h - (normalizedY * (h * 0.8)) - (h * 0.1); // Add 10% padding
+                    
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
             }
 
             // X-RAY & LABS
