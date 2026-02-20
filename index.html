@@ -6,15 +6,12 @@
     <title>PulseNova - AI Medical Assistant</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script src="https://unpkg.com/lucide@latest"></script>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         body { font-family: 'Inter', sans-serif; }
 
-        /* Custom Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -24,7 +21,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Typing Indicator */
         .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
@@ -148,8 +144,8 @@
                         <span class="font-semibold text-slate-700">Triage Assistant</span>
                     </div>
                     <div class="flex items-center gap-4">
-                        <button onclick="app.toggleSpeechOutput()" id="btn-speech-toggle" class="p-2 rounded-full hover:bg-slate-200 text-blue-600 transition-colors" title="Toggle Voice Response">
-                            <i data-lucide="volume-2" class="w-4 h-4"></i>
+                        <button onclick="app.toggleSpeechOutput()" id="btn-speech-toggle" class="p-2 rounded-full hover:bg-slate-200 text-slate-400 transition-colors" title="Toggle Voice Response">
+                            <i data-lucide="volume-x" class="w-4 h-4"></i>
                         </button>
                         <button onclick="app.resetChat()" class="text-xs text-slate-500 hover:text-blue-600 underline">Reset Chat</button>
                     </div>
@@ -190,7 +186,6 @@
 
         <section id="page-vitals" class="page-section hidden p-4 min-h-[calc(100vh-64px)]">
             <div class="max-w-3xl mx-auto space-y-6">
-                
                 <div class="text-center mb-6">
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Pulse Monitor</h1>
                     <p class="text-slate-500 text-sm">Measure your estimated heart rate using your device's camera.</p>
@@ -210,10 +205,8 @@
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col items-center p-6">
-                    
                     <div class="w-full relative bg-slate-900 rounded-xl overflow-hidden mb-6 flex flex-col items-center justify-center min-h-[250px] shadow-inner">
                         <canvas id="ppg-graph" class="w-full h-40 opacity-80"></canvas>
-                        
                         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                             <div class="text-6xl font-bold text-white drop-shadow-md flex items-baseline gap-1">
                                 <span id="bpm-display">--</span>
@@ -221,7 +214,6 @@
                             </div>
                             <div id="vitals-status" class="text-sm text-slate-400 mt-2 bg-slate-900/60 px-3 py-1 rounded-full">Ready to start</div>
                         </div>
-
                         <video id="vitals-video" class="hidden" playsinline autoplay></video>
                     </div>
 
@@ -327,10 +319,10 @@
                     <p class="text-slate-500">Locate trusted medical providers in your area.</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex flex-col md:flex-row gap-4">
                     <div class="flex-1 relative">
                         <i data-lucide="search" class="absolute left-3 top-3 w-5 h-5 text-slate-400"></i>
-                        <input type="text" placeholder="Search by name or zip..." class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                        <input type="text" id="care-search" placeholder="Search by city, address, or ZIP..." class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
                     </div>
                     <select id="care-filter" onchange="app.renderProviders()" class="px-4 py-2.5 border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
                         <option value="All">All Providers</option>
@@ -343,6 +335,16 @@
                         <i data-lucide="navigation" class="w-4 h-4"></i> Near Me
                     </button>
                 </div>
+
+                <div class="mb-4 flex flex-col md:flex-row gap-3">
+                    <button onclick="app.searchCareByText()" id="btn-search-care" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 flex items-center gap-2 justify-center">
+                        <i data-lucide="search" class="w-4 h-4"></i> Search Area
+                    </button>
+                    <div id="care-status" class="text-sm text-slate-500 flex items-center"></div>
+                </div>
+
+                <!-- Hidden div required for Google PlacesService -->
+                <div id="care-map-host" class="hidden h-1 w-1"></div>
 
                 <div id="providers-list" class="grid md:grid-cols-2 gap-4"></div>
             </div>
@@ -370,7 +372,7 @@
                     <div class="grid md:grid-cols-3 gap-6">
                         <div class="bg-slate-50 p-6 rounded-xl border border-slate-100"><h3 class="font-bold text-slate-900 mb-2">Accessibility</h3><p class="text-sm text-slate-600">Free, 24/7 access to medical guidance without insurance barriers.</p></div>
                         <div class="bg-slate-50 p-6 rounded-xl border border-slate-100"><h3 class="font-bold text-slate-900 mb-2">Privacy</h3><p class="text-sm text-slate-600">We do not store your personal health data. Your chats are ephemeral.</p></div>
-                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-100"><h3 class="font-bold text-slate-900 mb-2">Technology</h3><p class="text-sm text-slate-600">Powered by Amazon Nova (Bedrock) for text + vision.</p></div>
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-100"><h3 class="font-bold text-slate-900 mb-2">Technology</h3><p class="text-sm text-slate-600">Powered by Amazon Nova (Bedrock) for text + vision and Google Maps Places for care discovery.</p></div>
                     </div>
                 </div>
             </div>
@@ -381,20 +383,39 @@
     <script>
         class PulseNovaApp {
             constructor() {
-                // Keep history as {role:'user'|'assistant', text:'...'}
                 this.messages = [
                     { role: 'assistant', text: "Hello. I'm PulseNova. Please describe your symptoms in detail, or send me a photo if relevant." }
                 ];
 
-                this.chatImage = null; // base64 (no prefix)
-                this.xrayImage = null; // base64
-                this.labImage = null;  // base64
+                this.chatImage = null;
+                this.xrayImage = null;
+                this.labImage = null;
 
                 this.isListening = false;
-                this.speakOutput = true;
+                this.speakOutput = false; // OFF by default
                 this.recognition = null;
+                this.chatBusy = false;
 
-                // Vitals (PPG) State
+                // IMPORTANT: Replace this with your real key
+
+                this.googleMapsReady = false;
+                this.googleMapsLoading = false;
+                this.map = null;
+                this.placesService = null;
+                this.infoWindow = null;
+                this.userLocation = null;
+                this.providerMarkers = [];
+                this.realProviders = [];
+                this.geocoder = null;
+
+                this.providers = [];
+                this.care = {
+                    userLat: null,
+                    userLon: null,
+                    centerLabel: null,
+                    loading: false
+                };
+
                 this.vitals = {
                     stream: null,
                     video: null,
@@ -408,32 +429,23 @@
                     lastPeakTime: 0,
                     isMonitoring: false
                 };
-                this.vitals.processCanvas.width = 10; // low res for fast averaging
+                this.vitals.processCanvas.width = 10;
                 this.vitals.processCanvas.height = 10;
                 this.vitals.processCtx = this.vitals.processCanvas.getContext('2d', { willReadFrequently: true });
                 this.processVitalsFrame = this.processVitalsFrame.bind(this);
 
-                // Mock providers (front-end only)
-                this.providers = [
-                    { id: 1, name: "City Center General Hospital", type: "ER", distance: 2.1, address: "123 Medical Center Dr", phone: "555-0199", rating: 4.2 },
-                    { id: 2, name: "Northside Urgent Care", type: "Urgent Care", distance: 0.8, address: "450 Broadway Ave", phone: "555-0123", rating: 4.5 },
-                    { id: 3, name: "Valley Health Clinic", type: "Clinic", distance: 3.5, address: "88 Valley Rd", phone: "555-0188", rating: 4.0 },
-                    { id: 4, name: "24/7 Pharmacy Plus", type: "Pharmacy", distance: 0.5, address: "12 Main St", phone: "555-0101", rating: 3.8 },
-                    { id: 5, name: "Children's Medical Group", type: "Pediatric", distance: 4.2, address: "900 Kids Way", phone: "555-0155", rating: 4.8 },
-                    { id: 6, name: "Downtown Dental", type: "Dentist", distance: 1.2, address: "200 Oak St", phone: "555-0144", rating: 4.6 },
-                ];
-
                 this.initSpeech();
+                this.initCareSearch();
                 this.renderChat();
                 this.renderProviders();
+                this.updateSpeechToggleUI();
             }
 
+            // =========================
             // NAVIGATION
+            // =========================
             navigate(pageId) {
-                // Shut off camera if leaving vitals page
-                if (pageId !== 'vitals' && this.vitals.isMonitoring) {
-                    this.stopVitals();
-                }
+                if (pageId !== 'vitals' && this.vitals.isMonitoring) this.stopVitals();
 
                 document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
                 document.getElementById(`page-${pageId}`).classList.remove('hidden');
@@ -449,6 +461,10 @@
                 });
 
                 document.getElementById('mobile-menu').classList.add('hidden');
+
+                if (pageId !== 'triage') {
+                    window.speechSynthesis.cancel();
+                }
             }
 
             toggleMobileMenu() {
@@ -456,13 +472,387 @@
             }
 
             // =========================
+            // GOOGLE MAPS / CARE FINDER
+            // =========================
+            async ensureGoogleMaps() {
+                if (this.googleMapsReady) return;
+                if (this.googleMapsLoading) return this.googleMapsLoading;
+
+                this.googleMapsLoading = new Promise(async (resolve, reject) => {
+                    try {
+                        // If already loaded, reuse it
+                        if (window.google && window.google.maps && window.google.maps.places) {
+                            this.googleMapsReady = true;
+                            this.initGoogleServices();
+                            resolve();
+                            return;
+                        }
+
+                        // Fetch key from backend (server.py -> /config)
+                        const cfgRes = await fetch('/config');
+                        if (!cfgRes.ok) {
+                            throw new Error(`Failed to fetch /config (${cfgRes.status})`);
+                        }
+
+                        const cfg = await cfgRes.json();
+                        const apiKey = cfg.google_maps_api_key;
+
+                        if (!apiKey) {
+                            throw new Error("GOOGLE_MAPS_API_KEY is not set on the server.");
+                        }
+
+                        // Global callback for Google script
+                        window.__pulseNovaMapsInit = () => {
+                            this.googleMapsReady = true;
+                            try {
+                                this.initGoogleServices();
+                                resolve();
+                            } catch (e) {
+                                reject(e);
+                            } finally {
+                                try { delete window.__pulseNovaMapsInit; } catch (_) {}
+                            }
+                        };
+
+                        // Prevent duplicate script tags
+                        const existing = document.getElementById('pulse-nova-gmaps');
+                        if (existing) {
+                            return; // callback will fire when it loads
+                        }
+
+                        const script = document.createElement('script');
+                        script.id = 'pulse-nova-gmaps';
+                        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry&callback=__pulseNovaMapsInit&loading=async`;
+                        script.async = true;
+                        script.defer = true;
+                        script.onerror = () => reject(new Error("Failed to load Google Maps JS SDK"));
+                        document.head.appendChild(script);
+
+                    } catch (err) {
+                        reject(err);
+                    }
+                });
+
+                return this.googleMapsLoading;
+            }
+
+            initGoogleServices() {
+                if (this.gmap) return;
+                const host = document.getElementById('care-map-host');
+                this.gmap = new google.maps.Map(host, {
+                    center: { lat: 41.7658, lng: -72.6734 }, // Hartford default
+                    zoom: 12,
+                    disableDefaultUI: true
+                });
+                this.placesService = new google.maps.places.PlacesService(this.gmap);
+                this.geocoder = new google.maps.Geocoder();
+            }
+
+            setCareStatus(text, isError = false) {
+                const el = document.getElementById('care-status');
+                if (!el) return;
+                el.textContent = text || "";
+                el.className = `text-sm flex items-center ${isError ? 'text-red-600' : 'text-slate-500'}`;
+            }
+
+            initCareSearch() {
+                const input = document.getElementById('chat-input');;
+                if (!input) return;
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.searchCareByText();
+                    }
+                });
+            }
+
+            async searchCareByText() {
+                const input = document.getElementById('care-search');
+                const query = (input?.value || '').trim();
+
+                if (!query) {
+                    this.setCareStatus("Enter a city or ZIP code.", true);
+                    return;
+                }
+
+                try {
+                    this.setCareStatus("Finding area...");
+                    await this.ensureGoogleMaps();
+
+                    const geo = await new Promise((resolve, reject) => {
+                        this.geocoder.geocode({ address: query }, (results, status) => {
+                            if (status === "OK" && results && results.length) {
+                                resolve(results[0]);
+                            } else {
+                                reject(new Error(`Geocoding failed: ${status}`));
+                            }
+                        });
+                    });
+
+                    const loc = geo.geometry.location;
+                    this.userLocation = { lat: loc.lat(), lng: loc.lng() };
+
+                    // keep care state in sync (fetchNearbyProviders uses this.care for distances/status)
+                    this.care.userLat = this.userLocation.lat;
+                    this.care.userLon = this.userLocation.lng;
+                    this.care.centerLabel = geo.formatted_address || query;
+
+                    if (this.gmap) {
+                        this.gmap.setCenter(this.userLocation);
+                        this.gmap.setZoom(12);
+                    }
+
+                    // ✅ correct function
+                    await this.fetchNearbyProviders(this.userLocation.lat, this.userLocation.lng);
+
+                    // ✅ correct array used by renderProviders()
+                    const count = (this.providers || []).length;
+                    const areaLabel = geo.formatted_address || query;
+
+                    this.setCareStatus(
+                        count
+                            ? `Found ${count} providers near ${areaLabel}.`
+                            : `No providers found near ${areaLabel}. Try a larger city or "All Providers".`
+                    );
+                } catch (err) {
+                    console.error("searchCareByText failed:", err);
+                    this.setCareStatus("Could not search this area. Try another city/ZIP.", true);
+                    alert(err.message || "Search failed.");
+                }
+            }
+
+            async locateUser() {
+                const btn = document.getElementById('btn-locate');
+                const original = btn.innerHTML;
+
+                btn.disabled = true;
+                btn.innerHTML = 'Locating...';
+                this.setCareStatus("Requesting your location...");
+
+                try {
+                    await this.ensureGoogleMaps();
+
+                    const pos = await new Promise((resolve, reject) => {
+                        if (!navigator.geolocation) {
+                            reject(new Error("Geolocation is not supported on this device/browser."));
+                            return;
+                        }
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 30000
+                        });
+                    });
+
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+
+                    this.care.userLat = lat;
+                    this.care.userLon = lon;
+                    this.care.centerLabel = "your location";
+                    await this.fetchNearbyProviders(lat, lon);
+
+                } catch (e) {
+                    console.error(e);
+                    this.setCareStatus("Couldn't get your location. Try Search Area with ZIP/city.", true);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                    lucide.createIcons();
+                }
+            }
+
+            geocodeAddress(address) {
+                return new Promise((resolve, reject) => {
+                    this.geocoder.geocode({ address }, (results, status) => {
+                        if (status !== 'OK' || !results?.length) {
+                            reject(new Error("Location not found. Try a ZIP code or full city name."));
+                            return;
+                        }
+                        const r = results[0];
+                        resolve({
+                            lat: r.geometry.location.lat(),
+                            lng: r.geometry.location.lng(),
+                            label: r.formatted_address
+                        });
+                    });
+                });
+            }
+
+            nearbySearchPromise(request) {
+                return new Promise((resolve, reject) => {
+                    this.placesService.nearbySearch(request, (results, status) => {
+                        if (status === google.maps.places.PlacesServiceStatus.OK || status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                            resolve(results || []);
+                        } else {
+                            reject(new Error(`Places search failed: ${status}`));
+                        }
+                    });
+                });
+            }
+
+            textSearchPromise(request) {
+                return new Promise((resolve, reject) => {
+                    this.placesService.textSearch(request, (results, status) => {
+                        if (status === google.maps.places.PlacesServiceStatus.OK || status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                            resolve(results || []);
+                        } else {
+                            reject(new Error(`Places text search failed: ${status}`));
+                        }
+                    });
+                });
+            }
+
+            getDistanceMiles(lat1, lon1, lat2, lon2) {
+                if (window.google?.maps?.geometry?.spherical) {
+                    const a = new google.maps.LatLng(lat1, lon1);
+                    const b = new google.maps.LatLng(lat2, lon2);
+                    const meters = google.maps.geometry.spherical.computeDistanceBetween(a, b);
+                    return meters / 1609.344;
+                }
+                // fallback
+                const toRad = x => x * Math.PI / 180;
+                const R = 6371000;
+                const dLat = toRad(lat2 - lat1);
+                const dLon = toRad(lon2 - lon1);
+                const aa =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+                return (R * c) / 1609.344;
+            }
+
+            normalizePlace(place, inferredType) {
+                const loc = place.geometry?.location;
+                const lat = typeof loc?.lat === 'function' ? loc.lat() : place.geometry?.location?.lat;
+                const lon = typeof loc?.lng === 'function' ? loc.lng() : place.geometry?.location?.lng;
+
+                let type = inferredType || 'Clinic';
+                const types = place.types || [];
+                if (types.includes('hospital')) type = inferredType === 'Urgent Care' ? 'Urgent Care' : 'ER';
+                if (types.includes('pharmacy')) type = 'Pharmacy';
+                if (types.includes('dentist')) type = 'Dentist';
+
+                const rating = place.rating || null;
+                const address = place.vicinity || place.formatted_address || "Address unavailable";
+                const distance =
+                    (this.care.userLat != null && this.care.userLon != null && lat != null && lon != null)
+                    ? this.getDistanceMiles(this.care.userLat, this.care.userLon, lat, lon)
+                    : null;
+
+                return {
+                    id: place.place_id,
+                    name: place.name || "Unknown provider",
+                    type,
+                    address,
+                    phone: "Tap Directions",
+                    rating,
+                    distance,
+                    lat,
+                    lon,
+                    placeId: place.place_id
+                };
+            }
+
+            dedupeProviders(list) {
+                const seen = new Map();
+                for (const p of list) {
+                    if (!p?.id) continue;
+                    if (!seen.has(p.id)) {
+                        seen.set(p.id, p);
+                    } else {
+                        const existing = seen.get(p.id);
+                        // Prefer a more specific type than ER fallback
+                        if (existing.type === 'ER' && p.type === 'Urgent Care') {
+                            seen.set(p.id, p);
+                        }
+                    }
+                }
+                return Array.from(seen.values());
+            }
+
+            async fetchNearbyProviders(lat, lon) {
+                this.setCareStatus("Searching nearby care options...");
+                this.providers = [];
+                this.renderProviders();
+
+                try {
+                    const center = new google.maps.LatLng(lat, lon);
+                    this.gmap.setCenter(center);
+
+                    const radiusMeters = 10000; // ~6.2 miles
+
+                    const [hospitals, pharmacies, dentists, urgentCare] = await Promise.all([
+                        this.nearbySearchPromise({
+                            location: center,
+                            radius: radiusMeters,
+                            type: 'hospital'
+                        }),
+                        this.nearbySearchPromise({
+                            location: center,
+                            radius: radiusMeters,
+                            type: 'pharmacy'
+                        }),
+                        this.nearbySearchPromise({
+                            location: center,
+                            radius: radiusMeters,
+                            type: 'dentist'
+                        }),
+                        // Urgent care is usually better with keyword text search
+                        this.textSearchPromise({
+                            location: center,
+                            radius: radiusMeters,
+                            query: 'urgent care'
+                        })
+                    ]);
+
+                    let merged = [
+                        ...hospitals.map(p => this.normalizePlace(p, 'ER')),
+                        ...pharmacies.map(p => this.normalizePlace(p, 'Pharmacy')),
+                        ...dentists.map(p => this.normalizePlace(p, 'Dentist')),
+                        ...urgentCare.map(p => this.normalizePlace(p, 'Urgent Care'))
+                    ];
+
+                    merged = this.dedupeProviders(merged);
+
+                    merged.sort((a, b) => {
+                        const da = (typeof a.distance === 'number') ? a.distance : 999;
+                        const db = (typeof b.distance === 'number') ? b.distance : 999;
+                        return da - db;
+                    });
+
+                    this.providers = merged.slice(0, 30);
+                    this.renderProviders();
+
+                    const label = this.care.centerLabel ? ` near ${this.care.centerLabel}` : "";
+                    this.setCareStatus(this.providers.length
+                        ? `Found ${this.providers.length} providers${label}.`
+                        : `No providers found${label}. Try another ZIP/city.`
+                    );
+
+                } catch (e) {
+                    console.error(e);
+                    this.setCareStatus("Care search failed. Check your Maps API key and enabled APIs.", true);
+                }
+            }
+
+            // =========================
             // NOVA BACKEND CALLS
             // =========================
             async callNovaTriage(history, userMessage, base64Image) {
                 try {
+                    let cleanHistory = (history || [])
+                        .map(t => ({ role: t.role, text: (t.text || '').trim() }))
+                        .filter(t => t.text);
+
+                    while (cleanHistory.length && cleanHistory[0].role !== 'user') {
+                        cleanHistory.shift();
+                    }
+
                     const payload = {
-                        message: userMessage,
-                        history: history.map(t => ({ role: t.role, text: t.text })),
+                        message: userMessage || "",
+                        history: cleanHistory,
                         image_base64: base64Image || null
                     };
 
@@ -507,7 +897,9 @@
                 }
             }
 
+            // =========================
             // TRIAGE CHAT
+            // =========================
             renderChat() {
                 const container = document.getElementById('chat-messages');
                 container.innerHTML = '';
@@ -517,24 +909,28 @@
                     const div = document.createElement('div');
                     div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
 
-                    let contentHtml = `<div class="max-w-[85%] space-y-2">`;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'max-w-[85%] space-y-2';
 
                     if (msg.image) {
-                        contentHtml += `
-                          <div class="p-2 rounded-2xl ${isUser ? 'bg-blue-600 rounded-tr-none' : 'bg-white border'}">
-                            <img src="data:image/png;base64,${msg.image}" class="max-h-48 rounded-lg object-cover">
-                          </div>`;
+                        const imgWrap = document.createElement('div');
+                        imgWrap.className = `p-2 rounded-2xl ${isUser ? 'bg-blue-600 rounded-tr-none' : 'bg-white border'}`;
+                        const img = document.createElement('img');
+                        img.src = `data:image/png;base64,${msg.image}`;
+                        img.className = 'max-h-48 rounded-lg object-cover';
+                        img.alt = 'Uploaded image';
+                        imgWrap.appendChild(img);
+                        wrapper.appendChild(imgWrap);
                     }
 
                     if (msg.text) {
-                        contentHtml += `
-                          <div class="rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'}">
-                            ${this.formatText(msg.text)}
-                          </div>`;
+                        const bubble = document.createElement('div');
+                        bubble.className = `rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'}`;
+                        bubble.innerHTML = this.formatText(msg.text);
+                        wrapper.appendChild(bubble);
                     }
 
-                    contentHtml += `</div>`;
-                    div.innerHTML = contentHtml;
+                    div.appendChild(wrapper);
                     container.appendChild(div);
                 });
 
@@ -542,11 +938,21 @@
             }
 
             async sendMessage() {
-                const input = document.getElementById('chat-input');
+                if (this.chatBusy) return;
+
+                const input = document.getElementById('chat-input');;
                 const text = input.value.trim();
                 const image = this.chatImage;
 
                 if (!text && !image) return;
+
+                this.chatBusy = true;
+                const sendBtn = document.getElementById('btn-send');
+                sendBtn.disabled = true;
+                sendBtn.classList.add('opacity-60');
+
+                // Stop bot speaking when user sends a new message
+                window.speechSynthesis.cancel();
 
                 this.messages.push({ role: 'user', text, image });
                 this.renderChat();
@@ -555,10 +961,7 @@
                 this.clearChatImage();
                 this.showLoading();
 
-                const history = this.messages
-                    .slice(0, -1)
-                    .map(m => ({ role: m.role, text: m.text }));
-
+                const history = this.messages.slice(0, -1).map(m => ({ role: m.role, text: m.text }));
                 const responseText = await this.callNovaTriage(history, text, image);
 
                 this.removeLoading();
@@ -566,6 +969,10 @@
                 this.renderChat();
 
                 if (this.speakOutput) this.speak(responseText);
+
+                this.chatBusy = false;
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-60');
             }
 
             showLoading() {
@@ -610,13 +1017,16 @@
             }
 
             resetChat() {
+                window.speechSynthesis.cancel();
                 this.messages = [
                     { role: 'assistant', text: "Hello. I'm PulseNova. Please describe your symptoms in detail." }
                 ];
                 this.renderChat();
             }
 
+            // =========================
             // VOICE
+            // =========================
             initSpeech() {
                 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -626,6 +1036,7 @@
 
                     this.recognition.onstart = () => {
                         this.isListening = true;
+                        window.speechSynthesis.cancel(); // stop bot audio when user talks
                         document.getElementById('btn-mic').classList.add('text-red-600', 'bg-red-50', 'animate-pulse');
                     };
 
@@ -636,21 +1047,29 @@
 
                     this.recognition.onresult = (event) => {
                         const t = event.results[0][0].transcript;
-                        const input = document.getElementById('chat-input');
+                        const input = document.getElementById('chat-input');;
                         input.value = input.value ? input.value + ' ' + t : t;
+                    };
+
+                    this.recognition.onerror = () => {
+                        this.isListening = false;
+                        document.getElementById('btn-mic').classList.remove('text-red-600', 'bg-red-50', 'animate-pulse');
                     };
                 }
             }
 
             toggleListening() {
-                if (!this.recognition) return alert("Browser does not support speech.");
+                if (!this.recognition) {
+                    alert("Browser does not support speech recognition.");
+                    return;
+                }
                 if (this.isListening) this.recognition.stop();
                 else this.recognition.start();
             }
 
-            toggleSpeechOutput() {
-                this.speakOutput = !this.speakOutput;
+            updateSpeechToggleUI() {
                 const btn = document.getElementById('btn-speech-toggle');
+                if (!btn) return;
                 if (this.speakOutput) {
                     btn.classList.add('text-blue-600');
                     btn.classList.remove('text-slate-400');
@@ -663,10 +1082,20 @@
                 lucide.createIcons();
             }
 
+            toggleSpeechOutput() {
+                this.speakOutput = !this.speakOutput;
+                if (!this.speakOutput) window.speechSynthesis.cancel();
+                this.updateSpeechToggleUI();
+            }
+
             speak(text) {
+                if (!this.speakOutput) return;
+                if (!text) return;
                 window.speechSynthesis.cancel();
-                const u = new SpeechSynthesisUtterance(text);
-                window.speechSynthesis.speak(u);
+                const utter = new SpeechSynthesisUtterance(text.replace(/\*+/g, '').slice(0, 1200));
+                utter.rate = 1;
+                utter.pitch = 1;
+                window.speechSynthesis.speak(utter);
             }
 
             // =========================
@@ -676,37 +1105,34 @@
                 this.vitals.video = document.getElementById('vitals-video');
                 this.vitals.canvas = document.getElementById('ppg-graph');
                 this.vitals.ctx = this.vitals.canvas.getContext('2d');
-                
-                // Adjust canvas resolution for graph
+
                 this.vitals.canvas.width = this.vitals.canvas.offsetWidth;
                 this.vitals.canvas.height = this.vitals.canvas.offsetHeight;
 
                 const statusEl = document.getElementById('vitals-status');
-                
+
                 try {
                     statusEl.innerText = "Requesting camera...";
-                    
-                    // Request back camera with flashlight (torch) if supported
+
                     this.vitals.stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'environment', torch: true }
+                        video: { facingMode: 'environment' }
                     });
 
                     this.vitals.video.srcObject = this.vitals.stream;
                     this.vitals.video.play();
 
-                    // Try to force torch on (Safari/iOS often ignores the initial constraint)
                     const track = this.vitals.stream.getVideoTracks()[0];
                     if (track.getCapabilities && track.getCapabilities().torch) {
                         try {
                             await track.applyConstraints({ advanced: [{ torch: true }] });
                         } catch (e) {
-                            console.warn("Could not force torch:", e);
+                            console.warn("Torch not available/allowed:", e);
                         }
                     }
 
                     document.getElementById('btn-start-vitals').classList.add('hidden');
                     document.getElementById('btn-stop-vitals').classList.remove('hidden');
-                    
+
                     this.vitals.isMonitoring = true;
                     this.vitals.redValues = [];
                     this.vitals.bpmHistory = [];
@@ -714,58 +1140,50 @@
                     statusEl.innerText = "Detecting pulse...";
                     statusEl.classList.add('text-red-400', 'animate-pulse');
 
-                    // Start loop
                     this.processVitalsFrame();
 
                 } catch (err) {
-                    console.error("Error accessing camera:", err);
+                    console.error(err);
                     statusEl.innerText = "Camera access denied or unavailable.";
-                    alert("Unable to access the camera. Please ensure permissions are granted and try again.");
+                    alert("Unable to access the camera. Please allow permissions and try again.");
                 }
             }
 
             stopVitals() {
                 this.vitals.isMonitoring = false;
                 if (this.vitals.animId) cancelAnimationFrame(this.vitals.animId);
-                
+
                 if (this.vitals.stream) {
                     this.vitals.stream.getTracks().forEach(track => track.stop());
                 }
 
                 document.getElementById('btn-stop-vitals').classList.add('hidden');
                 document.getElementById('btn-start-vitals').classList.remove('hidden');
-                
+
                 const statusEl = document.getElementById('vitals-status');
                 statusEl.innerText = "Stopped";
                 statusEl.classList.remove('text-red-400', 'animate-pulse');
                 document.getElementById('bpm-display').innerText = "--";
-                
-                // Clear graph
-                if(this.vitals.ctx) this.vitals.ctx.clearRect(0, 0, this.vitals.canvas.width, this.vitals.canvas.height);
+
+                if (this.vitals.ctx && this.vitals.canvas) {
+                    this.vitals.ctx.clearRect(0, 0, this.vitals.canvas.width, this.vitals.canvas.height);
+                }
             }
 
             processVitalsFrame() {
                 if (!this.vitals.isMonitoring) return;
 
                 const now = performance.now();
-                
-                // Draw tiny video frame to hidden canvas
+
                 this.vitals.processCtx.drawImage(this.vitals.video, 0, 0, 10, 10);
                 const imageData = this.vitals.processCtx.getImageData(0, 0, 10, 10).data;
 
-                // Calculate average red channel
                 let redSum = 0;
-                for (let i = 0; i < imageData.length; i += 4) {
-                    redSum += imageData[i]; // Red channel
-                }
+                for (let i = 0; i < imageData.length; i += 4) redSum += imageData[i];
                 const avgRed = redSum / (imageData.length / 4);
 
                 this.vitals.redValues.push({ time: now, val: avgRed });
-
-                // Keep last 3 seconds of data (assuming ~60fps)
-                if (this.vitals.redValues.length > 180) {
-                    this.vitals.redValues.shift();
-                }
+                if (this.vitals.redValues.length > 180) this.vitals.redValues.shift();
 
                 this.detectHeartbeat(now);
                 this.drawPPGGraph();
@@ -775,35 +1193,25 @@
 
             detectHeartbeat(now) {
                 const data = this.vitals.redValues;
-                if (data.length < 30) return; // Need some data to establish baseline
+                if (data.length < 30) return;
 
-                // Calculate moving average for thresholding
                 let sum = 0;
                 for (let d of data) sum += d.val;
                 const avg = sum / data.length;
 
-                // Simple Peak Detection
-                // Check if the current value is a peak compared to immediate history
                 const current = data[data.length - 1];
                 const prev = data[data.length - 2];
                 const prev2 = data[data.length - 3];
 
-                // If it's a local maximum and above the average + small threshold
                 if (prev.val > current.val && prev.val > prev2.val && prev.val > avg + 1.5) {
-                    
-                    // Ensure a realistic time has passed since last beat (e.g., min 300ms for max 200 BPM)
                     if (now - this.vitals.lastPeakTime > 300) {
                         const timeDiff = now - this.vitals.lastPeakTime;
                         if (this.vitals.lastPeakTime > 0) {
-                            let instantaneousBPM = 60000 / timeDiff;
-                            
-                            // Filter wild outliers
-                            if (instantaneousBPM > 40 && instantaneousBPM < 200) {
-                                this.vitals.bpmHistory.push(instantaneousBPM);
+                            const instantBPM = 60000 / timeDiff;
+                            if (instantBPM > 40 && instantBPM < 200) {
+                                this.vitals.bpmHistory.push(instantBPM);
                                 if (this.vitals.bpmHistory.length > 5) this.vitals.bpmHistory.shift();
-                                
-                                // Average the history for stability
-                                const avgBPM = this.vitals.bpmHistory.reduce((a, b) => a + b) / this.vitals.bpmHistory.length;
+                                const avgBPM = this.vitals.bpmHistory.reduce((a, b) => a + b, 0) / this.vitals.bpmHistory.length;
                                 document.getElementById('bpm-display').innerText = Math.round(avgBPM);
                             }
                         }
@@ -821,33 +1229,31 @@
                 ctx.clearRect(0, 0, w, h);
                 if (data.length < 2) return;
 
-                // Find min/max to auto-scale the graph vertically
                 let min = Infinity, max = -Infinity;
                 for (let d of data) {
                     if (d.val < min) min = d.val;
                     if (d.val > max) max = d.val;
                 }
-                
+
                 const range = max - min || 1;
-                
                 ctx.beginPath();
-                ctx.strokeStyle = '#ef4444'; // Red-500
+                ctx.strokeStyle = '#ef4444';
                 ctx.lineWidth = 3;
                 ctx.lineJoin = 'round';
 
                 for (let i = 0; i < data.length; i++) {
                     const x = (i / (data.length - 1)) * w;
-                    // Normalize and scale to height (inverted because canvas Y goes down)
                     const normalizedY = (data[i].val - min) / range;
-                    const y = h - (normalizedY * (h * 0.8)) - (h * 0.1); // Add 10% padding
-                    
+                    const y = h - (normalizedY * (h * 0.8)) - (h * 0.1);
                     if (i === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                 }
                 ctx.stroke();
             }
 
+            // =========================
             // X-RAY & LABS
+            // =========================
             handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
             handleLabUpload(input) { this.handleFileUpload(input, 'lab'); }
 
@@ -881,6 +1287,7 @@
             }
 
             async analyzeXray() {
+                if (!this.xrayImage) return;
                 const btn = document.getElementById('btn-analyze-xray');
                 btn.disabled = true;
                 btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Running...`;
@@ -907,6 +1314,7 @@ Output format:
             }
 
             async analyzeLabs() {
+                if (!this.labImage) return;
                 const btn = document.getElementById('btn-analyze-lab');
                 btn.disabled = true;
                 btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Translating...`;
@@ -933,74 +1341,119 @@ Output format:
                 lucide.createIcons();
             }
 
-            // CARE FINDER (mock)
+            // =========================
+            // CARE FINDER UI RENDER
+            // =========================
             renderProviders() {
                 const filter = document.getElementById('care-filter')?.value || 'All';
+                const query = '';
                 const list = document.getElementById('providers-list');
                 if (!list) return;
 
                 list.innerHTML = '';
 
-                const filtered = filter === 'All' ? this.providers : this.providers.filter(p => p.type === filter);
+                let filtered = this.providers.slice();
+
+                if (filter !== 'All') {
+                    filtered = filtered.filter(p => p.type === filter);
+                }
+
+                // if (query) {
+                //     filtered = filtered.filter(p =>
+                //         (p.name || '').toLowerCase().includes(query) ||
+                //         (p.address || '').toLowerCase().includes(query)
+                //     );
+                // }
+
+                if (!filtered.length) {
+                    list.innerHTML = `
+                        <div class="col-span-full bg-white border border-slate-200 rounded-2xl p-6 text-center text-slate-500">
+                            No providers yet. Use <strong>Near Me</strong> or search a city/ZIP and click <strong>Search Area</strong>.
+                        </div>`;
+                    return;
+                }
 
                 filtered.forEach(p => {
                     const colorClass =
                         p.type === 'ER' ? 'bg-red-100 text-red-700' :
-                        (p.type === 'Pharmacy' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
+                        p.type === 'Urgent Care' ? 'bg-blue-100 text-blue-700' :
+                        p.type === 'Pharmacy' ? 'bg-green-100 text-green-700' :
+                        p.type === 'Dentist' ? 'bg-purple-100 text-purple-700' :
+                        'bg-slate-100 text-slate-700';
 
-                    const html = `
-                        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex justify-between items-start">
-                            <div>
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-bold px-2 py-1 rounded-md ${colorClass}">${p.type}</span>
-                                    <span class="text-xs text-slate-400 flex items-center gap-0.5"><span class="text-yellow-400">★</span> ${p.rating}</span>
+                    const ratingText = p.rating ? `${p.rating}` : 'N/A';
+                    const distanceText = (typeof p.distance === 'number') ? p.distance.toFixed(1) : '--';
+
+                    const directionsUrl = (p.lat != null && p.lon != null)
+                        ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.lat + ',' + p.lon)}`
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + p.address)}`;
+
+                    const phoneBtn = `
+                        <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer"
+                           class="text-xs bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-100 flex items-center gap-1">
+                            <i data-lucide="map" class="w-3 h-3"></i> Open Map
+                        </a>`;
+
+                    const dirBtn = `
+                        <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer"
+                           class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 font-medium hover:bg-blue-100 flex items-center gap-1">
+                            <i data-lucide="navigation" class="w-3 h-3"></i> Directions
+                        </a>`;
+
+                    list.innerHTML += `
+                        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex justify-between items-start gap-3">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span class="text-xs font-bold px-2 py-1 rounded-md ${colorClass}">${this.escapeHtml(p.type)}</span>
+                                    <span class="text-xs text-slate-400 flex items-center gap-0.5"><span class="text-yellow-400">★</span> ${this.escapeHtml(ratingText)}</span>
                                 </div>
-                                <h3 class="font-bold text-slate-800 text-lg">${p.name}</h3>
-                                <p class="text-slate-500 text-sm mb-3">${p.address}</p>
-                                <div class="flex gap-2">
-                                    <button class="text-xs bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-100 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> ${p.phone}</button>
-                                    <button class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 font-medium hover:bg-blue-100 flex items-center gap-1"><i data-lucide="navigation" class="w-3 h-3"></i> Directions</button>
+                                <h3 class="font-bold text-slate-800 text-lg leading-tight">${this.escapeHtml(p.name)}</h3>
+                                <p class="text-slate-500 text-sm mb-3">${this.escapeHtml(p.address)}</p>
+                                <div class="flex gap-2 flex-wrap">
+                                    ${phoneBtn}
+                                    ${dirBtn}
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <span class="block text-xl font-bold text-slate-900">${p.distance}</span>
+                            <div class="text-right shrink-0">
+                                <span class="block text-xl font-bold text-slate-900">${this.escapeHtml(distanceText)}</span>
                                 <span class="text-xs text-slate-400">miles</span>
                             </div>
                         </div>
                     `;
-                    list.innerHTML += html;
                 });
 
                 lucide.createIcons();
             }
 
-            locateUser() {
-                const btn = document.getElementById('btn-locate');
-                const originalContent = btn.innerHTML;
-                btn.innerHTML = `Locating...`;
-
-                setTimeout(() => {
-                    this.providers = this.providers
-                        .map(p => ({ ...p, distance: (Math.random() * 5).toFixed(1) }))
-                        .sort((a, b) => a.distance - b.distance);
-                    this.renderProviders();
-                    btn.innerHTML = originalContent;
-                    lucide.createIcons();
-                }, 1000);
+            // =========================
+            // UTILS
+            // =========================
+            escapeHtml(str) {
+                return String(str ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
             }
 
-            // UTILS
             formatText(text) {
-                return (text || '').replace(/\n/g, '<br>');
+                return this.escapeHtml(text || '').replace(/\n/g, '<br>');
             }
 
             formatMarkdown(text) {
-                let html = (text || '')
-                    .replace(/### (.*)/g, '<h3 class="text-lg font-bold text-blue-800 mt-4 mb-2">$1</h3>')
+                const safe = this.escapeHtml(text || '');
+                let html = safe
+                    .replace(/^### (.*)$/gm, '<h3 class="text-lg font-bold text-blue-800 mt-4 mb-2">$1</h3>')
                     .replace(/\*\*(.*?)\*\*/g, '<span class="font-semibold text-slate-900">$1</span>')
-                    .replace(/- (.*)/g, '<li class="ml-4 list-disc mb-1">$1</li>')
+                    .replace(/^\- (.*)$/gm, '<li class="ml-4 list-disc mb-1">$1</li>')
                     .replace(/\*DISCLAIMER:(.*)\*/g, '<p class="text-xs text-slate-500 italic mt-4 border-t pt-2">$1</p>')
                     .replace(/\n/g, '<br>');
+
+                // Wrap loose li tags
+                if (html.includes('<li')) {
+                    html = html.replace(/(<li[\s\S]*?<\/li>)/g, '<ul>$1</ul>').replace(/<\/ul><br><ul>/g, '');
+                }
                 return html;
             }
         }
