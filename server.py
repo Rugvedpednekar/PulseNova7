@@ -13,78 +13,40 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
+
 from dotenv import load_dotenv
 load_dotenv()
 
+
 # =============================================================================
-# LOGGING SETUP
+# LOGGING
 # =============================================================================
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-logger = logging.getLogger("pulsenova")
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
 # CONFIG
 # =============================================================================
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION", AWS_REGION)
+AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
+os.environ["AWS_REGION"] = AWS_REGION
+os.environ.setdefault("AWS_DEFAULT_REGION", AWS_REGION)
 
-# Text-only triage (Nova Micro is cheap/fast; good for chat)
 MODEL_ID_TEXT = os.getenv("MODEL_ID", "us.amazon.nova-micro-v1:0")
-
-# Vision tasks (Nova Lite/Pro)
 MODEL_ID_VISION = os.getenv("VISION_MODEL_ID", "us.amazon.nova-lite-v1:0")
 
-MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(8 * 1024 * 1024)))  # 8MB default
+MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(8 * 1024 * 1024)))  # 8MB
 
-# Increase timeouts
+# Optional: expose to frontend if you want to fetch it from backend instead of hardcoding in index.html
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
+
 BEDROCK_CONFIG = Config(
     connect_timeout=int(os.getenv("BEDROCK_CONNECT_TIMEOUT", "60")),
     read_timeout=int(os.getenv("BEDROCK_READ_TIMEOUT", "300")),
     retries={"max_attempts": int(os.getenv("BEDROCK_MAX_ATTEMPTS", "2"))},
 )
 
-
-# =============================================================================
-# AWS / BEDROCK (LAZY CLIENT)
-# =============================================================================
-def _env_status(name: str) -> str:
-    return "SET" if (os.getenv(name) and os.getenv(name).strip()) else "MISSING"
-
-
-def get_bedrock_client():
-    """
-    Create a Bedrock Runtime client using explicit env vars.
-    This avoids "import-time" client creation and makes Railway env/debugging easier.
-    """
-    region = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
-
-    akid = os.getenv("AWS_ACCESS_KEY_ID")
-    sak = os.getenv("AWS_SECRET_ACCESS_KEY")
-    token = os.getenv("AWS_SESSION_TOKEN")
-
-    # Helpful logs (never print actual secret values)
-    logger.info(
-        "AWS env status: AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s AWS_REGION=%s AWS_DEFAULT_REGION=%s",
-        _env_status("AWS_ACCESS_KEY_ID"),
-        _env_status("AWS_SECRET_ACCESS_KEY"),
-        _env_status("AWS_SESSION_TOKEN"),
-        _env_status("AWS_REGION"),
-        _env_status("AWS_DEFAULT_REGION"),
-    )
-
-    # If creds are missing, let boto3 raise NoCredentialsError later,
-    # but we prefer a clearer early error.
-    if not (akid and akid.strip()) or not (sak and sak.strip()):
-        raise NoCredentialsError()
-
-    session = boto3.session.Session(
-        aws_access_key_id=akid.strip(),
-        aws_secret_access_key=sak.strip(),
-        aws_session_token=token.strip() if (token and token.strip()) else None,
-        region_name=region,
-    )
-    return session.client("bedrock-runtime", config=BEDROCK_CONFIG)
+bedrock = boto3.client("bedrock-runtime", region_name=AWS_REGION, config=BEDROCK_CONFIG)
 
 
 # =============================================================================
@@ -92,17 +54,15 @@ def get_bedrock_client():
 # =============================================================================
 app = FastAPI(title="PulseNova Server (Amazon Nova via Bedrock)")
 
-cors_origins = os.getenv(
+cors_raw = os.getenv(
     "CORS_ALLOW_ORIGINS",
-    "http://localhost:8000,http://127.0.0.1:8000",
-).split(",")
-
-# Trim whitespace to avoid subtle CORS mismatches
-cors_origins = [o.strip() for o in cors_origins if o and o.strip()]
+    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://127.0.0.1:3000",
+)
+cors_origins = [x.strip() for x in cors_raw.split(",") if x.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=cors_origins if cors_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -110,7 +70,7 @@ app.add_middleware(
 
 
 # =============================================================================
-# MODELS (REQUEST/RESPONSE)
+# MODELS
 # =============================================================================
 Role = Literal["user", "assistant"]
 
@@ -123,18 +83,16 @@ class ChatTurn(BaseModel):
 class TriageRequest(BaseModel):
     message: str = Field(..., description="User message (symptoms, questions, etc.)")
     history: List[ChatTurn] = Field(default_factory=list, description="Prior chat turns")
-    image_base64: Optional[str] = Field(
-        default=None,
-        description="Optional base64 image (no data: prefix). Use PNG/JPEG/WEBP/GIF.",
-    )
+    image_base64: Optional[str] = Field(default=None, description="Optional base64 image (no data: prefix).")
     temperature: float = 0.3
     max_tokens: int = 700
 
     @field_validator("message")
     @classmethod
-    def message_must_not_be_empty(cls, v: str):
-        if not v or not v.strip():
-            raise ValueError("Message cannot be empty or just whitespace.")
+    def message_must_not_be_empty(cls, v):
+        # allow empty text if image is present? frontend sends text usually; keep strict but trim
+        if v is None:
+            raise ValueError("Message is required.")
         return v.strip()
 
 
@@ -153,6 +111,8 @@ class TextResponse(BaseModel):
 # HELPERS
 # =============================================================================
 def _strip_data_url(b64: str) -> str:
+    if not b64:
+        return b64
     if b64.startswith("data:"):
         return b64.split(",", 1)[1]
     return b64
@@ -178,18 +138,42 @@ def _guess_image_format(raw: bytes) -> str:
         return "webp"
     if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
         return "gif"
-    raise ValueError("Unsupported file format. Please upload a valid PNG, JPEG, WEBP, or GIF image.")
+    raise ValueError("Unsupported file format. Please upload PNG, JPEG, WEBP, or GIF.")
+
+
+def _aws_env_status_log():
+    logger.info(
+        "AWS env status: "
+        f"AWS_ACCESS_KEY_ID={'SET' if os.getenv('AWS_ACCESS_KEY_ID') else 'MISSING'} "
+        f"AWS_SECRET_ACCESS_KEY={'SET' if os.getenv('AWS_SECRET_ACCESS_KEY') else 'MISSING'} "
+        f"AWS_SESSION_TOKEN={'SET' if os.getenv('AWS_SESSION_TOKEN') else 'MISSING'} "
+        f"AWS_REGION={'SET' if os.getenv('AWS_REGION') else 'MISSING'} "
+        f"AWS_DEFAULT_REGION={'SET' if os.getenv('AWS_DEFAULT_REGION') else 'MISSING'}"
+    )
+
+
+def _sanitize_history_for_nova(history: List[ChatTurn]) -> List[dict]:
+    """
+    Nova expects the first message in 'messages' to be role='user'.
+    Remove empty turns and trim leading assistant turns.
+    """
+    cleaned = []
+    for turn in history[-20:]:
+        text = (turn.text or "").strip()
+        if not text:
+            continue
+        cleaned.append({"role": turn.role, "content": [{"text": text}]})
+
+    while cleaned and cleaned[0]["role"] != "user":
+        cleaned.pop(0)
+
+    return cleaned
 
 
 def _nova_invoke(model_id: str, request_body: dict) -> str:
-    """
-    Nova Invoke format:
-      request: { schemaVersion:"messages-v1", system:[...], messages:[...], inferenceConfig:{...} }
-      response text: data["output"]["message"]["content"][0]["text"]
-    """
     try:
         logger.info(f"Invoking Bedrock model: {model_id}")
-        bedrock = get_bedrock_client()
+        _aws_env_status_log()
 
         resp = bedrock.invoke_model(
             modelId=model_id,
@@ -198,17 +182,30 @@ def _nova_invoke(model_id: str, request_body: dict) -> str:
             body=json.dumps(request_body),
         )
         data = json.loads(resp["body"].read())
-        return data["output"]["message"]["content"][0]["text"]
+
+        # Defensive parsing
+        return (
+            data.get("output", {})
+            .get("message", {})
+            .get("content", [{}])[0]
+            .get("text", "")
+        ) or "No response from model."
 
     except (NoCredentialsError, EndpointConnectionError) as e:
         logger.error(f"AWS Connection Error: {e}")
-        raise HTTPException(status_code=500, detail="AWS Bedrock credentials/connection error.")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "AWS Bedrock credentials/connection error. "
+                "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION (or AWS_DEFAULT_REGION)."
+            ),
+        )
     except ClientError as e:
         error_msg = e.response.get("Error", {}).get("Message", str(e))
         logger.error(f"Bedrock ClientError: {error_msg}")
         raise HTTPException(status_code=500, detail=f"AWS Bedrock Error: {error_msg}")
     except Exception as e:
-        logger.error(f"Unexpected error during invocation: {e}")
+        logger.error(f"Unexpected model invocation error: {e}")
         raise HTTPException(status_code=500, detail="Model invocation failed due to an unexpected server error.")
 
 
@@ -220,12 +217,18 @@ def index():
     return FileResponse("index.html")
 
 
+@app.get("/favicon.ico")
+def favicon():
+    # Avoid noisy 404 logs if you don't have a favicon yet
+    raise HTTPException(status_code=204, detail="No favicon")
+
+
 @app.get("/health")
 def health():
     return {
         "ok": True,
         "region": AWS_REGION,
-        "default_region": AWS_DEFAULT_REGION,
+        "default_region": os.getenv("AWS_DEFAULT_REGION"),
         "text_model": MODEL_ID_TEXT,
         "vision_model": MODEL_ID_VISION,
     }
@@ -234,24 +237,37 @@ def health():
 @app.get("/debug-env")
 def debug_env():
     """
-    Safe debug endpoint: shows SET/MISSING only (never values).
-    Remove after debugging.
+    Safe-ish debug route: shows whether keys exist, not the secret values.
+    Remove in production if you want.
     """
-    keys = [
-        "AWS_ACCESS_KEY_ID",
-        "AWS_SECRET_ACCESS_KEY",
-        "AWS_SESSION_TOKEN",
-        "AWS_REGION",
-        "AWS_DEFAULT_REGION",
-        "MODEL_ID",
-        "VISION_MODEL_ID",
-        "CORS_ALLOW_ORIGINS",
-    ]
-    return {k: _env_status(k) for k in keys}
+    return {
+        "AWS_ACCESS_KEY_ID": "SET" if os.getenv("AWS_ACCESS_KEY_ID") else "MISSING",
+        "AWS_SECRET_ACCESS_KEY": "SET" if os.getenv("AWS_SECRET_ACCESS_KEY") else "MISSING",
+        "AWS_SESSION_TOKEN": "SET" if os.getenv("AWS_SESSION_TOKEN") else "MISSING",
+        "AWS_REGION": os.getenv("AWS_REGION"),
+        "AWS_DEFAULT_REGION": os.getenv("AWS_DEFAULT_REGION"),
+        "GOOGLE_MAPS_API_KEY": "SET" if GOOGLE_MAPS_API_KEY else "MISSING",
+    }
+
+
+@app.get("/config")
+def public_config():
+    """
+    Optional frontend config route.
+    If you want to avoid hardcoding GOOGLE_MAPS_API_KEY in index.html,
+    fetch it from here.
+    """
+    return {
+        "google_maps_api_key": GOOGLE_MAPS_API_KEY,
+    }
 
 
 @app.post("/api/triage", response_model=TextResponse)
 def triage(req: TriageRequest):
+    # Allow image-only requests with empty message
+    if not req.message and not req.image_base64:
+        raise HTTPException(status_code=400, detail="Provide a message or an image.")
+
     system_list = [
         {
             "text": (
@@ -268,15 +284,12 @@ def triage(req: TriageRequest):
         }
     ]
 
-    # Convert history to Nova messages
-    messages = []
-    for turn in req.history[-20:]:
-        messages.append({"role": turn.role, "content": [{"text": turn.text}]})
+    messages = _sanitize_history_for_nova(req.history)
 
-    # Current user message
-    user_content = [{"text": req.message}]
+    user_content = []
+    if req.message:
+        user_content.append({"text": req.message})
 
-    # Model Selection Logic
     active_model_id = MODEL_ID_TEXT
 
     if req.image_base64:
@@ -284,17 +297,20 @@ def triage(req: TriageRequest):
             raw = _b64_to_bytes(req.image_base64)
             fmt = _guess_image_format(raw)
             active_model_id = MODEL_ID_VISION
-
             user_content.append(
                 {
                     "image": {
                         "format": fmt,
+                        # Bedrock Nova expects raw base64 string here
                         "source": {"bytes": _strip_data_url(req.image_base64)},
                     }
                 }
             )
         except ValueError as ve:
             raise HTTPException(status_code=400, detail=str(ve))
+
+    if not user_content:
+        raise HTTPException(status_code=400, detail="Empty request.")
 
     messages.append({"role": "user", "content": user_content})
 
@@ -315,6 +331,9 @@ def triage(req: TriageRequest):
 
 @app.post("/api/vision", response_model=TextResponse)
 def vision(req: VisionRequest):
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+
     try:
         raw = _b64_to_bytes(req.image_base64)
         fmt = _guess_image_format(raw)
@@ -336,8 +355,13 @@ def vision(req: VisionRequest):
         {
             "role": "user",
             "content": [
-                {"image": {"format": fmt, "source": {"bytes": _strip_data_url(req.image_base64)}}},
-                {"text": req.prompt},
+                {
+                    "image": {
+                        "format": fmt,
+                        "source": {"bytes": _strip_data_url(req.image_base64)},
+                    }
+                },
+                {"text": req.prompt.strip()},
             ],
         }
     ]
@@ -358,18 +382,17 @@ def vision(req: VisionRequest):
 
 
 # =============================================================================
-# RUN (uvicorn)
+# RUN
 # =============================================================================
-# Run locally:
+# Local:
 #   python -m uvicorn server:app --reload --port 8000
 #
-# Railway Procfile:
-#   web: uvicorn server:app --host 0.0.0.0 --port $PORT
+# .env example:
+#   AWS_ACCESS_KEY_ID=...
+#   AWS_SECRET_ACCESS_KEY=...
+#   AWS_REGION=us-east-1
+#   MODEL_ID=us.amazon.nova-micro-v1:0
+#   VISION_MODEL_ID=us.amazon.nova-lite-v1:0
+#   GOOGLE_MAPS_API_KEY=...
 #
-# Required Railway Variables (Production):
-#   AWS_ACCESS_KEY_ID
-#   AWS_SECRET_ACCESS_KEY
-#   AWS_REGION (or AWS_DEFAULT_REGION)
-#   MODEL_ID
-#   VISION_MODEL_ID
-#   CORS_ALLOW_ORIGINS (include your Railway domain)
+# If you're deploying (Railway/Render/etc.), set env vars in the platform settings.
