@@ -28,6 +28,45 @@
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1); }
         }
+
+        /* Voice overlay */
+        @keyframes pulseWave {
+            0% { transform: scaleY(0.25); opacity: 0.5; }
+            50% { transform: scaleY(1); opacity: 1; }
+            100% { transform: scaleY(0.35); opacity: 0.7; }
+        }
+        .voice-wave-bar {
+            width: 6px;
+            border-radius: 999px;
+            background: linear-gradient(to top, #3b82f6, #22d3ee);
+            transform-origin: bottom;
+            animation: pulseWave 0.9s ease-in-out infinite;
+        }
+        .voice-wave-bar:nth-child(2) { animation-delay: 0.08s; }
+        .voice-wave-bar:nth-child(3) { animation-delay: 0.16s; }
+        .voice-wave-bar:nth-child(4) { animation-delay: 0.24s; }
+        .voice-wave-bar:nth-child(5) { animation-delay: 0.32s; }
+        .voice-wave-bar:nth-child(6) { animation-delay: 0.40s; }
+        .voice-wave-bar:nth-child(7) { animation-delay: 0.48s; }
+        .voice-wave-bar:nth-child(8) { animation-delay: 0.56s; }
+        .voice-wave-bar:nth-child(9) { animation-delay: 0.64s; }
+
+        .voice-overlay-active .voice-wave-bar {
+            animation-duration: 0.55s;
+        }
+        .voice-overlay-speaking .voice-wave-bar {
+            background: linear-gradient(to top, #22c55e, #34d399);
+            animation-duration: 0.35s;
+        }
+
+        .drop-active {
+            border-color: rgb(59 130 246) !important;
+            background: rgb(239 246 255) !important;
+        }
+        .drop-active-purple {
+            border-color: rgb(168 85 247) !important;
+            background: rgb(250 245 255) !important;
+        }
     </style>
 </head>
 <body class="bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-900 flex flex-col min-h-screen">
@@ -130,7 +169,7 @@
                     <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <div class="bg-slate-50 w-14 h-14 rounded-xl flex items-center justify-center mb-4"><i data-lucide="map-pin" class="w-8 h-8 text-orange-500"></i></div>
                         <h3 class="text-lg font-bold text-slate-900 mb-2">Care Finder</h3>
-                        <p class="text-sm text-slate-600 leading-relaxed">Instantly locate Urgent Cares and Hospitals near you.</p>
+                        <p class="text-sm text-slate-600 leading-relaxed">Find hospitals, urgent care, pharmacies, dentists and more nearby.</p>
                     </div>
                 </div>
             </div>
@@ -166,7 +205,7 @@
                         <button onclick="document.getElementById('chat-file-input').click()" class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors mb-[2px]">
                             <i data-lucide="image" class="w-5 h-5"></i>
                         </button>
-                        <button onclick="app.toggleListening()" id="btn-mic" class="p-3 rounded-xl transition-all mb-[2px] text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                        <button onclick="app.openVoiceOverlay()" id="btn-mic" class="p-3 rounded-xl transition-all mb-[2px] text-slate-400 hover:text-blue-600 hover:bg-blue-50" title="Voice mode">
                             <i data-lucide="mic" class="w-5 h-5"></i>
                         </button>
                         <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
@@ -189,6 +228,16 @@
                 <div class="text-center mb-6">
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Pulse Monitor</h1>
                     <p class="text-slate-500 text-sm">Measure your estimated heart rate using your device's camera.</p>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm leading-relaxed flex gap-3 shadow-sm">
+                    <i data-lucide="smartphone" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                    <div>
+                        <p class="font-semibold mb-1">Best on phone (not laptop)</p>
+                        <p class="text-amber-700">
+                            This feature works best on a smartphone because it needs a rear camera and usually the flashlight/torch. On laptops, pulse detection may be inaccurate or unavailable.
+                        </p>
+                    </div>
                 </div>
 
                 <div class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl text-sm leading-relaxed flex gap-3 shadow-sm">
@@ -236,12 +285,18 @@
                         <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                             <i data-lucide="scan-line" class="w-5 h-5 text-blue-600"></i> Image Upload
                         </h2>
-                        <div onclick="document.getElementById('xray-input').click()" id="xray-dropzone" class="border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-slate-50 rounded-xl h-[400px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
+                        <div onclick="document.getElementById('xray-input').click()"
+                             id="xray-dropzone"
+                             tabindex="0"
+                             role="button"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('xray-input').click();}"
+                             class="border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-slate-50 rounded-xl h-[400px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
                             <div id="xray-placeholder" class="text-center p-6">
                                 <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <i data-lucide="upload" class="w-8 h-8 text-blue-600"></i>
                                 </div>
-                                <p class="font-semibold text-slate-700">Click to upload X-Ray/MRI</p>
+                                <p class="font-semibold text-slate-700">Drag & drop or click to upload X-Ray/MRI</p>
+                                <p class="text-sm text-slate-400 mt-2">JPG, PNG, HEIC image files</p>
                             </div>
                             <img id="xray-preview-img" class="hidden h-full w-full object-contain bg-slate-900" />
                             <input type="file" id="xray-input" class="hidden" accept="image/*" onchange="app.handleXrayUpload(this)">
@@ -277,12 +332,17 @@
                         <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                             <i data-lucide="microscope" class="w-5 h-5 text-purple-600"></i> Upload Lab Results
                         </h2>
-                        <div onclick="document.getElementById('lab-input').click()" id="lab-dropzone" class="border-2 border-dashed border-slate-300 hover:border-purple-400 hover:bg-slate-50 rounded-xl h-[400px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
+                        <div onclick="document.getElementById('lab-input').click()"
+                             id="lab-dropzone"
+                             tabindex="0"
+                             role="button"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('lab-input').click();}"
+                             class="border-2 border-dashed border-slate-300 hover:border-purple-400 hover:bg-slate-50 rounded-xl h-[400px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
                             <div id="lab-placeholder" class="text-center p-6">
                                 <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <i data-lucide="upload" class="w-8 h-8 text-purple-600"></i>
                                 </div>
-                                <p class="font-semibold text-slate-700">Click to upload Report</p>
+                                <p class="font-semibold text-slate-700">Drag & drop or click to upload Report</p>
                                 <p class="text-sm text-slate-400 mt-2">Blood Work, Urine Test, etc.</p>
                             </div>
                             <img id="lab-preview-img" class="hidden h-full w-full object-contain" />
@@ -313,39 +373,51 @@
         </section>
 
         <section id="page-care" class="page-section hidden p-4 animate-fade-in">
-            <div class="max-w-4xl mx-auto">
+            <div class="max-w-5xl mx-auto">
                 <div class="text-center mb-8">
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Find Care Nearby</h1>
                     <p class="text-slate-500">Locate trusted medical providers in your area.</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex flex-col md:flex-row gap-4">
-                    <div class="flex-1 relative">
-                        <i data-lucide="search" class="absolute left-3 top-3 w-5 h-5 text-slate-400"></i>
-                        <input type="text" id="care-search" placeholder="Search by city, address, or ZIP..." class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex flex-col gap-3">
+                    <div class="grid md:grid-cols-12 gap-3">
+                        <div class="md:col-span-6 relative">
+                            <i data-lucide="search" class="absolute left-3 top-3 w-5 h-5 text-slate-400"></i>
+                            <input type="text" id="care-search" placeholder="City, address, or ZIP..." class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                        </div>
+
+                        <div class="md:col-span-3 relative">
+                            <i data-lucide="filter" class="absolute left-3 top-3 w-4 h-4 text-slate-400"></i>
+                            <input type="text" id="provider-filter" placeholder="Filter results..." oninput="app.renderProviders()" class="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                        </div>
+
+                        <div class="md:col-span-3 flex gap-2">
+                            <button onclick="app.searchCareByText()" id="btn-search-care" class="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 flex items-center gap-2 justify-center">
+                                <i data-lucide="search" class="w-4 h-4"></i> Search
+                            </button>
+                            <button onclick="app.locateUser()" id="btn-locate" class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 flex items-center gap-2 justify-center transition-colors">
+                                <i data-lucide="navigation" class="w-4 h-4"></i> Near Me
+                            </button>
+                        </div>
                     </div>
-                    <select id="care-filter" onchange="app.renderProviders()" class="px-4 py-2.5 border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
-                        <option value="All">All Providers</option>
-                        <option value="ER">Emergency Room</option>
-                        <option value="Urgent Care">Urgent Care</option>
-                        <option value="Pharmacy">Pharmacy</option>
-                        <option value="Dentist">Dentist</option>
-                    </select>
-                    <button onclick="app.locateUser()" id="btn-locate" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 flex items-center gap-2 justify-center transition-colors">
-                        <i data-lucide="navigation" class="w-4 h-4"></i> Near Me
-                    </button>
+
+                    <div class="grid md:grid-cols-2 gap-3">
+                        <select id="care-filter" onchange="app.renderProviders()" class="px-4 py-2.5 border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
+                            <option value="All">All Providers</option>
+                            <option value="ER">Emergency Room</option>
+                            <option value="Urgent Care">Urgent Care</option>
+                            <option value="Hospital">Hospital</option>
+                            <option value="Primary Care">Primary Care</option>
+                            <option value="Clinic">Clinic</option>
+                            <option value="Pharmacy">Pharmacy</option>
+                            <option value="Dentist">Dentist</option>
+                            <option value="Pediatrician">Pediatrician</option>
+                        </select>
+                        <div id="care-status" class="text-sm text-slate-500 flex items-center" aria-live="polite"></div>
+                    </div>
                 </div>
 
-                <div class="mb-4 flex flex-col md:flex-row gap-3">
-                    <button onclick="app.searchCareByText()" id="btn-search-care" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 flex items-center gap-2 justify-center">
-                        <i data-lucide="search" class="w-4 h-4"></i> Search Area
-                    </button>
-                    <div id="care-status" class="text-sm text-slate-500 flex items-center"></div>
-                </div>
-
-                <!-- Hidden div required for Google PlacesService -->
                 <div id="care-map-host" class="hidden h-1 w-1"></div>
-
                 <div id="providers-list" class="grid md:grid-cols-2 gap-4"></div>
             </div>
         </section>
@@ -380,6 +452,50 @@
 
     </main>
 
+    <!-- Voice overlay -->
+    <div id="voice-overlay" class="hidden fixed inset-0 bg-black z-[100] text-white">
+        <div id="voice-overlay-shell" class="h-full w-full flex flex-col items-center justify-between py-8 px-6">
+            <div class="w-full flex items-center justify-between">
+                <div class="text-sm text-slate-300 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    Voice Mode
+                </div>
+                <button onclick="app.closeVoiceOverlay()" class="p-2 rounded-full bg-white/10 hover:bg-white/20">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center justify-center w-full max-w-md">
+                <div id="voice-wave-container" class="flex items-end gap-1 h-32 mb-6">
+                    <div class="voice-wave-bar h-12"></div>
+                    <div class="voice-wave-bar h-20"></div>
+                    <div class="voice-wave-bar h-14"></div>
+                    <div class="voice-wave-bar h-24"></div>
+                    <div class="voice-wave-bar h-16"></div>
+                    <div class="voice-wave-bar h-28"></div>
+                    <div class="voice-wave-bar h-15"></div>
+                    <div class="voice-wave-bar h-22"></div>
+                    <div class="voice-wave-bar h-13"></div>
+                </div>
+
+                <div id="voice-overlay-state" class="text-lg font-semibold mb-2">Tap to speak</div>
+                <div id="voice-overlay-subtitle" class="text-sm text-slate-400 text-center px-4">
+                    I will listen and type your words into the chat.
+                </div>
+                <div id="voice-transcript" class="mt-4 min-h-[48px] text-center text-slate-200 text-sm max-w-sm"></div>
+            </div>
+
+            <div class="w-full max-w-md flex gap-3">
+                <button id="voice-toggle-btn" onclick="app.toggleListening()" class="flex-1 bg-blue-600 hover:bg-blue-700 rounded-2xl py-4 font-semibold flex items-center justify-center gap-2">
+                    <i data-lucide="mic" class="w-5 h-5"></i> Start Listening
+                </button>
+                <button onclick="app.closeVoiceOverlay()" class="px-4 rounded-2xl bg-white/10 hover:bg-white/20">
+                    <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         class PulseNovaApp {
             constructor() {
@@ -392,28 +508,25 @@
                 this.labImage = null;
 
                 this.isListening = false;
-                this.speakOutput = false; // OFF by default
+                this.speakOutput = false;
                 this.recognition = null;
                 this.chatBusy = false;
 
-                // IMPORTANT: Replace this with your real key
+                this.voiceOverlayOpen = false;
+                this.isSpeakingNow = false;
 
                 this.googleMapsReady = false;
                 this.googleMapsLoading = false;
-                this.map = null;
+                this.gmap = null;
                 this.placesService = null;
-                this.infoWindow = null;
-                this.userLocation = null;
-                this.providerMarkers = [];
-                this.realProviders = [];
                 this.geocoder = null;
+                this.userLocation = null;
 
                 this.providers = [];
                 this.care = {
                     userLat: null,
                     userLon: null,
-                    centerLabel: null,
-                    loading: false
+                    centerLabel: null
                 };
 
                 this.vitals = {
@@ -436,9 +549,11 @@
 
                 this.initSpeech();
                 this.initCareSearch();
+                this.initDropzones();
                 this.renderChat();
                 this.renderProviders();
                 this.updateSpeechToggleUI();
+                this.updateVoiceOverlayUI();
             }
 
             // =========================
@@ -463,6 +578,7 @@
                 document.getElementById('mobile-menu').classList.add('hidden');
 
                 if (pageId !== 'triage') {
+                    this.closeVoiceOverlay();
                     window.speechSynthesis.cancel();
                 }
             }
@@ -480,7 +596,6 @@
 
                 this.googleMapsLoading = new Promise(async (resolve, reject) => {
                     try {
-                        // If already loaded, reuse it
                         if (window.google && window.google.maps && window.google.maps.places) {
                             this.googleMapsReady = true;
                             this.initGoogleServices();
@@ -488,20 +603,13 @@
                             return;
                         }
 
-                        // Fetch key from backend (server.py -> /config)
                         const cfgRes = await fetch('/config');
-                        if (!cfgRes.ok) {
-                            throw new Error(`Failed to fetch /config (${cfgRes.status})`);
-                        }
+                        if (!cfgRes.ok) throw new Error(`Failed to fetch /config (${cfgRes.status})`);
 
                         const cfg = await cfgRes.json();
                         const apiKey = cfg.google_maps_api_key;
+                        if (!apiKey) throw new Error("GOOGLE_MAPS_API_KEY is not set on the server.");
 
-                        if (!apiKey) {
-                            throw new Error("GOOGLE_MAPS_API_KEY is not set on the server.");
-                        }
-
-                        // Global callback for Google script
                         window.__pulseNovaMapsInit = () => {
                             this.googleMapsReady = true;
                             try {
@@ -514,11 +622,8 @@
                             }
                         };
 
-                        // Prevent duplicate script tags
                         const existing = document.getElementById('pulse-nova-gmaps');
-                        if (existing) {
-                            return; // callback will fire when it loads
-                        }
+                        if (existing) return;
 
                         const script = document.createElement('script');
                         script.id = 'pulse-nova-gmaps';
@@ -540,11 +645,11 @@
                 if (this.gmap) return;
                 const host = document.getElementById('care-map-host');
                 this.gmap = new google.maps.Map(host, {
-                    center: { lat: 41.7658, lng: -72.6734 }, // Hartford default
+                    center: { lat: 41.7658, lng: -72.6734 },
                     zoom: 12,
                     disableDefaultUI: true
                 });
-                this.placesService = new google.maps.places.PlacesService(this.gmap);
+                this.placesService = new google.maps.places.PlacesService(this.gmap); // legacy warning is okay
                 this.geocoder = new google.maps.Geocoder();
             }
 
@@ -556,7 +661,7 @@
             }
 
             initCareSearch() {
-                const input = document.getElementById('chat-input');;
+                const input = document.getElementById('care-search');
                 if (!input) return;
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
@@ -569,6 +674,7 @@
             async searchCareByText() {
                 const input = document.getElementById('care-search');
                 const query = (input?.value || '').trim();
+                const btn = document.getElementById('btn-search-care');
 
                 if (!query) {
                     this.setCareStatus("Enter a city or ZIP code.", true);
@@ -576,23 +682,20 @@
                 }
 
                 try {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-70');
                     this.setCareStatus("Finding area...");
                     await this.ensureGoogleMaps();
 
                     const geo = await new Promise((resolve, reject) => {
                         this.geocoder.geocode({ address: query }, (results, status) => {
-                            if (status === "OK" && results && results.length) {
-                                resolve(results[0]);
-                            } else {
-                                reject(new Error(`Geocoding failed: ${status}`));
-                            }
+                            if (status === "OK" && results && results.length) resolve(results[0]);
+                            else reject(new Error(`Geocoding failed: ${status}`));
                         });
                     });
 
                     const loc = geo.geometry.location;
                     this.userLocation = { lat: loc.lat(), lng: loc.lng() };
-
-                    // keep care state in sync (fetchNearbyProviders uses this.care for distances/status)
                     this.care.userLat = this.userLocation.lat;
                     this.care.userLon = this.userLocation.lng;
                     this.care.centerLabel = geo.formatted_address || query;
@@ -602,22 +705,14 @@
                         this.gmap.setZoom(12);
                     }
 
-                    // ✅ correct function
                     await this.fetchNearbyProviders(this.userLocation.lat, this.userLocation.lng);
 
-                    // ✅ correct array used by renderProviders()
-                    const count = (this.providers || []).length;
-                    const areaLabel = geo.formatted_address || query;
-
-                    this.setCareStatus(
-                        count
-                            ? `Found ${count} providers near ${areaLabel}.`
-                            : `No providers found near ${areaLabel}. Try a larger city or "All Providers".`
-                    );
                 } catch (err) {
                     console.error("searchCareByText failed:", err);
                     this.setCareStatus("Could not search this area. Try another city/ZIP.", true);
-                    alert(err.message || "Search failed.");
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-70');
                 }
             }
 
@@ -654,29 +749,12 @@
 
                 } catch (e) {
                     console.error(e);
-                    this.setCareStatus("Couldn't get your location. Try Search Area with ZIP/city.", true);
+                    this.setCareStatus("Couldn't get your location. Try Search with ZIP/city.", true);
                 } finally {
                     btn.disabled = false;
                     btn.innerHTML = original;
                     lucide.createIcons();
                 }
-            }
-
-            geocodeAddress(address) {
-                return new Promise((resolve, reject) => {
-                    this.geocoder.geocode({ address }, (results, status) => {
-                        if (status !== 'OK' || !results?.length) {
-                            reject(new Error("Location not found. Try a ZIP code or full city name."));
-                            return;
-                        }
-                        const r = results[0];
-                        resolve({
-                            lat: r.geometry.location.lat(),
-                            lng: r.geometry.location.lng(),
-                            label: r.formatted_address
-                        });
-                    });
-                });
             }
 
             nearbySearchPromise(request) {
@@ -710,15 +788,11 @@
                     const meters = google.maps.geometry.spherical.computeDistanceBetween(a, b);
                     return meters / 1609.344;
                 }
-                // fallback
                 const toRad = x => x * Math.PI / 180;
                 const R = 6371000;
                 const dLat = toRad(lat2 - lat1);
                 const dLon = toRad(lon2 - lon1);
-                const aa =
-                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
                 const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
                 return (R * c) / 1609.344;
             }
@@ -730,14 +804,23 @@
 
                 let type = inferredType || 'Clinic';
                 const types = place.types || [];
-                if (types.includes('hospital')) type = inferredType === 'Urgent Care' ? 'Urgent Care' : 'ER';
+                const name = (place.name || '').toLowerCase();
+
+                if (types.includes('hospital')) type = inferredType === 'Urgent Care' ? 'Urgent Care' : 'Hospital';
                 if (types.includes('pharmacy')) type = 'Pharmacy';
                 if (types.includes('dentist')) type = 'Dentist';
+                if (name.includes('urgent care')) type = 'Urgent Care';
+                if (name.includes('pediatric')) type = 'Pediatrician';
+                if (name.includes('primary care') || name.includes('family medicine')) type = 'Primary Care';
+
+                // Map large hospitals to ER for quick filtering if applicable
+                if (type === 'Hospital' && (name.includes('emergency') || name.includes('er'))) {
+                    type = 'ER';
+                }
 
                 const rating = place.rating || null;
                 const address = place.vicinity || place.formatted_address || "Address unavailable";
-                const distance =
-                    (this.care.userLat != null && this.care.userLon != null && lat != null && lon != null)
+                const distance = (this.care.userLat != null && this.care.userLon != null && lat != null && lon != null)
                     ? this.getDistanceMiles(this.care.userLat, this.care.userLon, lat, lon)
                     : null;
 
@@ -746,7 +829,6 @@
                     name: place.name || "Unknown provider",
                     type,
                     address,
-                    phone: "Tap Directions",
                     rating,
                     distance,
                     lat,
@@ -762,11 +844,8 @@
                     if (!seen.has(p.id)) {
                         seen.set(p.id, p);
                     } else {
-                        const existing = seen.get(p.id);
-                        // Prefer a more specific type than ER fallback
-                        if (existing.type === 'ER' && p.type === 'Urgent Care') {
-                            seen.set(p.id, p);
-                        }
+                        const ex = seen.get(p.id);
+                        if (ex.type === 'Hospital' && p.type === 'Urgent Care') seen.set(p.id, p);
                     }
                 }
                 return Array.from(seen.values());
@@ -781,37 +860,24 @@
                     const center = new google.maps.LatLng(lat, lon);
                     this.gmap.setCenter(center);
 
-                    const radiusMeters = 10000; // ~6.2 miles
+                    const radiusMeters = 12000;
 
-                    const [hospitals, pharmacies, dentists, urgentCare] = await Promise.all([
-                        this.nearbySearchPromise({
-                            location: center,
-                            radius: radiusMeters,
-                            type: 'hospital'
-                        }),
-                        this.nearbySearchPromise({
-                            location: center,
-                            radius: radiusMeters,
-                            type: 'pharmacy'
-                        }),
-                        this.nearbySearchPromise({
-                            location: center,
-                            radius: radiusMeters,
-                            type: 'dentist'
-                        }),
-                        // Urgent care is usually better with keyword text search
-                        this.textSearchPromise({
-                            location: center,
-                            radius: radiusMeters,
-                            query: 'urgent care'
-                        })
+                    const [hospitals, pharmacies, dentists, urgentCare, primaryCare, pediatrics] = await Promise.all([
+                        this.nearbySearchPromise({ location: center, radius: radiusMeters, type: 'hospital' }),
+                        this.nearbySearchPromise({ location: center, radius: radiusMeters, type: 'pharmacy' }),
+                        this.nearbySearchPromise({ location: center, radius: radiusMeters, type: 'dentist' }),
+                        this.textSearchPromise({ location: center, radius: radiusMeters, query: 'urgent care' }),
+                        this.textSearchPromise({ location: center, radius: radiusMeters, query: 'primary care clinic' }),
+                        this.textSearchPromise({ location: center, radius: radiusMeters, query: 'pediatrician' })
                     ]);
 
                     let merged = [
-                        ...hospitals.map(p => this.normalizePlace(p, 'ER')),
+                        ...hospitals.map(p => this.normalizePlace(p, 'Hospital')),
                         ...pharmacies.map(p => this.normalizePlace(p, 'Pharmacy')),
                         ...dentists.map(p => this.normalizePlace(p, 'Dentist')),
-                        ...urgentCare.map(p => this.normalizePlace(p, 'Urgent Care'))
+                        ...urgentCare.map(p => this.normalizePlace(p, 'Urgent Care')),
+                        ...primaryCare.map(p => this.normalizePlace(p, 'Primary Care')),
+                        ...pediatrics.map(p => this.normalizePlace(p, 'Pediatrician'))
                     ];
 
                     merged = this.dedupeProviders(merged);
@@ -825,10 +891,12 @@
                     this.providers = merged.slice(0, 30);
                     this.renderProviders();
 
+                    const visibleCount = this.getFilteredProviders().length;
                     const label = this.care.centerLabel ? ` near ${this.care.centerLabel}` : "";
-                    this.setCareStatus(this.providers.length
-                        ? `Found ${this.providers.length} providers${label}.`
-                        : `No providers found${label}. Try another ZIP/city.`
+                    this.setCareStatus(
+                        this.providers.length
+                            ? `Found ${this.providers.length} providers${label}. Showing ${visibleCount}.`
+                            : `No providers found${label}. Try another ZIP/city.`
                     );
 
                 } catch (e) {
@@ -846,9 +914,7 @@
                         .map(t => ({ role: t.role, text: (t.text || '').trim() }))
                         .filter(t => t.text);
 
-                    while (cleanHistory.length && cleanHistory[0].role !== 'user') {
-                        cleanHistory.shift();
-                    }
+                    while (cleanHistory.length && cleanHistory[0].role !== 'user') cleanHistory.shift();
 
                     const payload = {
                         message: userMessage || "",
@@ -940,7 +1006,7 @@
             async sendMessage() {
                 if (this.chatBusy) return;
 
-                const input = document.getElementById('chat-input');;
+                const input = document.getElementById('chat-input');
                 const text = input.value.trim();
                 const image = this.chatImage;
 
@@ -951,8 +1017,8 @@
                 sendBtn.disabled = true;
                 sendBtn.classList.add('opacity-60');
 
-                // Stop bot speaking when user sends a new message
                 window.speechSynthesis.cancel();
+                this.setSpeakingState(false);
 
                 this.messages.push({ role: 'user', text, image });
                 this.renderChat();
@@ -1018,6 +1084,7 @@
 
             resetChat() {
                 window.speechSynthesis.cancel();
+                this.setSpeakingState(false);
                 this.messages = [
                     { role: 'assistant', text: "Hello. I'm PulseNova. Please describe your symptoms in detail." }
                 ];
@@ -1025,7 +1092,7 @@
             }
 
             // =========================
-            // VOICE
+            // VOICE MODE + SPEECH
             // =========================
             initSpeech() {
                 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -1036,26 +1103,66 @@
 
                     this.recognition.onstart = () => {
                         this.isListening = true;
-                        window.speechSynthesis.cancel(); // stop bot audio when user talks
-                        document.getElementById('btn-mic').classList.add('text-red-600', 'bg-red-50', 'animate-pulse');
+                        window.speechSynthesis.cancel();
+                        this.setSpeakingState(false);
+
+                        const micBtn = document.getElementById('btn-mic');
+                        if (micBtn) micBtn.classList.add('text-red-600', 'bg-red-50', 'animate-pulse');
+
+                        this.setVoiceOverlayState('Listening...', 'Speak now. I’ll type it in the chat.', true);
+                        this.updateVoiceOverlayUI();
                     };
 
                     this.recognition.onend = () => {
                         this.isListening = false;
-                        document.getElementById('btn-mic').classList.remove('text-red-600', 'bg-red-50', 'animate-pulse');
+                        const micBtn = document.getElementById('btn-mic');
+                        if (micBtn) micBtn.classList.remove('text-red-600', 'bg-red-50', 'animate-pulse');
+
+                        if (this.voiceOverlayOpen) {
+                            this.setVoiceOverlayState('Voice mode', 'Tap the mic button to speak again.', false);
+                        }
+                        this.updateVoiceOverlayUI();
                     };
 
                     this.recognition.onresult = (event) => {
-                        const t = event.results[0][0].transcript;
-                        const input = document.getElementById('chat-input');;
-                        input.value = input.value ? input.value + ' ' + t : t;
+                        const t = (event.results?.[0]?.[0]?.transcript || '').trim();
+                        const input = document.getElementById('chat-input');
+                        if (t && input) {
+                            input.value = input.value ? input.value + ' ' + t : t;
+                            document.getElementById('voice-transcript').textContent = `"${t}"`;
+                        }
                     };
 
-                    this.recognition.onerror = () => {
+                    this.recognition.onerror = (e) => {
+                        console.warn('Speech recognition error:', e);
                         this.isListening = false;
-                        document.getElementById('btn-mic').classList.remove('text-red-600', 'bg-red-50', 'animate-pulse');
+                        const micBtn = document.getElementById('btn-mic');
+                        if (micBtn) micBtn.classList.remove('text-red-600', 'bg-red-50', 'animate-pulse');
+
+                        this.setVoiceOverlayState('Could not hear you', 'Try again or type your symptoms.', false);
+                        this.updateVoiceOverlayUI();
                     };
                 }
+            }
+
+            openVoiceOverlay() {
+                this.voiceOverlayOpen = true;
+                const overlay = document.getElementById('voice-overlay');
+                overlay.classList.remove('hidden');
+                this.setVoiceOverlayState('Voice mode', 'Tap Start Listening and speak naturally.', false);
+                document.getElementById('voice-transcript').textContent = '';
+                this.updateVoiceOverlayUI();
+                lucide.createIcons();
+            }
+
+            closeVoiceOverlay() {
+                this.voiceOverlayOpen = false;
+                if (this.isListening && this.recognition) {
+                    try { this.recognition.stop(); } catch (_) {}
+                }
+                const overlay = document.getElementById('voice-overlay');
+                overlay.classList.add('hidden');
+                this.updateVoiceOverlayUI();
             }
 
             toggleListening() {
@@ -1065,6 +1172,43 @@
                 }
                 if (this.isListening) this.recognition.stop();
                 else this.recognition.start();
+            }
+
+            setVoiceOverlayState(title, subtitle, active) {
+                const titleEl = document.getElementById('voice-overlay-state');
+                const subEl = document.getElementById('voice-overlay-subtitle');
+                if (titleEl) titleEl.textContent = title;
+                if (subEl) subEl.textContent = subtitle;
+
+                const overlay = document.getElementById('voice-overlay');
+                if (!overlay) return;
+                overlay.classList.toggle('voice-overlay-active', !!active);
+            }
+
+            updateVoiceOverlayUI() {
+                const btn = document.getElementById('voice-toggle-btn');
+                const overlay = document.getElementById('voice-overlay');
+                if (btn) {
+                    btn.innerHTML = this.isListening
+                        ? `<i data-lucide="mic-off" class="w-5 h-5"></i> Stop Listening`
+                        : `<i data-lucide="mic" class="w-5 h-5"></i> Start Listening`;
+                    btn.classList.toggle('bg-red-600', this.isListening);
+                    btn.classList.toggle('hover:bg-red-700', this.isListening);
+                    btn.classList.toggle('bg-blue-600', !this.isListening);
+                    btn.classList.toggle('hover:bg-blue-700', !this.isListening);
+                }
+                if (overlay) overlay.classList.toggle('voice-overlay-speaking', this.isSpeakingNow);
+                lucide.createIcons();
+            }
+
+            setSpeakingState(isSpeaking) {
+                this.isSpeakingNow = isSpeaking;
+                this.updateVoiceOverlayUI();
+
+                if (this.voiceOverlayOpen && !this.isListening) {
+                    if (isSpeaking) this.setVoiceOverlayState('PulseNova is speaking', 'Voice response is playing. Start talking to interrupt.', false);
+                    else this.setVoiceOverlayState('Voice mode', 'Tap Start Listening to speak.', false);
+                }
             }
 
             updateSpeechToggleUI() {
@@ -1084,17 +1228,24 @@
 
             toggleSpeechOutput() {
                 this.speakOutput = !this.speakOutput;
-                if (!this.speakOutput) window.speechSynthesis.cancel();
+                if (!this.speakOutput) {
+                    window.speechSynthesis.cancel();
+                    this.setSpeakingState(false);
+                }
                 this.updateSpeechToggleUI();
             }
 
             speak(text) {
-                if (!this.speakOutput) return;
-                if (!text) return;
+                if (!this.speakOutput || !text) return;
+
                 window.speechSynthesis.cancel();
+                this.setSpeakingState(true);
+
                 const utter = new SpeechSynthesisUtterance(text.replace(/\*+/g, '').slice(0, 1200));
                 utter.rate = 1;
                 utter.pitch = 1;
+                utter.onend = () => this.setSpeakingState(false);
+                utter.onerror = () => this.setSpeakingState(false);
                 window.speechSynthesis.speak(utter);
             }
 
@@ -1174,7 +1325,6 @@
                 if (!this.vitals.isMonitoring) return;
 
                 const now = performance.now();
-
                 this.vitals.processCtx.drawImage(this.vitals.video, 0, 0, 10, 10);
                 const imageData = this.vitals.processCtx.getImageData(0, 0, 10, 10).data;
 
@@ -1252,14 +1402,57 @@
             }
 
             // =========================
-            // X-RAY & LABS
+            // X-RAY / LABS + DRAG DROP
             // =========================
+            initDropzones() {
+                this.setupDropzone('xray-dropzone', 'xray-input', (file) => this.handleDroppedFile(file, 'xray'));
+                this.setupDropzone('lab-dropzone', 'lab-input', (file) => this.handleDroppedFile(file, 'lab'));
+            }
+
+            setupDropzone(dropId, inputId, onFile) {
+                const zone = document.getElementById(dropId);
+                const input = document.getElementById(inputId);
+                if (!zone || !input) return;
+
+                ['dragenter', 'dragover'].forEach(evt => {
+                    zone.addEventListener(evt, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        zone.classList.add(dropId === 'lab-dropzone' ? 'drop-active-purple' : 'drop-active');
+                    });
+                });
+
+                ['dragleave', 'drop'].forEach(evt => {
+                    zone.addEventListener(evt, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        zone.classList.remove('drop-active', 'drop-active-purple');
+                    });
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    const file = e.dataTransfer?.files?.[0];
+                    if (file) onFile(file);
+                });
+            }
+
+            handleDroppedFile(file, type) {
+                const fakeInput = { files: [file] };
+                if (type === 'xray') this.handleXrayUpload(fakeInput);
+                else this.handleLabUpload(fakeInput);
+            }
+
             handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
             handleLabUpload(input) { this.handleFileUpload(input, 'lab'); }
 
             handleFileUpload(input, type) {
                 const file = input.files[0];
                 if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    alert("Please upload an image file.");
+                    return;
+                }
+
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const fullData = reader.result;
@@ -1344,31 +1537,38 @@ Output format:
             // =========================
             // CARE FINDER UI RENDER
             // =========================
-            renderProviders() {
-                const filter = document.getElementById('care-filter')?.value || 'All';
-                const query = '';
-                const list = document.getElementById('providers-list');
-                if (!list) return;
-
-                list.innerHTML = '';
+            getFilteredProviders() {
+                const typeFilter = document.getElementById('care-filter')?.value || 'All';
+                const textFilter = (document.getElementById('provider-filter')?.value || '').trim().toLowerCase();
 
                 let filtered = this.providers.slice();
 
-                if (filter !== 'All') {
-                    filtered = filtered.filter(p => p.type === filter);
+                if (typeFilter !== 'All') {
+                    filtered = filtered.filter(p => p.type === typeFilter);
                 }
 
-                // if (query) {
-                //     filtered = filtered.filter(p =>
-                //         (p.name || '').toLowerCase().includes(query) ||
-                //         (p.address || '').toLowerCase().includes(query)
-                //     );
-                // }
+                if (textFilter) {
+                    filtered = filtered.filter(p =>
+                        (p.name || '').toLowerCase().includes(textFilter) ||
+                        (p.address || '').toLowerCase().includes(textFilter)
+                    );
+                }
+
+                return filtered;
+            }
+
+            renderProviders() {
+                const list = document.getElementById('providers-list');
+                if (!list) return;
+                list.innerHTML = '';
+
+                const filtered = this.getFilteredProviders();
 
                 if (!filtered.length) {
                     list.innerHTML = `
                         <div class="col-span-full bg-white border border-slate-200 rounded-2xl p-6 text-center text-slate-500">
-                            No providers yet. Use <strong>Near Me</strong> or search a city/ZIP and click <strong>Search Area</strong>.
+                            No visible providers. Use <strong>Near Me</strong> or search a city/ZIP.
+                            <div class="text-xs text-slate-400 mt-2">If you already searched, clear the results filter box.</div>
                         </div>`;
                     return;
                 }
@@ -1377,8 +1577,11 @@ Output format:
                     const colorClass =
                         p.type === 'ER' ? 'bg-red-100 text-red-700' :
                         p.type === 'Urgent Care' ? 'bg-blue-100 text-blue-700' :
+                        p.type === 'Hospital' ? 'bg-orange-100 text-orange-700' :
                         p.type === 'Pharmacy' ? 'bg-green-100 text-green-700' :
                         p.type === 'Dentist' ? 'bg-purple-100 text-purple-700' :
+                        p.type === 'Primary Care' ? 'bg-cyan-100 text-cyan-700' :
+                        p.type === 'Pediatrician' ? 'bg-pink-100 text-pink-700' :
                         'bg-slate-100 text-slate-700';
 
                     const ratingText = p.rating ? `${p.rating}` : 'N/A';
@@ -1387,18 +1590,6 @@ Output format:
                     const directionsUrl = (p.lat != null && p.lon != null)
                         ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.lat + ',' + p.lon)}`
                         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + p.address)}`;
-
-                    const phoneBtn = `
-                        <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer"
-                           class="text-xs bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-100 flex items-center gap-1">
-                            <i data-lucide="map" class="w-3 h-3"></i> Open Map
-                        </a>`;
-
-                    const dirBtn = `
-                        <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer"
-                           class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 font-medium hover:bg-blue-100 flex items-center gap-1">
-                            <i data-lucide="navigation" class="w-3 h-3"></i> Directions
-                        </a>`;
 
                     list.innerHTML += `
                         <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex justify-between items-start gap-3">
@@ -1410,8 +1601,14 @@ Output format:
                                 <h3 class="font-bold text-slate-800 text-lg leading-tight">${this.escapeHtml(p.name)}</h3>
                                 <p class="text-slate-500 text-sm mb-3">${this.escapeHtml(p.address)}</p>
                                 <div class="flex gap-2 flex-wrap">
-                                    ${phoneBtn}
-                                    ${dirBtn}
+                                    <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer"
+                                       class="text-xs bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-100 flex items-center gap-1">
+                                        <i data-lucide="map" class="w-3 h-3"></i> Open Map
+                                    </a>
+                                    <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer"
+                                       class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 font-medium hover:bg-blue-100 flex items-center gap-1">
+                                        <i data-lucide="navigation" class="w-3 h-3"></i> Directions
+                                    </a>
                                 </div>
                             </div>
                             <div class="text-right shrink-0">
@@ -1450,7 +1647,6 @@ Output format:
                     .replace(/\*DISCLAIMER:(.*)\*/g, '<p class="text-xs text-slate-500 italic mt-4 border-t pt-2">$1</p>')
                     .replace(/\n/g, '<br>');
 
-                // Wrap loose li tags
                 if (html.includes('<li')) {
                     html = html.replace(/(<li[\s\S]*?<\/li>)/g, '<ul>$1</ul>').replace(/<\/ul><br><ul>/g, '');
                 }
