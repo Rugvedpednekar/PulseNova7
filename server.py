@@ -279,7 +279,7 @@ def triage(req: TriageRequest):
                 "tell them to call 911 / local emergency immediately.\n"
                 "3) Ask ONE clarifying question at a time when needed.\n"
                 "4) Be concise and practical.\n"
-                "5) End with a short safety note: 'Not a diagnosis.'\n"
+                "5) put "Not a diagnosis" disclaimer when you are actually discussing symptoms, conditions, medications, or health assessments. Do not add it to greetings, small talk, clarifying questions, or general conversation.'\n"
             )
         }
     ]
