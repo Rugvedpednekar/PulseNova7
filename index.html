@@ -383,6 +383,43 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- BPM Result Card — hidden until stable reading captured -->
+                <div id="bpm-result-card" class="hidden bg-white rounded-2xl shadow-sm border overflow-hidden animate-fade-in">
+                    <div id="bpm-result-header" class="px-6 py-4 flex items-center gap-4">
+                        <div id="bpm-result-icon-wrap" class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i id="bpm-result-icon" data-lucide="heart-pulse" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs font-semibold uppercase tracking-widest opacity-60 mb-0.5" id="bpm-result-zone">Zone</div>
+                            <div class="text-base font-bold leading-tight" id="bpm-result-title">—</div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <div class="text-4xl font-extrabold leading-none" id="bpm-result-number">--</div>
+                            <div class="text-xs font-medium opacity-60 mt-0.5">BPM</div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 pb-5 border-t border-black/5 pt-4">
+                        <p id="bpm-result-message" class="text-slate-600 text-sm leading-relaxed mb-4"></p>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button onclick="app.discussBpmWithBot()"
+                                class="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 text-sm">
+                                <i data-lucide="message-square" class="w-4 h-4"></i> Discuss with PulseNova
+                            </button>
+                            <button onclick="app.remeasureVitals()"
+                                class="flex items-center justify-center gap-2 bg-slate-100 text-slate-700 border border-slate-200 px-5 py-3 rounded-xl font-semibold hover:bg-slate-200 transition-all text-sm">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Measure Again
+                            </button>
+                        </div>
+
+                        <p class="text-xs text-slate-400 mt-4 text-center leading-relaxed">
+                            This is an estimate only — not a medical diagnosis.<br>Consult a healthcare professional for any concerns.
+                        </p>
+                    </div>
+                </div>
+
             </div>
         </section>
 
@@ -1374,14 +1411,95 @@
             if (autoStop) {
                 statusEl.innerText = "✓ Reading captured";
                 statusEl.classList.add('text-green-400');
+                const finalBpm = parseInt(document.getElementById('bpm-display').innerText, 10);
+                if (!isNaN(finalBpm)) this.showBpmResult(finalBpm);
             } else {
                 statusEl.innerText = "Stopped";
                 statusEl.classList.add('text-slate-400');
+                document.getElementById('bpm-result-card').classList.add('hidden');
             }
 
             if (this.vitals.ctx && this.vitals.canvas) {
                 // Keep last waveform visible; don't clear
             }
+        }
+
+        // BPM interpretation zones
+        showBpmResult(bpm) {
+            const card    = document.getElementById('bpm-result-card');
+            const header  = document.getElementById('bpm-result-header');
+            const iconWrap= document.getElementById('bpm-result-icon-wrap');
+            const zone    = document.getElementById('bpm-result-zone');
+            const title   = document.getElementById('bpm-result-title');
+            const number  = document.getElementById('bpm-result-number');
+            const message = document.getElementById('bpm-result-message');
+
+            let zoneLabel, titleText, msg, headerClass, iconClass, iconName;
+
+            if (bpm < 60) {
+                zoneLabel   = 'Low';
+                titleText   = 'Below Normal Range';
+                msg         = 'Your heart rate is lower than the typical resting range (60–100 BPM). This can be normal for athletes or very fit individuals. However, if you feel dizzy, fatigued, short of breath, or faint, it's worth speaking to a doctor.';
+                headerClass = 'bg-blue-50 text-blue-800';
+                iconClass   = 'bg-blue-100 text-blue-600';
+                iconName    = 'trending-down';
+            } else if (bpm <= 100) {
+                zoneLabel   = 'Normal';
+                titleText   = 'Normal Resting Heart Rate';
+                msg         = 'Your heart rate looks great! A resting rate between 60–100 BPM is considered normal for adults. This suggests your heart is pumping efficiently at rest. Keep up healthy habits like regular activity, good sleep, and staying hydrated.';
+                headerClass = 'bg-green-50 text-green-800';
+                iconClass   = 'bg-green-100 text-green-600';
+                iconName    = 'check-circle';
+            } else if (bpm <= 120) {
+                zoneLabel   = 'Elevated';
+                titleText   = 'Slightly Elevated';
+                msg         = 'Your heart rate is slightly above the normal resting range. This is often normal after physical activity, caffeine, or stress. If you're at rest and feeling fine, wait 10 minutes and try again. If it stays elevated or you feel chest discomfort, consult a doctor.';
+                headerClass = 'bg-amber-50 text-amber-800';
+                iconClass   = 'bg-amber-100 text-amber-600';
+                iconName    = 'alert-triangle';
+            } else {
+                zoneLabel   = 'High';
+                titleText   = 'Above Normal Range';
+                msg         = 'Your heart rate is above 120 BPM at rest, which is higher than normal. If you feel chest pain, shortness of breath, or palpitations, seek medical attention promptly. Try re-measuring after resting quietly for a few minutes.';
+                headerClass = 'bg-red-50 text-red-800';
+                iconClass   = 'bg-red-100 text-red-600';
+                iconName    = 'alert-circle';
+            }
+
+            header.className   = `px-6 py-4 flex items-center gap-4 ${headerClass}`;
+            iconWrap.className = `w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${iconClass}`;
+            zone.textContent   = zoneLabel;
+            title.textContent  = titleText;
+            number.textContent = bpm;
+            message.textContent= msg;
+            iconWrap.innerHTML = `<i data-lucide="${iconName}" class="w-5 h-5"></i>`;
+
+            card.classList.remove('hidden');
+            lucide.createIcons();
+
+            this._lastBpm     = bpm;
+            this._lastBpmZone = zoneLabel;
+        }
+
+        discussBpmWithBot() {
+            const bpm  = this._lastBpm;
+            const zone = this._lastBpmZone;
+            if (!bpm) return;
+            const message = `My resting heart rate just measured ${bpm} BPM (${zone} zone). Can you help me understand what this means and if I should be concerned?`;
+            this.navigate('triage');
+            setTimeout(() => {
+                const input = document.getElementById('chat-input');
+                if (input) { input.value = message; input.focus(); }
+            }, 150);
+        }
+
+        remeasureVitals() {
+            document.getElementById('bpm-result-card').classList.add('hidden');
+            document.getElementById('bpm-display').innerText = '--';
+            const statusEl = document.getElementById('vitals-status');
+            statusEl.innerText = 'Ready to start';
+            statusEl.className = 'text-sm text-slate-400 mt-2 bg-slate-900/60 px-3 py-1 rounded-full';
+            this.startVitals();
         }
 
         processVitalsFrame() {
