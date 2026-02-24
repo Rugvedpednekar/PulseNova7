@@ -102,7 +102,6 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 
 ## 📸 Screenshots
 
-> Add your screenshots here after uploading them to the repo.
 
 ### Home
 <img width="1906" height="900" alt="image" src="https://github.com/user-attachments/assets/4bca5874-c83d-43fa-80a1-956b203b5f13" />
