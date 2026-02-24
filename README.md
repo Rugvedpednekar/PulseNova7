@@ -106,8 +106,6 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 ### Home
 <img width="1906" height="900" alt="image" src="https://github.com/user-attachments/assets/4bca5874-c83d-43fa-80a1-956b203b5f13" />
 
-### Triage Assistant
-<img width="1832" height="890" alt="image" src="https://github.com/user-attachments/assets/5ccc032a-0395-450a-8cbc-16503e6bfa59" />
 
 ### Voice Mode
 <img width="1884" height="895" alt="image" src="https://github.com/user-attachments/assets/846c8227-27a9-4774-8703-05fb0aa9c8af" />
