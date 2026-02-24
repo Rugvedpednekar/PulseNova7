@@ -1,9 +1,8 @@
-# PulseNova 🩺✨  
+# PulseNova   
 **AI-Powered Medical Assistant built with Amazon Nova (Amazon Bedrock)**
 
 PulseNova is a multimodal healthcare assistant designed to give users **clarity for their health concerns**. It combines **AI symptom triage, voice interaction, pulse monitoring, medical image analysis, lab report translation, and nearby care discovery** in one seamless web experience.
 
-Built for the **Amazon Nova AI Hackathon**.
 
 ---
 
@@ -72,6 +71,9 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 
 ---
 
+## Achitecture :
+<img width="2862" height="1601" alt="pulsenova_architecture_github" src="https://github.com/user-attachments/assets/067798df-0b8b-4c46-a75c-5f8708cdd01f" />
+
 ## 🏗️ Tech Stack
 
 ### Frontend
@@ -126,12 +128,6 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 
 ---
 
-## ⚙️ Project Structure (Suggested)
 
-```bash
-PulseNova/
-├── index.html              # Main single-page frontend
-├── server.py               # Backend server (FastAPI / API routes)
-├── requirements.txt        # Python dependencies
-├── .env                    # Environment variables (not committed)
-└── README.md
+## Link :
+-https://pulsenova7-production.up.railway.app/
