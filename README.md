@@ -105,25 +105,27 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 > Add your screenshots here after uploading them to the repo.
 
 ### Home
-![Home](./assets/home.png)
+<img width="1906" height="900" alt="image" src="https://github.com/user-attachments/assets/4bca5874-c83d-43fa-80a1-956b203b5f13" />
 
 ### Triage Assistant
-![Triage](./assets/triage.png)
+<img width="1832" height="890" alt="image" src="https://github.com/user-attachments/assets/5ccc032a-0395-450a-8cbc-16503e6bfa59" />
 
 ### Voice Mode
-![Voice Mode](./assets/voice-mode.png)
+<img width="1884" height="895" alt="image" src="https://github.com/user-attachments/assets/846c8227-27a9-4774-8703-05fb0aa9c8af" />
 
 ### Pulse Monitor
-![Vitals](./assets/vitals.png)
+<img width="1345" height="890" alt="image" src="https://github.com/user-attachments/assets/dfee6033-ea82-4935-a4a7-0682cc987173" />
 
 ### X-Ray Analysis
-![X-Ray](./assets/xray.png)
+<img width="1860" height="875" alt="image" src="https://github.com/user-attachments/assets/62f07329-2b2b-444c-8e67-201c16f8549d" />
 
 ### Lab Translator
-![Labs](./assets/labs.png)
+<img width="1878" height="862" alt="image" src="https://github.com/user-attachments/assets/0479803c-c96d-4ce6-b28a-b0b5a0cf0894" />
+
 
 ### Find Care
-![Care Finder](./assets/care.png)
+<img width="1885" height="904" alt="image" src="https://github.com/user-attachments/assets/aadd4dd8-5095-4252-8405-26e3191714b1" />
+
 
 ---
 
@@ -133,8 +135,6 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 PulseNova/
 ├── index.html              # Main single-page frontend
 ├── server.py               # Backend server (FastAPI / API routes)
-├── static/                 # Optional static assets
-├── assets/                 # Screenshots, demo media, icons
 ├── requirements.txt        # Python dependencies
 ├── .env                    # Environment variables (not committed)
 └── README.md
