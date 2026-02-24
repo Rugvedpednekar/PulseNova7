@@ -383,6 +383,50 @@
                         </button>
                     </div>
                 </div>
+                <!-- Vitals Summary -->
+                <div id="vitals-summary-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 text-blue-600"></i>
+                            Vitals Summary
+                        </h3>
+                        <span id="vitals-summary-badge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                            Waiting
+                        </span>
+                    </div>
+
+                    <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                            <p class="text-xs text-slate-500 mb-1">Estimated Heart Rate</p>
+                            <p class="text-2xl font-bold text-slate-900">
+                                <span id="vitals-summary-bpm">--</span> <span class="text-sm font-medium text-slate-500">BPM</span>
+                            </p>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                            <p class="text-xs text-slate-500 mb-1">Interpretation</p>
+                            <p id="vitals-summary-label" class="text-lg font-semibold text-slate-900">Not available yet</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <p class="font-semibold text-slate-800 mb-1">What this means</p>
+                            <p id="vitals-summary-message" class="text-slate-600 leading-relaxed">
+                                Start the monitor to generate a summary.
+                            </p>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-800 mb-1">Suggested next step</p>
+                            <p id="vitals-summary-next" class="text-slate-600 leading-relaxed">
+                                Hold your finger steady over the camera lens for a stable reading.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                        This is an estimate from a camera-based pulse signal and is not a medical diagnosis.
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1277,6 +1321,59 @@
         // ================================================================
         // VITALS — Improved with torch, signal quality, stable BPM
         // ================================================================
+        updateVitalsSummary(bpm) {
+        const card = document.getElementById('vitals-summary-card');
+        const bpmEl = document.getElementById('vitals-summary-bpm');
+        const labelEl = document.getElementById('vitals-summary-label');
+        const badgeEl = document.getElementById('vitals-summary-badge');
+        const msgEl = document.getElementById('vitals-summary-message');
+        const nextEl = document.getElementById('vitals-summary-next');
+
+        if (!card || !bpmEl || !labelEl || !badgeEl || !msgEl || !nextEl) return;
+
+        card.classList.remove('hidden');
+        bpmEl.textContent = Math.round(bpm);
+
+        let label = '';
+        let badgeClass = '';
+        let message = '';
+        let next = '';
+
+        if (bpm < 50) {
+            label = 'Low';
+            badgeClass = 'bg-blue-100 text-blue-700';
+            message = 'Your estimated pulse appears lower than a typical resting range. This may happen during relaxation, in athletes, or due to an unstable reading.';
+            next = 'Retest after sitting still for 1–2 minutes. If you feel dizzy, weak, faint, or unwell, seek urgent medical care.';
+        } else if (bpm < 60) {
+            label = 'Slightly Low';
+            badgeClass = 'bg-cyan-100 text-cyan-700';
+            message = 'Your estimated pulse is slightly below the common resting range for many adults. This can still be normal for some people.';
+            next = 'Retest once for consistency. If you have symptoms such as fatigue, dizziness, or fainting, contact a healthcare professional.';
+        } else if (bpm <= 100) {
+            label = 'Normal Resting Range';
+            badgeClass = 'bg-green-100 text-green-700';
+            message = 'Your estimated pulse is within the typical resting range for many adults.';
+            next = 'If you feel well, no immediate action is needed. Recheck later if you were moving or recently active.';
+        } else if (bpm <= 120) {
+            label = 'Elevated';
+            badgeClass = 'bg-amber-100 text-amber-700';
+            message = 'Your estimated pulse is elevated. This may happen after activity, stress, caffeine, dehydration, or motion during the reading.';
+            next = 'Sit quietly for 5 minutes and retest. If it stays elevated or you feel chest pain, shortness of breath, or dizziness, seek medical care.';
+        } else {
+            label = 'High';
+            badgeClass = 'bg-red-100 text-red-700';
+            message = 'Your estimated pulse is high. This may be due to recent activity, stress, or a poor camera signal.';
+            next = 'Rest and retest in a few minutes. If it remains high or you have symptoms like chest pain, breathing trouble, or fainting, seek urgent care.';
+        }
+
+        labelEl.textContent = label;
+        msgEl.textContent = message;
+        nextEl.textContent = next;
+
+        badgeEl.className = `text-xs font-semibold px-2.5 py-1 rounded-full ${badgeClass}`;
+        badgeEl.textContent = label;
+    }
+
         async startVitals() {
             this.vitals.video  = document.getElementById('vitals-video');
             this.vitals.canvas = document.getElementById('ppg-graph');
@@ -1286,6 +1383,8 @@
 
             const statusEl = document.getElementById('vitals-status');
             const qualWrap = document.getElementById('signal-quality-wrap');
+            const summaryCard = document.getElementById('vitals-summary-card');
+            if (summaryCard) summaryCard.classList.add('hidden');
 
             try {
                 statusEl.innerText = "Requesting camera...";
@@ -1491,8 +1590,13 @@
                                     this.vitals.stableBpmCount++;
                                     if (this.vitals.stableBpmCount >= 2) {
                                         // Stable reading confirmed — auto stop
-                                        document.getElementById('bpm-display').innerText = Math.round(avgBPM);
-                                        if (statusEl) statusEl.innerText = `✓ Stable: ${Math.round(avgBPM)} BPM`;
+                                        const finalBpm = Math.round(avgBPM);
+
+                                        document.getElementById('bpm-display').innerText = finalBpm;
+                                        if (statusEl) statusEl.innerText = `✓ Stable: ${finalBpm} BPM`;
+
+                                        this.updateVitalsSummary(finalBpm);
+
                                         clearTimeout(this.vitals.timeoutId);
                                         setTimeout(() => this.stopVitals(true), 800);
                                     }
