@@ -71,7 +71,7 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 
 ---
 
-## Achitecture :
+## Architecture :
 <img width="2862" height="1601" alt="pulsenova_architecture_github" src="https://github.com/user-attachments/assets/067798df-0b8b-4c46-a75c-5f8708cdd01f" />
 
 ## 🏗️ Tech Stack
