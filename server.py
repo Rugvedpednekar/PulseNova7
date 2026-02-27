@@ -44,7 +44,6 @@ MODEL_ID_SONIC  = os.getenv("SONIC_MODEL_ID",  "us.amazon.nova-sonic-v1:0")
 NOVA_ACT_ENDPOINT = os.getenv("NOVA_ACT_ENDPOINT", "")
 NOVA_ACT_API_KEY  = os.getenv("NOVA_ACT_API_KEY",  "")
 
-# Multilingual layer
 VOICE_INTERNAL_LANGUAGE = os.getenv("VOICE_INTERNAL_LANGUAGE", "en")
 TRANSLATE_ENABLED = os.getenv("TRANSLATE_ENABLED", "1") == "1"
 
@@ -59,7 +58,6 @@ BEDROCK_CONFIG = Config(
 )
 
 bedrock = boto3.client("bedrock-runtime", region_name=AWS_REGION, config=BEDROCK_CONFIG)
-_translate = boto3.client("translate", region_name=AWS_REGION, config=BEDROCK_CONFIG)
 _comprehend = boto3.client("comprehend", region_name=AWS_REGION, config=BEDROCK_CONFIG)
 
 # =============================================================================
@@ -72,10 +70,7 @@ _embed_store: Dict[str, Dict[str, Any]] = {}
 # =============================================================================
 app = FastAPI(title="PulseNova Server (Amazon Nova via Bedrock)")
 
-cors_raw = os.getenv(
-    "CORS_ALLOW_ORIGINS",
-    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://127.0.0.1:3000",
-)
+cors_raw = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
 cors_origins = [x.strip() for x in cors_raw.split(",") if x.strip()]
 
 app.add_middleware(
@@ -96,10 +91,10 @@ class ChatTurn(BaseModel):
     text: str
 
 class TriageRequest(BaseModel):
-    message: str = Field(..., description="User message (symptoms, questions, etc.)")
-    history: List[ChatTurn] = Field(default_factory=list, description="Prior chat turns")
-    image_base64: Optional[str] = Field(default=None, description="Optional base64 image.")
-    language: Optional[str] = Field(default="en-US", description="UI language hint.")
+    message: str = Field(...)
+    history: List[ChatTurn] = Field(default_factory=list)
+    image_base64: Optional[str] = Field(default=None)
+    language: Optional[str] = Field(default="en-US")
     temperature: float = 0.3
     max_tokens: int = 700
 
@@ -110,10 +105,10 @@ class TriageRequest(BaseModel):
         return v.strip()
 
 class VisionRequest(BaseModel):
-    image_base64: Optional[str] = Field(default=None, description="Base64 image.")
-    pdf_base64: Optional[str] = Field(default=None, description="Base64 PDF.")
-    prompt: str = Field(..., description="Instruction for the model.")
-    language: Optional[str] = Field(default="en-US", description="UI language hint.")
+    image_base64: Optional[str] = Field(default=None)
+    pdf_base64: Optional[str] = Field(default=None)
+    prompt: str = Field(...)
+    language: Optional[str] = Field(default="en-US")
     temperature: float = 0.2
     max_tokens: int = 900
 
@@ -121,8 +116,8 @@ class TextResponse(BaseModel):
     text: str
 
 class FirstAidRequest(BaseModel):
-    injury_description: str = Field(..., description="Description of the physical injury")
-    language: Optional[str] = Field(default="en-US", description="Target language for steps")
+    injury_description: str = Field(...)
+    language: Optional[str] = Field(default="en-US")
 
 class FirstAidStep(BaseModel):
     step_text: str
@@ -160,40 +155,6 @@ class VoiceTurnResponse(BaseModel):
     reply_en: Optional[str] = None
     internal_language: str = "en"
 
-class ActRequest(BaseModel):
-    start_url: str
-    task: str
-    session_id: Optional[str] = None
-
-class ActResponse(BaseModel):
-    session_id: str
-    status: str
-    result: Optional[str] = None
-    screenshot_base64: Optional[str] = None
-
-class EmbedRequest(BaseModel):
-    text: str
-    image_base64: Optional[str] = None
-    metadata: dict = Field(default_factory=dict)
-    doc_id: Optional[str] = None
-
-class EmbedResponse(BaseModel):
-    doc_id: str
-    embedding_dim: int
-
-class SearchRequest(BaseModel):
-    query: str
-    top_k: int = Field(default=5, ge=1, le=20)
-
-class SearchHit(BaseModel):
-    doc_id: str
-    score: float
-    text: str
-    metadata: dict
-
-class SearchResponse(BaseModel):
-    hits: List[SearchHit]
-
 # =============================================================================
 # HELPERS
 # =============================================================================
@@ -209,7 +170,7 @@ def _b64_to_bytes(b64: str, max_bytes: int) -> bytes:
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid base64 payload.")
     if len(raw) > max_bytes:
-        raise HTTPException(status_code=413, detail=f"Payload too large (>{max_bytes} bytes).")
+        raise HTTPException(status_code=413, detail=f"Payload too large.")
     return raw
 
 def _guess_image_format(raw: bytes) -> str:
@@ -220,12 +181,7 @@ def _guess_image_format(raw: bytes) -> str:
     raise ValueError("Unsupported file format. Please upload PNG, JPEG, WEBP, or GIF.")
 
 def _aws_env_status_log():
-    logger.info(
-        "AWS env status: "
-        f"AWS_ACCESS_KEY_ID={'SET' if os.getenv('AWS_ACCESS_KEY_ID') else 'MISSING'} "
-        f"AWS_SECRET_ACCESS_KEY={'SET' if os.getenv('AWS_SECRET_ACCESS_KEY') else 'MISSING'} "
-        f"AWS_REGION={'SET' if os.getenv('AWS_REGION') else 'MISSING'}"
-    )
+    logger.info("AWS env check performed.")
 
 def _sanitize_history_for_nova(history: List[ChatTurn]) -> List[dict]:
     cleaned = []
@@ -246,7 +202,7 @@ def _normalize_lang_code(code: Optional[str]) -> str:
 def _language_name(code: str) -> str:
     return {
         "en": "English", "hi": "Hindi", "mr": "Marathi", "es": "Spanish",
-        "fr": "French", "de": "German", "ar": "Arabic"
+        "fr": "French", "de": "German", "ar": "Arabic", "pt": "Portuguese", "it": "Italian"
     }.get(code, code or "Unknown")
 
 def _detect_language(text: str, browser_hint: Optional[str] = None) -> str:
@@ -255,28 +211,42 @@ def _detect_language(text: str, browser_hint: Optional[str] = None) -> str:
     if re.search(r"[\u0900-\u097F]", text): return "hi"
     return "en"
 
+def _append_language_reminder(messages: List[dict], ui_lang: str):
+    """The Message Wrapper Fix: Forces the AI to pay attention to the language rule at the very end."""
+    lang_name = _language_name(_normalize_lang_code(ui_lang))
+    if not messages: return
+    last_msg = messages[-1]
+    if last_msg.get("role") == "user":
+        reminder = f"\n\n(CRITICAL REMINDER: You must reply entirely in {lang_name.upper()}.)"
+        last_msg["content"].append({"text": reminder})
+
 def _translate_text(text: str, source_lang: str, target_lang: str) -> str:
-    """Best-effort translation strictly for the UI English preview panel."""
+    """Uses Amazon Nova for UI translation instead of AWS Translate."""
     if not TRANSLATE_ENABLED or not text or source_lang == target_lang: return text
     try:
-        resp = _translate.translate_text(Text=text, SourceLanguageCode=source_lang, TargetLanguageCode=target_lang)
-        return resp.get("TranslatedText", text)
+        source_name = _language_name(source_lang)
+        target_name = _language_name(target_lang)
+        prompt = f"Translate the following text from {source_name} to {target_name}. Output ONLY the translated text, nothing else.\n\nText: {text}"
+        
+        request_body = {
+            "schemaVersion": "messages-v1",
+            "messages": [{"role": "user", "content": [{"text": prompt}]}],
+            "inferenceConfig": {"maxTokens": 400, "temperature": 0.1},
+        }
+        translated = _nova_invoke(MODEL_ID_TEXT, request_body)
+        return translated.strip()
     except Exception as e:
-        logger.warning(f"Translate API skipped/failed: {e}")
+        logger.warning(f"Nova translation failed: {e}")
         return text
 
 def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
-    c = _normalize_lang_code(ui_lang)
-    lang_name = _language_name(c)
-    
-    # FIX 1: Language instruction moved to the VERY TOP and made extremely strict
+    lang_name = _language_name(_normalize_lang_code(ui_lang))
     return (
         f"CRITICAL SYSTEM INSTRUCTION: YOU MUST COMMUNICATE ENTIRELY AND EXCLUSIVELY IN {lang_name.upper()}.\n"
         f"DO NOT USE ENGLISH UNDER ANY CIRCUMSTANCES unless citing a specific medical term. "
         f"Even if the user types in English, you must reply in {lang_name.upper()}.\n\n"
         "You are PulseNova, an AI-powered medical triage assistant.\n"
-        "Your goal is to help users understand their symptoms and decide the most appropriate next step: "
-        "Emergency, Urgent Care, or Home Care.\n\n"
+        "Your goal is to help users understand their symptoms and decide the most appropriate next step.\n\n"
         "CONVERSATION STYLE:\n"
         "- Be warm, calm, and reassuring.\n"
         "- For medical topics, be concise and practical.\n"
@@ -286,9 +256,12 @@ def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
         "2) Do not list multiple possible conditions at once.\n"
         "3) EMERGENCY: If symptoms are life-threatening, tell them to call emergency services immediately.\n"
         "4) HOME CARE: If the concern seems minor, say so clearly.\n"
-        "5) FIRST AID GATEKEEPER: If the user describes a minor, treatable physical injury (e.g., a cut, scrape, minor burn), "
-        "append the exact string '[TRIGGER_FIRST_AID]' at the very end of your response so the system knows to generate a visual guide.\n\n"
+        "5) FIRST AID GATEKEEPER: If the user describes a minor, treatable physical injury (e.g., cut, scrape, minor burn), "
+        "append the exact string '[TRIGGER_FIRST_AID]' at the very end of your response.\n"
+        "6) CARE FINDER GATEKEEPER: If the user explicitly asks to find a hospital, doctor, clinic, emergency room, or pharmacy near them, "
+        "append the exact string '[TRIGGER_CARE_FINDER]' at the very end of your response so the UI can redirect them.\n\n"
         "DISCLAIMER RULE:\n"
+        "Only add 'Not a diagnosis' at the end of a response when actively discussing symptoms.\n"
     )
 
 def _extract_text_from_invoke(data: Dict[str, Any]) -> str:
@@ -340,24 +313,6 @@ def _pdf_first_page_to_png_b64(pdf_bytes: bytes) -> str:
         raise HTTPException(status_code=400, detail="Could not read PDF. Try a screenshot.")
 
 # =============================================================================
-# Embeddings
-# =============================================================================
-def _get_text_embedding(text: str) -> List[float]:
-    resp = bedrock.invoke_model(modelId=MODEL_ID_EMBED, contentType="application/json", accept="application/json", body=json.dumps({"inputText": text}))
-    return json.loads(resp["body"].read())["embedding"]
-
-def _get_multimodal_embedding(text: str, image_b64: Optional[str]) -> List[float]:
-    body: dict = {"inputText": text[:2048]}
-    if image_b64: body["inputImage"] = _strip_data_url(image_b64)
-    resp = bedrock.invoke_model(modelId=MODEL_ID_EMBED, contentType="application/json", accept="application/json", body=json.dumps(body))
-    return json.loads(resp["body"].read())["embedding"]
-
-def _cosine_similarity(a: List[float], b: List[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
-    mag_a, mag_b = sum(x * x for x in a) ** 0.5, sum(x * x for x in b) ** 0.5
-    return dot / (mag_a * mag_b) if mag_a and mag_b else 0.0
-
-# =============================================================================
 # ROUTES
 # =============================================================================
 @app.get("/")
@@ -389,6 +344,7 @@ def triage(req: TriageRequest):
         user_content.append({"text": "If the image matters, mention what you can observe and suggest next steps."})
 
     messages.append({"role": "user", "content": user_content})
+    _append_language_reminder(messages, req.language) # Fix: Force language rule right before sending
 
     request_body = {
         "schemaVersion": "messages-v1",
@@ -449,6 +405,8 @@ def vision(req: VisionRequest):
         image_b64_for_model = _strip_data_url(req.image_base64)
 
     messages = [{"role": "user", "content": [{"text": req.prompt.strip()}, {"image": {"format": image_fmt, "source": {"bytes": image_b64_for_model}}}]}]
+    _append_language_reminder(messages, req.language)
+
     request_body = {
         "schemaVersion": "messages-v1",
         "system": system_list,
@@ -458,7 +416,7 @@ def vision(req: VisionRequest):
     return TextResponse(text=_nova_invoke(MODEL_ID_VISION, request_body))
 
 # ---------------------------------------------------------------------------
-# Voice Concierge (Native Language)
+# Voice Concierge
 # ---------------------------------------------------------------------------
 @app.post("/api/voice-turn", response_model=VoiceTurnResponse)
 def voice_turn(req: VoiceTurnRequest):
@@ -468,8 +426,8 @@ def voice_turn(req: VoiceTurnRequest):
 
     messages = _sanitize_history_for_nova(req.history)
     messages.append({"role": "user", "content": [{"text": transcript_original}]})
+    _append_language_reminder(messages, req.detected_lang)
 
-    # FIX 2: Pass the local language DIRECTLY into the system prompt. Nova translates natively!
     voice_system_prompt = (
         _triage_system_prompt(req.detected_lang)
         + "\n\nVOICE OUTPUT RULES:\n- Keep responses smooth and conversational for speech.\n- Use short sentences.\n- Avoid heavy formatting."
@@ -482,10 +440,9 @@ def voice_turn(req: VoiceTurnRequest):
         "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature), "topP": 0.9},
     }
 
-    # Nova will now output Marathi/Hindi naturally.
     reply_local = _nova_invoke(MODEL_ID_TEXT, request_body)
 
-    # Optional: Best effort to show English preview in UI
+    # Use Nova to translate the transcript to English for the UI preview
     transcript_en = _translate_text(transcript_original, source_lang, "en") if source_lang != "en" else transcript_original
     reply_en = _translate_text(reply_local, source_lang, "en") if req.include_english_reply and source_lang != "en" else None
 
@@ -499,22 +456,3 @@ def voice_turn(req: VoiceTurnRequest):
         reply_en=reply_en,
         internal_language=source_lang,
     )
-
-# ---------------------------------------------------------------------------
-# Embeddings (Unchanged)
-# ---------------------------------------------------------------------------
-@app.post("/api/embed", response_model=EmbedResponse)
-def embed(req: EmbedRequest):
-    doc_id = req.doc_id or str(uuid.uuid4())
-    embedding = _get_multimodal_embedding(req.text, req.image_base64) if req.image_base64 else _get_text_embedding(req.text)
-    _embed_store[doc_id] = {"text": req.text, "image_b64": req.image_base64, "embedding": embedding, "metadata": req.metadata}
-    return EmbedResponse(doc_id=doc_id, embedding_dim=len(embedding))
-
-@app.post("/api/search", response_model=SearchResponse)
-def search(req: SearchRequest):
-    if not _embed_store: return SearchResponse(hits=[])
-    query_embedding = _get_text_embedding(req.query)
-    scored = [(doc_id, _cosine_similarity(query_embedding, doc["embedding"])) for doc_id, doc in _embed_store.items()]
-    scored.sort(key=lambda x: x[1], reverse=True)
-    hits = [SearchHit(doc_id=d_id, score=round(s, 6), text=_embed_store[d_id]["text"], metadata=_embed_store[d_id]["metadata"]) for d_id, s in scored[: req.top_k]]
-    return SearchResponse(hits=hits)
