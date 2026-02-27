@@ -133,6 +133,7 @@
     }
   </style>
 </head>
+
 <body class="bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-900 flex flex-col min-h-screen grain">
 
 <nav class="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
@@ -173,7 +174,7 @@
 </nav>
 
 <main id="app-content" class="flex-1 relative">
-  <!-- HOME -->
+
   <section id="page-home" class="page-section animate-fade-in hero-mesh">
     <div class="py-24 px-4">
       <div class="max-w-4xl mx-auto text-center space-y-7">
@@ -267,7 +268,6 @@
     </div>
   </section>
 
-  <!-- TRIAGE -->
   <section id="page-triage" class="page-section hidden h-[calc(100vh-57px)] p-4">
     <div class="max-w-4xl mx-auto h-full flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-3 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between flex-shrink-0">
@@ -301,20 +301,26 @@
           <button onclick="app.openVoiceOverlay()" class="p-2.5 rounded-xl transition-all text-slate-400 hover:text-blue-600 hover:bg-blue-50" title="Voice mode">
             <i data-lucide="mic" class="w-4 h-4"></i>
           </button>
-          <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl flex items-center px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
-            <textarea id="chat-input" rows="1" placeholder="Describe your symptoms..." class="w-full bg-transparent border-none focus:outline-none text-slate-800 resize-none max-h-32 text-sm py-1 placeholder:text-slate-400" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();app.sendMessage();}"></textarea>
+          
+          <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-1 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
+            <textarea id="chat-input" rows="1" placeholder="Describe your symptoms..." 
+              class="w-full bg-transparent border-none focus:outline-none text-slate-800 resize-none max-h-32 text-sm py-2 leading-relaxed placeholder:text-slate-400 overflow-hidden" 
+              autocomplete="off" spellcheck="false" 
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();app.sendMessage();}"></textarea>
           </div>
+
           <button onclick="app.sendMessage()" id="btn-send" class="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200">
             <i data-lucide="send" class="w-4 h-4"></i>
           </button>
         </div>
 
-        <div class="mt-1.5 text-[10px] text-slate-300 mono">/api/triage · text + image</div>
+        <div class="mt-1.5 text-[10px] text-slate-300 mono">
+          /api/triage · text + image · voice uses <span class="text-slate-400">/api/voice-turn</span>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- VITALS -->
   <section id="page-vitals" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
     <div class="max-w-3xl mx-auto space-y-5">
       <div class="text-center mb-4">
@@ -372,7 +378,6 @@
         </div>
       </div>
 
-      <!-- Pulse Summary -->
       <div id="vitals-summary-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hidden">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
@@ -428,7 +433,6 @@
     </div>
   </section>
 
-  <!-- X-RAY -->
   <section id="page-xray" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
     <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-6">
       <div class="space-y-4">
@@ -473,7 +477,6 @@
     </div>
   </section>
 
-  <!-- LABS -->
   <section id="page-labs" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
     <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-6">
       <div class="space-y-4">
@@ -518,7 +521,6 @@
     </div>
   </section>
 
-  <!-- CARE -->
   <section id="page-care" class="page-section hidden p-4 animate-fade-in">
     <div class="max-w-5xl mx-auto">
       <div class="text-center mb-6">
@@ -566,7 +568,6 @@
     </div>
   </section>
 
-  <!-- ABOUT -->
   <section id="page-about" class="page-section hidden p-4 animate-fade-in">
     <div class="max-w-4xl mx-auto py-12">
       <div class="text-center mb-14">
@@ -626,7 +627,6 @@
   </section>
 </main>
 
-<!-- VOICE OVERLAY -->
 <div id="voice-overlay" class="voice-overlay flex-col">
   <div class="voice-overlay-bg"></div>
 
@@ -634,7 +634,7 @@
     <div class="text-xs text-slate-400 flex items-center gap-2">
       <span id="voice-indicator-dot" class="w-2 h-2 rounded-full bg-slate-600 inline-block transition-colors duration-300"></span>
       <span id="voice-mode-label">Voice Mode</span>
-      <span class="chip chip-amber" id="voice-model-chip">Browser Speech</span>
+      <span class="chip chip-amber" id="voice-model-chip">Multilingual</span>
     </div>
     <button onclick="app.closeVoiceMode()" class="relative text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-colors">
       <i data-lucide="x" class="w-3.5 h-3.5"></i> Close
@@ -661,11 +661,34 @@
     <p id="voice-subtitle" class="text-slate-400 text-sm max-w-sm leading-relaxed">
       Tap <strong class="text-white">Start Listening</strong> to begin a hands-free conversation.
     </p>
-    <div id="voice-transcript-preview" class="mt-4 text-sm text-slate-400 italic max-w-sm min-h-[18px]"></div>
+
+    <div class="mt-4 w-full max-w-md space-y-2">
+      <div id="voice-transcript-preview" class="text-sm text-slate-300 italic min-h-[18px]"></div>
+
+      <div id="voice-translation-panel" class="hidden text-left bg-white/5 border border-white/10 rounded-xl p-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[11px] text-slate-400">
+            <span class="font-semibold text-slate-200">Detected:</span>
+            <span id="voice-lang-detected">--</span>
+          </div>
+          <button onclick="app.toggleEnglishPanel()" class="text-[11px] text-slate-300 hover:text-white underline underline-offset-2">
+            Toggle English panel
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <div>
+            <div class="text-[11px] text-slate-400 mb-1">You (original)</div>
+            <div id="voice-orig" class="text-sm text-white/90"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
 
     <div class="mt-6 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-slate-500 max-w-xs text-left leading-relaxed">
       <div class="flex items-center gap-1.5 mb-1 text-amber-400 font-semibold"><i data-lucide="zap" class="w-3 h-3"></i> Voice Mode</div>
-      Uses your browser's speech tools for demo-friendly hands-free triage. Speak clearly and stay in a quiet area for best results.
+      Uses your browser speech recognition + server translation so you can speak in multiple languages.
     </div>
   </div>
 
@@ -684,12 +707,40 @@
 <script>
 class PulseNovaApp {
   constructor() {
-    this.messages = [{ role: 'assistant', text: "Hello. I'm PulseNova. Please describe your symptoms in detail, or send me a photo if relevant." }];
+    this.greetings = {
+      'en-US': "Hello. I'm PulseNova. Please describe your symptoms in detail, or send me a photo if relevant.",
+      'en-GB': "Hello. I'm PulseNova. Please describe your symptoms in detail, or send me a photo if relevant.",
+      'en-AU': "Hello. I'm PulseNova. Please describe your symptoms in detail, or send me a photo if relevant.",
+      'en-IN': "Hello. I'm PulseNova. Please describe your symptoms in detail, or send me a photo if relevant.",
+      'fr-FR': "Bonjour. Je suis PulseNova. Veuillez décrire vos symptômes en détail, ou envoyez-moi une photo si pertinent.",
+      'de-DE': "Hallo. Ich bin PulseNova. Bitte beschreiben Sie Ihre Symptome im Detail oder senden Sie mir ein Foto.",
+      'es-US': "Hola. Soy PulseNova. Por favor, describa sus síntomas en detalle, o envíeme una foto si es relevante.",
+      'it-IT': "Ciao. Sono PulseNova. Per favore, descrivi i tuoi sintomi in dettaglio, o inviami una foto se pertinente.",
+      'pt-BR': "Olá. Eu sou o PulseNova. Por favor, descreva seus sintomas em detalhes, ou me envie uma foto se for relevante.",
+      'hi-IN': "नमस्ते। मैं पल्स-नोवा हूँ। कृपया अपने लक्षणों का विस्तार से वर्णन करें, या यदि प्रासंगिक हो तो मुझे एक फोटो भेजें।"
+    };
+
+    this.selectedLanguage = 'en-US';
+    this.messages = [{ role: 'assistant', text: this.greetings[this.selectedLanguage] }];
     this.chatImage = null;
     this.xrayImage = null;
     this.labImage = null;
     this.chatBusy = false;
     this.speakOutput = false;
+
+    // Language support
+    this.supportedLanguages = [
+      { code: 'en-US', label: 'English (US)' },
+      { code: 'en-GB', label: 'English (UK)' },
+      { code: 'en-AU', label: 'English (Australia)' },
+      { code: 'en-IN', label: 'English (India)' },
+      { code: 'fr-FR', label: 'Français (France)' },
+      { code: 'de-DE', label: 'Deutsch (Germany)' },
+      { code: 'es-US', label: 'Español (US)' },
+      { code: 'it-IT', label: 'Italiano (Italy)' },
+      { code: 'pt-BR', label: 'Português (Brazil)' },
+      { code: 'hi-IN', label: 'हिन्दी (India)' }
+    ];
 
     this.voiceState = 'idle';
     this.voiceOverlayOpen = false;
@@ -700,6 +751,10 @@ class PulseNovaApp {
     this._pendingTranscript = '';
     this._iosResumeTimer = null;
 
+    // Translation panel state
+    this.showEnglishPanel = true;
+
+    // Vitals Init
     this.vitals = {
       stream: null, video: null, canvas: null, ctx: null,
       processCanvas: document.createElement('canvas'),
@@ -718,6 +773,7 @@ class PulseNovaApp {
     this.vitals.processCtx = this.vitals.processCanvas.getContext('2d', { willReadFrequently: true });
     this.processVitalsFrame = this.processVitalsFrame.bind(this);
 
+    // Care Init
     this.googleMapsReady = false; this.googleMapsLoading = null;
     this.gmap = null; this.placesService = null; this.geocoder = null;
     this.providers = [];
@@ -726,6 +782,9 @@ class PulseNovaApp {
     this.initSpeech();
     this.initCareSearch();
     this.initDropzones();
+    this.initLanguageControls();
+    this.initChatInputAutoResize();
+
     this.renderChat();
     this.renderProviders();
     this.updateSpeechToggleUI();
@@ -733,6 +792,7 @@ class PulseNovaApp {
     this.resetVitalsSummary();
   }
 
+  /* -------------------- NAV -------------------- */
   navigate(pageId) {
     if (pageId !== 'vitals' && this.vitals.isMonitoring) this.stopVitals(false);
     document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
@@ -745,10 +805,107 @@ class PulseNovaApp {
 
     document.getElementById('mobile-menu').classList.add('hidden');
     if (pageId !== 'triage') { this.closeVoiceMode(); window.speechSynthesis.cancel(); }
+
+    if (pageId === 'triage') {
+      setTimeout(() => {
+        const input = document.getElementById('chat-input');
+        if (input) input.focus();
+      }, 100);
+    }
   }
 
   toggleMobileMenu() {
     document.getElementById('mobile-menu').classList.toggle('hidden');
+  }
+
+  /* -------------------- LANGUAGE -------------------- */
+  initLanguageControls() {
+    const triageHeader = document.querySelector('#page-triage .border-b');
+    if (triageHeader && !document.getElementById('triage-lang-select')) {
+      const right = triageHeader.querySelector('.flex.items-center.gap-3');
+      if (right) {
+        const wrap = document.createElement('div');
+        wrap.className = 'hidden sm:block';
+        wrap.innerHTML = `
+          <select id="triage-lang-select" class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 outline-none">
+            ${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}
+          </select>
+        `;
+        right.prepend(wrap);
+        const sel = wrap.querySelector('select');
+        sel.value = this.selectedLanguage;
+        sel.addEventListener('change', (e) => this.setLanguage(e.target.value));
+      }
+    }
+
+    const subtitle = document.getElementById('voice-subtitle');
+    if (subtitle && !document.getElementById('voice-lang-wrap')) {
+      const wrap = document.createElement('div');
+      wrap.id = 'voice-lang-wrap';
+      wrap.className = 'mt-3';
+      wrap.innerHTML = `
+        <label class="text-xs text-slate-400 mr-2">Language</label>
+        <select id="voice-lang-select" class="text-xs border border-white/10 bg-white/5 text-white rounded-lg px-2 py-1 outline-none">
+          ${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}
+        </select>
+      `;
+      subtitle.insertAdjacentElement('afterend', wrap);
+      const sel = wrap.querySelector('select');
+      sel.value = this.selectedLanguage;
+      sel.addEventListener('change', (e) => this.setLanguage(e.target.value));
+    }
+  }
+
+  setLanguage(code) {
+    this.selectedLanguage = code;
+    if (this.recognition) this.recognition.lang = code;
+
+    const a = document.getElementById('triage-lang-select');
+    const b = document.getElementById('voice-lang-select');
+    if (a && a.value !== code) a.value = code;
+    if (b && b.value !== code) b.value = code;
+    
+    this.resetChat(); 
+  }
+
+  /* -------------------- CHAT UX -------------------- */
+  initChatInputAutoResize() {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    const resize = () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 128) + 'px';
+    };
+    input.addEventListener('input', resize);
+    resize();
+  }
+
+  focusChatInput() {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+
+  /* -------------------- VOICE UI -------------------- */
+  toggleEnglishPanel() {
+    this.showEnglishPanel = !this.showEnglishPanel;
+    const wrap = document.getElementById('voice-en-wrap');
+    if (wrap) wrap.classList.toggle('hidden', !this.showEnglishPanel);
+  }
+
+  _showTranslationPanel({ detectedLabel, orig, en }) {
+    const panel = document.getElementById('voice-translation-panel');
+    const d = document.getElementById('voice-lang-detected');
+    const o = document.getElementById('voice-orig');
+    const e = document.getElementById('voice-en');
+    const wrap = document.getElementById('voice-en-wrap');
+
+    if (panel) panel.classList.remove('hidden');
+    if (d) d.textContent = detectedLabel || '--';
+    if (o) o.textContent = orig || '';
+    if (e) e.textContent = en || '';
+    if (wrap) wrap.classList.toggle('hidden', !this.showEnglishPanel);
   }
 
   setVoiceState(state) {
@@ -775,6 +932,7 @@ class PulseNovaApp {
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-600 inline-block transition-colors duration-300';
         if (btn) btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span id="voice-btn-label">Start Listening</span>';
         if (btn) btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all text-sm';
+        if (preview) preview.textContent = '';
         this.voiceLoopActive = false; this.stopBarAnimation(); this.resetBars(); break;
 
       case 'listening':
@@ -805,7 +963,9 @@ class PulseNovaApp {
         this.startBarAnimation('speaking');
         break;
     }
-    lucide.createIcons();
+
+    this.initLanguageControls();
+    if (window.lucide) lucide.createIcons();
   }
 
   startBarAnimation(mode) {
@@ -831,15 +991,21 @@ class PulseNovaApp {
   stopBarAnimation() { if (this.voiceBarsAnimId) { cancelAnimationFrame(this.voiceBarsAnimId); this.voiceBarsAnimId = null; } }
   resetBars() { ['vb1','vb2','vb3','vb4','vb5','vb6','vb7'].forEach(id => { const el = document.getElementById(id); if (el) el.style.height = '6px'; }); }
 
+  /* -------------------- SPEECH -------------------- */
   initSpeech() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
+
     this.recognition = new SR();
     this.recognition.continuous = false;
     this.recognition.interimResults = true;
-    this.recognition.lang = 'en-US';
+    this.recognition.lang = this.selectedLanguage;
 
-    this.recognition.onstart = () => this.setVoiceState('listening');
+    this.recognition.onstart = () => {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      this.currentUtterance = null;
+      this.setVoiceState('listening');
+    };
 
     this.recognition.onresult = (event) => {
       let interim = '', final = '';
@@ -856,11 +1022,16 @@ class PulseNovaApp {
       if (!this.voiceOverlayOpen) return;
       const transcript = this._pendingTranscript || '';
       this._pendingTranscript = '';
+
       if (transcript && this.voiceLoopActive) {
         this._voiceSendAndReply(transcript);
       } else if (this.voiceLoopActive) {
         this.setVoiceState('listening');
-        setTimeout(() => { if (this.voiceState === 'listening' && this.voiceLoopActive) { try { this.recognition.start(); } catch(e){} } }, 300);
+        setTimeout(() => {
+          if (this.voiceState === 'listening' && this.voiceLoopActive) {
+            try { this.recognition.start(); } catch(e){}
+          }
+        }, 300);
       } else {
         this.setVoiceState('idle');
       }
@@ -869,7 +1040,12 @@ class PulseNovaApp {
     this.recognition.onerror = (e) => {
       if (e.error === 'aborted') return;
       if (this.voiceLoopActive && this.voiceOverlayOpen) {
-        setTimeout(() => { if (this.voiceLoopActive && this.voiceOverlayOpen) { this.setVoiceState('listening'); try { this.recognition.start(); } catch(_){} } }, 600);
+        setTimeout(() => {
+          if (this.voiceLoopActive && this.voiceOverlayOpen) {
+            this.setVoiceState('listening');
+            try { this.recognition.start(); } catch(_) {}
+          }
+        }, 600);
       } else {
         this.setVoiceState('idle');
       }
@@ -878,89 +1054,205 @@ class PulseNovaApp {
 
   openVoiceOverlay() {
     if (window.speechSynthesis) {
-      const u = new SpeechSynthesisUtterance(''); u.volume = 0;
-      window.speechSynthesis.speak(u); window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance('');
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+      window.speechSynthesis.cancel();
       window.speechSynthesis.getVoices();
     }
     this.voiceOverlayOpen = true;
     document.getElementById('voice-overlay').classList.add('show');
     this.setVoiceState('idle');
-    lucide.createIcons();
+    this.initLanguageControls();
+
+    const panel = document.getElementById('voice-translation-panel');
+    if (panel) panel.classList.add('hidden');
+
+    if (window.lucide) lucide.createIcons();
   }
 
   closeVoiceMode() {
-    this.voiceLoopActive = false; this.voiceOverlayOpen = false;
+    this.voiceLoopActive = false;
+    this.voiceOverlayOpen = false;
     this._pendingTranscript = '';
+
     if (this.recognition) { try { this.recognition.abort(); } catch(_){} }
-    window.speechSynthesis.cancel();
+    try { window.speechSynthesis.cancel(); } catch (_) {}
     this.currentUtterance = null;
+
     if (this._iosResumeTimer) { clearInterval(this._iosResumeTimer); this._iosResumeTimer = null; }
-    this.stopBarAnimation(); this.resetBars();
+    this.stopBarAnimation();
+    this.resetBars();
+
     document.getElementById('voice-overlay').classList.remove('show');
   }
 
   voicePrimaryAction() {
     if (this.voiceState === 'idle') {
-      this.voiceLoopActive = true; this._startListening();
+      this.voiceLoopActive = true;
+      this._startListening();
     } else if (this.voiceState === 'listening') {
-      this.voiceLoopActive = false; try { this.recognition.stop(); } catch(_){} this.setVoiceState('idle');
+      this.voiceLoopActive = false;
+      try { this.recognition.stop(); } catch(_) {}
+      this.setVoiceState('idle');
     } else if (this.voiceState === 'speaking') {
-      window.speechSynthesis.cancel(); this.setVoiceState('listening');
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      this.currentUtterance = null;
+      this.setVoiceState('listening');
       setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 200);
     }
   }
 
   _startListening() {
-    if (!this.recognition) { alert("Speech recognition not supported. Try Chrome."); return; }
-    this.setVoiceState('listening'); this._pendingTranscript = '';
-    try { this.recognition.start(); } catch(e) { setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 500); }
+    if (!this.recognition) {
+      alert("Speech recognition not supported. Try Chrome.");
+      return;
+    }
+    this.recognition.lang = this.selectedLanguage;
+    this.setVoiceState('listening');
+    this._pendingTranscript = '';
+    try { this.recognition.start(); }
+    catch(e) { setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 500); }
   }
 
+  /* -------------------- UPDATED VOICE FLOW -------------------- */
   async _voiceSendAndReply(text) {
     this.setVoiceState('thinking');
     const p = document.getElementById('voice-transcript-preview');
     if (p) p.textContent = `You said: "${text}"`;
-    this.messages.push({ role: 'user', text }); this.renderChat();
-    const history = this.messages.slice(0, -1).map(m => ({ role: m.role, text: m.text || '' }));
-    const responseText = await this.callNovaTriage(history, text, null);
-    this.messages.push({ role: 'assistant', text: responseText }); this.renderChat();
-    this._voiceSpeak(responseText);
+
+    this._showTranslationPanel({ detectedLabel: 'detecting…', orig: text, en: '' });
+
+    this.messages.push({ role: 'user', text });
+    this.renderChat();
+
+    const history = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
+    const vt = await this.callVoiceTurn(history, text);
+
+    let assistantText = (vt && vt.reply_local) ? vt.reply_local : "I didn't get a response.";
+    
+    // NEW: First Aid Gatekeeper Interception
+    let triggerFirstAid = false;
+    if (assistantText.includes('[TRIGGER_FIRST_AID]')) {
+      triggerFirstAid = true;
+      assistantText = assistantText.replace('[TRIGGER_FIRST_AID]', '').trim();
+    }
+
+    this.messages.push({ role: 'assistant', text: assistantText });
+    this.renderChat();
+
+    if (vt) {
+      const detectedLabel = `${vt.source_language_name || vt.source_language || '--'} (${vt.source_language || '--'})`;
+      this._showTranslationPanel({
+        detectedLabel,
+        orig: vt.transcript_original || text,
+        en: vt.transcript_en || ''
+      });
+    }
+
+    this._voiceSpeak(assistantText);
+
+    // NEW: Trigger visual guide silently in the background
+    if (triggerFirstAid) {
+      const guideData = await this.callFirstAidGuide(text);
+      if (guideData && guideData.steps) {
+        this.messages.push({ role: 'assistant', type: 'first_aid', steps: guideData.steps });
+        this.renderChat();
+        setTimeout(() => {
+          const container = document.getElementById('chat-messages');
+          if (container) container.scrollTop = container.scrollHeight;
+        }, 100);
+      }
+    }
+  }
+
+  async callVoiceTurn(history, transcript) {
+    try {
+      let cleanHistory = (history || [])
+        .map(t => ({ role: t.role, text: (t.text || '').trim() }))
+        .filter(t => t.text);
+      while (cleanHistory.length && cleanHistory[0].role !== 'user') cleanHistory.shift();
+
+      const res = await fetch('/api/voice-turn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: transcript || '',
+          detected_lang: this.selectedLanguage,
+          history: cleanHistory,
+          include_english_reply: true,
+          max_tokens: 350,
+          temperature: 0.3
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
   }
 
   _voiceSpeak(text) {
-    window.speechSynthesis.cancel(); this.setVoiceState('speaking');
-    const cleaned = text.replace(/\*+/g,'').replace(/#{1,3}\s*/g,'').trim().slice(0, 1500);
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+    this.setVoiceState('speaking');
+
+    const cleaned = (text || '')
+      .replace(/\*+/g,'')
+      .replace(/#{1,3}\s*/g,'')
+      .trim()
+      .slice(0, 1500);
+
     const utter = new SpeechSynthesisUtterance(cleaned);
-    utter.rate = 1.0; utter.pitch = 1.0; utter.volume = 1.0;
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('samantha'))
-      || voices.find(v => v.lang === 'en-US' && v.localService)
-      || voices.find(v => v.lang === 'en-US')
-      || voices.find(v => v.lang.startsWith('en'));
-    if (preferred) utter.voice = preferred;
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    utter.lang = this.selectedLanguage || 'en-US';
+
+    const voices = window.speechSynthesis.getVoices() || [];
+    const exact = voices.find(v => v.lang === utter.lang);
+    const fallback = voices.find(v => v.lang.startsWith((utter.lang || 'en').split('-')[0])) || voices.find(v => v.lang.startsWith('en'));
+    if (exact || fallback) utter.voice = exact || fallback;
 
     const onDone = () => {
       if (this._iosResumeTimer) { clearInterval(this._iosResumeTimer); this._iosResumeTimer = null; }
       if (!this.voiceOverlayOpen) return;
+
       if (this.voiceLoopActive) {
-        setTimeout(() => { if (this.voiceLoopActive && this.voiceOverlayOpen) this._startListening(); }, 500);
+        setTimeout(() => {
+          if (this.voiceLoopActive && this.voiceOverlayOpen) this._startListening();
+        }, 500);
       } else {
         this.setVoiceState('idle');
       }
     };
 
     utter.onend = onDone;
-    utter.onerror = (e) => { if (e.error === 'interrupted' || e.error === 'canceled') return; onDone(); };
+    utter.onerror = (e) => {
+      if (e.error === 'interrupted' || e.error === 'canceled') return;
+      onDone();
+    };
 
     this.currentUtterance = utter;
+
     this._iosResumeTimer = setInterval(() => {
-      if (window.speechSynthesis.speaking) { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
-      else { clearInterval(this._iosResumeTimer); this._iosResumeTimer = null; }
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      } else {
+        clearInterval(this._iosResumeTimer);
+        this._iosResumeTimer = null;
+      }
     }, 10000);
 
     window.speechSynthesis.speak(utter);
   }
 
+  /* -------------------- TTS toggle -------------------- */
   updateSpeechToggleUI() {
     const btn = document.getElementById('btn-speech-toggle');
     if (!btn) return;
@@ -971,26 +1263,32 @@ class PulseNovaApp {
       btn.classList.remove('text-blue-600'); btn.classList.add('text-slate-400');
       btn.innerHTML = `<i data-lucide="volume-x" class="w-4 h-4"></i>`;
     }
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
   }
   toggleSpeechOutput() {
     this.speakOutput = !this.speakOutput;
-    if (!this.speakOutput) window.speechSynthesis.cancel();
+    if (!this.speakOutput) { try { window.speechSynthesis.cancel(); } catch (_) {} }
     this.updateSpeechToggleUI();
   }
   speak(text) {
     if (!this.speakOutput || !text) return;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text.replace(/\*+/g,'').slice(0, 1200)));
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+    const utter = new SpeechSynthesisUtterance((text || '').replace(/\*+/g,'').slice(0, 1200));
+    utter.lang = this.selectedLanguage || 'en-US';
+    window.speechSynthesis.speak(utter);
   }
 
+  /* -------------------- CHAT -------------------- */
   renderChat() {
     const container = document.getElementById('chat-messages');
+    if (!container) return;
     container.innerHTML = '';
+
     this.messages.forEach(msg => {
       const isUser = msg.role === 'user';
       const div = document.createElement('div');
       div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`;
+
       const wrapper = document.createElement('div');
       wrapper.className = 'max-w-[85%] space-y-1.5';
 
@@ -1012,56 +1310,134 @@ class PulseNovaApp {
         wrapper.appendChild(bubble);
       }
 
+      // NEW: Render Visual First Aid Steps
+      if (msg.type === 'first_aid' && msg.steps) {
+        const guideContainer = document.createElement('div');
+        guideContainer.className = 'w-full mt-2 space-y-3';
+        
+        const header = document.createElement('div');
+        header.className = 'flex items-center gap-2 mb-3 text-blue-700';
+        header.innerHTML = '<i data-lucide="image" class="w-5 h-5"></i><span class="font-bold text-sm">Visual First Aid Guide</span>';
+        guideContainer.appendChild(header);
+
+        msg.steps.forEach((step, index) => {
+          const stepCard = document.createElement('div');
+          stepCard.className = 'bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col';
+          
+          let imgHtml = '';
+          if (step.image_base64) {
+            imgHtml = `<div class="bg-slate-100 flex items-center justify-center p-4 border-b border-slate-100">
+                         <img src="data:image/png;base64,${step.image_base64}" alt="Step ${index+1}" class="max-h-48 object-contain rounded-lg shadow-sm">
+                       </div>`;
+          }
+
+          stepCard.innerHTML = `
+            ${imgHtml}
+            <div class="p-3">
+              <div class="flex items-start gap-2">
+                <span class="bg-blue-100 text-blue-700 min-w-[20px] h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5">${index + 1}</span>
+                <p class="text-sm text-slate-700 leading-relaxed flex-1">${this.formatText(step.step_text)}</p>
+              </div>
+            </div>
+          `;
+          guideContainer.appendChild(stepCard);
+        });
+        wrapper.appendChild(guideContainer);
+      }
+
       div.appendChild(wrapper);
       container.appendChild(div);
     });
+
     container.scrollTop = container.scrollHeight;
+    
+    // Refresh icons inside dynamically created elements
+    setTimeout(() => {
+      if (window.lucide) window.lucide.createIcons();
+    }, 10);
   }
 
   async sendMessage() {
     if (this.chatBusy) return;
+
     const input = document.getElementById('chat-input');
-    const text = input.value.trim();
+    const text = input?.value.trim() || '';
     const image = this.chatImage;
     if (!text && !image) return;
 
     this.chatBusy = true;
     const btn = document.getElementById('btn-send');
-    btn.disabled = true; btn.classList.add('opacity-60');
-    window.speechSynthesis.cancel();
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
+
+    try { window.speechSynthesis.cancel(); } catch (_) {}
 
     this.messages.push({ role: 'user', text, image });
     this.renderChat();
 
-    input.value = '';
+    if (input) { input.value = ''; input.style.height = 'auto'; }
     this.clearChatImage();
     this.showLoading();
 
-    const history = this.messages.slice(0, -1).map(m => ({ role: m.role, text: m.text }));
-    const responseText = await this.callNovaTriage(history, text, image);
+    const history = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
+    const rawResponse = await this.callNovaTriage(history, text, image);
+
+    // NEW: First Aid Gatekeeper Interception
+    let cleanResponse = rawResponse;
+    let triggerFirstAid = false;
+    
+    if (cleanResponse.includes('[TRIGGER_FIRST_AID]')) {
+      triggerFirstAid = true;
+      cleanResponse = cleanResponse.replace('[TRIGGER_FIRST_AID]', '').trim();
+    }
 
     this.removeLoading();
-    this.messages.push({ role: 'assistant', text: responseText });
+    this.messages.push({ role: 'assistant', text: cleanResponse });
     this.renderChat();
-    if (this.speakOutput) this.speak(responseText);
+    if (this.speakOutput) this.speak(cleanResponse);
+    
+    // NEW: Generate Visual Guide if triggered
+    if (triggerFirstAid) {
+      this.showLoading("Generating visual guide...");
+      const guideData = await this.callFirstAidGuide(text);
+      this.removeLoading();
+      
+      if (guideData && guideData.steps) {
+        this.messages.push({ role: 'assistant', type: 'first_aid', steps: guideData.steps });
+        this.renderChat();
+        setTimeout(() => {
+          const container = document.getElementById('chat-messages');
+          if (container) container.scrollTop = container.scrollHeight;
+        }, 100);
+      }
+    }
 
     this.chatBusy = false;
-    btn.disabled = false; btn.classList.remove('opacity-60');
+    if (btn) { btn.disabled = false; btn.classList.remove('opacity-60'); }
+    setTimeout(() => this.focusChatInput(), 0);
   }
 
-  showLoading() {
+  showLoading(customText = null) {
     const container = document.getElementById('chat-messages');
+    if (!container) return;
     const div = document.createElement('div');
     div.id = 'chat-loading';
     div.className = 'flex justify-start';
-    div.innerHTML = `<div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-1 items-center h-9"><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div></div>`;
+    
+    let innerHTML = `<div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-1 items-center h-9"><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div></div>`;
+    
+    if (customText) {
+      innerHTML = `<div class="bg-blue-50 border border-blue-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-2 items-center"><div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div><span class="text-xs text-blue-700 font-semibold">${customText}</span></div>`;
+    }
+    
+    div.innerHTML = innerHTML;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
   }
   removeLoading() { const el = document.getElementById('chat-loading'); if (el) el.remove(); }
 
   handleChatImageSelect(input) {
-    const file = input.files[0]; if (!file) return;
+    const file = input.files?.[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () => {
       this.chatImage = reader.result.split(',')[1];
@@ -1070,29 +1446,40 @@ class PulseNovaApp {
     };
     reader.readAsDataURL(file);
   }
-
   clearChatImage() {
     this.chatImage = null;
-    document.getElementById('chat-image-preview').src = '';
-    document.getElementById('chat-image-preview-container').classList.add('hidden');
-    document.getElementById('chat-file-input').value = '';
+    const img = document.getElementById('chat-image-preview');
+    const box = document.getElementById('chat-image-preview-container');
+    const file = document.getElementById('chat-file-input');
+    if (img) img.src = '';
+    if (box) box.classList.add('hidden');
+    if (file) file.value = '';
   }
 
   resetChat() {
-    window.speechSynthesis.cancel();
-    this.messages = [{ role: 'assistant', text: "Hello. I'm PulseNova. Describe your symptoms or send a photo." }];
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+    const greetingText = this.greetings[this.selectedLanguage] || this.greetings['en-US'];
+    this.messages = [{ role: 'assistant', text: greetingText }];
     this.renderChat();
+    this.focusChatInput();
   }
 
   async callNovaTriage(history, userMessage, base64Image) {
     try {
-      let cleanHistory = (history || []).map(t => ({ role: t.role, text: (t.text || '').trim() })).filter(t => t.text);
+      let cleanHistory = (history || [])
+        .map(t => ({ role: t.role, text: (t.text || '').trim() }))
+        .filter(t => t.text);
       while (cleanHistory.length && cleanHistory[0].role !== 'user') cleanHistory.shift();
 
       const res = await fetch('/api/triage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage || '', history: cleanHistory, image_base64: base64Image || null }),
+        body: JSON.stringify({
+          message: userMessage || '',
+          history: cleanHistory,
+          image_base64: base64Image || null,
+          language: this.selectedLanguage
+        }),
       });
 
       if (!res.ok) {
@@ -1106,12 +1493,35 @@ class PulseNovaApp {
     }
   }
 
+  // NEW: Call the First Aid endpoint to generate images and steps
+  async callFirstAidGuide(description) {
+    try {
+      const res = await fetch('/api/first-aid-guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          injury_description: description,
+          language: this.selectedLanguage
+        })
+      });
+      if (!res.ok) throw new Error("Failed to generate first aid guide");
+      return await res.json();
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  }
+
   async callNovaVision(base64Data, prompt) {
     try {
       const res = await fetch('/api/vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: base64Data, prompt }),
+        body: JSON.stringify({ 
+          image_base64: base64Data, 
+          prompt: prompt,
+          language: this.selectedLanguage 
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -1124,11 +1534,8 @@ class PulseNovaApp {
     }
   }
 
-  initDropzones() {
-    this.setupDropzone('xray-dropzone', 'xray-input', (file) => this.handleDroppedFile(file, 'xray'));
-    this.setupDropzone('lab-dropzone', 'lab-input', (file) => this.handleDroppedFile(file, 'lab'));
-  }
-
+  /* -------------------- DROPZONES / UPLOADS -------------------- */
+  initDropzones() { this.setupDropzone('xray-dropzone', 'xray-input', (file) => this.handleDroppedFile(file, 'xray')); this.setupDropzone('lab-dropzone', 'lab-input', (file) => this.handleDroppedFile(file, 'lab')); }
   setupDropzone(dropId, inputId, onFile) {
     const zone = document.getElementById(dropId);
     if (!zone) return;
@@ -1152,32 +1559,32 @@ class PulseNovaApp {
       if (file) onFile(file);
     });
   }
-
-  handleDroppedFile(file, type) {
-    if (type === 'xray') this.handleXrayUpload({ files: [file] });
-    else if (type === 'lab') this.handleLabUpload({ files: [file] });
-  }
-
+  handleDroppedFile(file, type) { if (type === 'xray') this.handleXrayUpload({ files: [file] }); else if (type === 'lab') this.handleLabUpload({ files: [file] }); }
   handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
   handleLabUpload(input) { this.handleFileUpload(input, 'lab'); }
 
   handleFileUpload(input, type) {
-    const file = input.files[0]; if (!file) return;
+    const file = input.files?.[0];
+    if (!file) return;
     if (!file.type.startsWith('image/')) { alert("Please upload an image file."); return; }
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const fullData = reader.result, base64 = fullData.split(',')[1];
+      const fullData = reader.result;
+      const base64 = fullData.split(',')[1];
+
       if (type === 'xray') {
         this.xrayImage = base64;
         const img = document.getElementById('xray-preview-img');
-        img.src = fullData; img.classList.remove('hidden');
+        img.src = fullData;
+        img.classList.remove('hidden');
         document.getElementById('xray-placeholder').classList.add('hidden');
         document.getElementById('btn-analyze-xray').disabled = false;
       } else {
         this.labImage = base64;
         const img = document.getElementById('lab-preview-img');
-        img.src = fullData; img.classList.remove('hidden');
+        img.src = fullData;
+        img.classList.remove('hidden');
         document.getElementById('lab-placeholder').classList.add('hidden');
         document.getElementById('btn-analyze-lab').disabled = false;
       }
@@ -1208,7 +1615,7 @@ Output format:
 
     btn.disabled = false;
     btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Analyze Scan`;
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
   }
 
   async analyzeLabs() {
@@ -1235,10 +1642,10 @@ Output format:
 
     btn.disabled = false;
     btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Translate Report`;
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
   }
 
-  // VITALS SUMMARY FEATURES
+  /* -------------------- VITALS -------------------- */
   setVitalsContext(ctx) {
     this.vitals.context = ctx;
     document.querySelectorAll('.vitals-context-btn').forEach(btn => {
@@ -1281,11 +1688,7 @@ Output format:
     badge.textContent = text;
   }
 
-  _qualityLabel(q) {
-    if (q >= 60) return 'Good';
-    if (q >= 25) return 'Fair';
-    return 'Poor';
-  }
+  _qualityLabel(q) { if (q >= 60) return 'Good'; if (q >= 25) return 'Fair'; return 'Poor'; }
 
   _confidenceLabel({ signalQuality = 0, bpmHistory = [], stableBpmCount = 0 }) {
     const variance = bpmHistory.length > 1 ? (Math.max(...bpmHistory) - Math.min(...bpmHistory)) : 999;
@@ -1380,17 +1783,21 @@ Output format:
   useVitalsInTriage() {
     const bpm = this.vitals.lastStableBpm;
     if (!bpm) { alert("Take a pulse reading first."); return; }
+
     const q = Math.round(this.vitals.signalQuality || 0);
     const confidence = this._confidenceLabel(this.vitals);
     const contextLabel = { resting: 'resting', after_exercise: 'after exercise', feeling_unwell: 'feeling unwell' }[this.vitals.context] || 'resting';
 
     const draft = `My pulse reading was ${Math.round(bpm)} BPM (${confidence.toLowerCase()} confidence, ${q}% signal quality) while ${contextLabel}. Please help me interpret this with my symptoms.`;
     this.navigate('triage');
+
     const input = document.getElementById('chat-input');
     if (input) {
       input.value = draft;
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 128) + 'px';
     }
   }
 
@@ -1558,7 +1965,8 @@ Output format:
   }
 
   detectHeartbeat(now) {
-    const data = this.vitals.smoothed; if (data.length < 40) return;
+    const data = this.vitals.smoothed;
+    if (data.length < 40) return;
 
     const vals = data.slice(-60).map(d => d.val);
     const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -1634,13 +2042,15 @@ Output format:
     ctx.stroke();
   }
 
-  // CARE FINDER
+  /* -------------------- CARE FINDER -------------------- */
   async ensureGoogleMaps() {
     if (this.googleMapsReady) return;
     if (this.googleMapsLoading) return this.googleMapsLoading;
+
     this.googleMapsLoading = new Promise(async (resolve, reject) => {
       try {
         if (window.google?.maps?.places) { this.googleMapsReady = true; this.initGoogleServices(); resolve(); return; }
+
         const cfgRes = await fetch('/config');
         if (!cfgRes.ok) throw new Error(`/config failed (${cfgRes.status})`);
         const cfg = await cfgRes.json();
@@ -1665,6 +2075,7 @@ Output format:
         document.head.appendChild(script);
       } catch (err) { reject(err); }
     });
+
     return this.googleMapsLoading;
   }
 
@@ -1677,14 +2088,21 @@ Output format:
   }
 
   setCareStatus(text,isError=false) {
-    const el = document.getElementById('care-status'); if(!el) return;
+    const el = document.getElementById('care-status');
+    if(!el) return;
     el.textContent = text || "";
     el.className = `text-xs flex items-center ${isError ? 'text-red-500' : 'text-slate-400'}`;
   }
 
   initCareSearch() {
-    const input = document.getElementById('care-search'); if (!input) return;
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.searchCareByText(); } });
+    const input = document.getElementById('care-search');
+    if (!input) return;
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.searchCareByText();
+      }
+    });
   }
 
   async searchCareByText() {
@@ -1695,6 +2113,7 @@ Output format:
     try {
       this.setCareStatus("Finding area…");
       await this.ensureGoogleMaps();
+
       const geo = await new Promise((resolve,reject) => {
         this.geocoder.geocode({ address: query }, (results,status) => {
           if (status === "OK" && results?.length) resolve(results[0]);
@@ -1717,7 +2136,8 @@ Output format:
 
   async locateUser() {
     const btn = document.getElementById('btn-locate'), orig = btn.innerHTML;
-    btn.disabled = true; btn.innerHTML = 'Locating…';
+    btn.disabled = true;
+    btn.innerHTML = 'Locating…';
     this.setCareStatus("Requesting location…");
 
     try {
@@ -1726,6 +2146,7 @@ Output format:
         if (!navigator.geolocation) { reject(new Error("Geolocation not supported")); return; }
         navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:10000});
       });
+
       this.care.userLat = pos.coords.latitude;
       this.care.userLon = pos.coords.longitude;
       this.care.centerLabel = "your location";
@@ -1734,7 +2155,9 @@ Output format:
       console.error(e);
       this.setCareStatus("Couldn't get location. Try a ZIP/city.", true);
     } finally {
-      btn.disabled = false; btn.innerHTML = orig; lucide.createIcons();
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      if (window.lucide) lucide.createIcons();
     }
   }
 
@@ -1769,7 +2192,9 @@ Output format:
   }
 
   normalizePlace(place,inferredType) {
-    const loc = place.geometry?.location, lat = typeof loc?.lat==='function' ? loc.lat() : loc?.lat, lon = typeof loc?.lng==='function' ? loc.lng() : loc?.lng;
+    const loc = place.geometry?.location;
+    const lat = typeof loc?.lat==='function' ? loc.lat() : loc?.lat;
+    const lon = typeof loc?.lng==='function' ? loc.lng() : loc?.lng;
     const name = (place.name || '').toLowerCase(), types = place.types || [];
     let type = inferredType || 'Clinic';
 
@@ -1781,12 +2206,20 @@ Output format:
     if (name.includes('primary care') || name.includes('family medicine')) type = 'Primary Care';
     if (type === 'Hospital' && (name.includes('emergency') || name.includes(' er '))) type = 'ER';
 
-    const distance = (this.care.userLat != null && lat != null) ? this.getDistanceMiles(this.care.userLat,this.care.userLon,lat,lon) : null;
+    const distance = (this.care.userLat != null && lat != null)
+      ? this.getDistanceMiles(this.care.userLat,this.care.userLon,lat,lon)
+      : null;
 
     return {
-      id: place.place_id, name: place.name || "Unknown provider", type,
+      id: place.place_id,
+      name: place.name || "Unknown provider",
+      type,
       address: place.vicinity || place.formatted_address || "Address unavailable",
-      rating: place.rating || null, distance, lat, lon, placeId: place.place_id
+      rating: place.rating || null,
+      distance,
+      lat,
+      lon,
+      placeId: place.place_id
     };
   }
 
@@ -1832,8 +2265,10 @@ Output format:
       merged.sort((a,b) => ((a.distance ?? 999) - (b.distance ?? 999)));
       this.providers = merged.slice(0,30);
 
-      const filterEl = document.getElementById('care-filter'); if (filterEl) filterEl.value = 'All';
-      const textEl = document.getElementById('provider-filter'); if (textEl) textEl.value = '';
+      const filterEl = document.getElementById('care-filter');
+      if (filterEl) filterEl.value = 'All';
+      const textEl = document.getElementById('provider-filter');
+      if (textEl) textEl.value = '';
 
       this.renderProviders();
 
@@ -1850,19 +2285,23 @@ Output format:
     const typeFilter = document.getElementById('care-filter')?.value || 'All';
     const textFilter = (document.getElementById('provider-filter')?.value || '').trim().toLowerCase();
     let filtered = this.providers.slice();
+
     if (typeFilter !== 'All') filtered = filtered.filter(p => p.type === typeFilter);
-    if (textFilter) filtered = filtered.filter(p =>
-      (p.name || '').toLowerCase().includes(textFilter) ||
-      (p.address || '').toLowerCase().includes(textFilter)
-    );
+    if (textFilter) {
+      filtered = filtered.filter(p =>
+        (p.name || '').toLowerCase().includes(textFilter) ||
+        (p.address || '').toLowerCase().includes(textFilter)
+      );
+    }
     return filtered;
   }
 
   renderProviders() {
-    const list = document.getElementById('providers-list'); if (!list) return;
+    const list = document.getElementById('providers-list');
+    if (!list) return;
     list.innerHTML = '';
-    const filtered = this.getFilteredProviders();
 
+    const filtered = this.getFilteredProviders();
     if (!filtered.length) {
       list.innerHTML = `<div class="col-span-full bg-white border border-slate-200 rounded-2xl p-6 text-center text-slate-400 text-sm">No providers yet. Use <strong>Near Me</strong> or search a city/ZIP.</div>`;
       return;
@@ -1906,9 +2345,10 @@ Output format:
         </div>`;
     });
 
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
   }
 
+  /* -------------------- HELPERS -------------------- */
   escapeHtml(str) {
     return String(str ?? '')
       .replace(/&/g,'&amp;')
@@ -1917,11 +2357,7 @@ Output format:
       .replace(/"/g,'&quot;')
       .replace(/'/g,'&#039;');
   }
-
-  formatText(text) {
-    return this.escapeHtml(text || '').replace(/\n/g,'<br>');
-  }
-
+  formatText(text) { return this.escapeHtml(text || '').replace(/\n/g,'<br>'); }
   formatMarkdown(text) {
     const safe = this.escapeHtml(text || '');
     let html = safe
@@ -1931,17 +2367,20 @@ Output format:
       .replace(/\*DISCLAIMER:(.*)\*/g,'<p class="text-xs text-slate-400 italic mt-4 border-t pt-2">$1</p>')
       .replace(/\n/g,'<br>');
 
-    if (html.includes('<li')) html = html
-      .replace(/(<li[\s\S]*?<\/li>)/g,'<ul class="my-2">$1</ul>')
-      .replace(/<\/ul><br><ul[^>]*>/g,'');
-
+    if (html.includes('<li')) {
+      html = html
+        .replace(/(<li[\s\S]*?<\/li>)/g,'<ul class="my-2">$1</ul>')
+        .replace(/<\/ul><br><ul[^>]*>/g,'');
+    }
     return html;
   }
 }
 
+// bootstrap
 const app = new PulseNovaApp();
 app.navigate('home');
 
+// iOS TTS unlock
 let _iosTTSUnlocked = false;
 function _unlockIOSTTS() {
   if (_iosTTSUnlocked) return;
@@ -1956,7 +2395,7 @@ document.addEventListener('touchstart', _unlockIOSTTS, { once: true, passive: tr
 document.addEventListener('click', _unlockIOSTTS, { once: true });
 if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
-lucide.createIcons();
+if (window.lucide) lucide.createIcons();
 </script>
 </body>
 </html>
