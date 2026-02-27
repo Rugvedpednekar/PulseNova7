@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>PulseNova - AI Medical Assistant</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,6 @@
       --blue: #2563eb; --blue-lt: #eff6ff; --cyan: #06b6d4; --green: #10b981;
       --purple: #7c3aed; --red: #ef4444; --slate: #0f172a;
     }
-
     * { box-sizing: border-box; }
     body { font-family: 'Sora', system-ui, sans-serif; }
     .mono { font-family: 'JetBrains Mono', monospace; }
@@ -28,10 +27,7 @@
     .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
     .typing-dot:nth-child(1) { animation-delay: -0.32s; }
     .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-    @keyframes typing {
-      0%,80%,100% { transform: scale(0); }
-      40% { transform: scale(1); }
-    }
+    @keyframes typing { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
 
     .hero-mesh {
       background:
@@ -40,6 +36,7 @@
         #ffffff;
     }
 
+    /* Grain overlay */
     .grain::after {
       content: '';
       position: fixed; inset: 0;
@@ -48,16 +45,14 @@
     }
 
     .nav-btn.active { background: var(--blue-lt); color: var(--blue); }
-
     .card-lift { transition: transform .2s ease, box-shadow .2s ease; }
     .card-lift:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.10); }
 
     .drag-active { border-color: var(--blue) !important; background: #eff6ff !important; }
     .drag-active-purple { border-color: var(--purple) !important; background: #faf5ff !important; }
 
-    .voice-overlay {
-      position: fixed; inset: 0; background: #020617; z-index: 1000; display: none; color: white; overflow: hidden;
-    }
+    /* Voice Overlay */
+    .voice-overlay { position: fixed; inset: 0; background: #020617; z-index: 1000; display: none; color: white; overflow: hidden; }
     .voice-overlay.show { display: flex; }
     .voice-overlay-bg {
       position: absolute; inset: 0;
@@ -98,18 +93,12 @@
     @keyframes voiceRing { 0% {transform: scale(.93); opacity:.6;} 100% {transform: scale(1.18); opacity:0;} }
 
     .voice-bars { display: flex; align-items: flex-end; justify-content: center; gap: 5px; height: 48px; }
-    .voice-bars span {
-      width: 6px; border-radius: 999px; background: linear-gradient(to top,#2563eb,#38bdf8);
-      height: 6px; transition: height 80ms linear, opacity 80ms linear, background 400ms;
-    }
+    .voice-bars span { width: 6px; border-radius: 999px; background: linear-gradient(to top,#2563eb,#38bdf8); height: 6px; transition: height 80ms linear, opacity 80ms linear, background 400ms; }
     .voice-bars.speaking span { background: linear-gradient(to top, #10b981, #6ee7b7); }
     .voice-bars.thinking span { background: linear-gradient(to top,#7c3aed,#a78bfa); animation: barPulse 1.8s infinite ease-in-out; }
     @keyframes barPulse { 0%,100% {opacity:.4; height:4px !important;} 50% {opacity:1; height:14px !important;} }
 
-    .chip {
-      display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; letter-spacing: .05em;
-      padding: 2px 8px; border-radius: 4px;
-    }
+    .chip { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 2px 8px; border-radius: 4px; }
     .chip-blue { background: #dbeafe; color: #1d4ed8; }
     .chip-green { background: #d1fae5; color: #065f46; }
     .chip-purple { background: #ede9fe; color: #5b21b6; }
@@ -120,9 +109,11 @@
     @keyframes statusPulse { 0%,100% {opacity:1} 50% {opacity:.4} }
     .status-pulse { animation: statusPulse 2s ease-in-out infinite; }
 
-    .line-clamp-2 {
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* Toast */
+    #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 1200; display: none; }
+    #toast.show { display: block; }
 
     @media print {
       body * { visibility: hidden !important; }
@@ -175,6 +166,7 @@
 
 <main id="app-content" class="flex-1 relative">
 
+  <!-- HOME -->
   <section id="page-home" class="page-section animate-fade-in hero-mesh">
     <div class="py-24 px-4">
       <div class="max-w-4xl mx-auto text-center space-y-7">
@@ -196,6 +188,7 @@
             <i data-lucide="heart-pulse" class="w-4 h-4 text-red-500"></i> Check Vitals
           </button>
         </div>
+        <div class="text-xs text-slate-400 pt-2">Not medical advice. If you think it's an emergency, call local emergency services.</div>
       </div>
     </div>
 
@@ -268,7 +261,8 @@
     </div>
   </section>
 
-  <section id="page-triage" class="page-section hidden h-[calc(100vh-57px)] p-4">
+  <!-- TRIAGE -->
+  <section id="page-triage" class="page-section hidden h-[calc(100vh-57px)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
     <div class="max-w-4xl mx-auto h-full flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-3 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-3">
@@ -285,7 +279,7 @@
 
       <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30"></div>
 
-      <div class="p-3 bg-white border-t border-slate-100 flex-shrink-0">
+      <div class="p-3 bg-white border-t border-slate-100 flex-shrink-0 pb-4 sm:pb-3">
         <div id="chat-image-preview-container" class="hidden mb-2 relative inline-block">
           <img id="chat-image-preview" src="" alt="Preview" class="h-16 rounded-lg border border-slate-200 shadow-sm">
           <button onclick="app.clearChatImage()" class="absolute -top-1.5 -right-1.5 bg-slate-800 text-white rounded-full p-0.5 hover:bg-red-500 transition-colors">
@@ -301,11 +295,11 @@
           <button onclick="app.openVoiceOverlay()" class="p-2.5 rounded-xl transition-all text-slate-400 hover:text-blue-600 hover:bg-blue-50" title="Voice mode">
             <i data-lucide="mic" class="w-4 h-4"></i>
           </button>
-          
+
           <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-1 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
-            <textarea id="chat-input" rows="1" placeholder="Describe your symptoms..." 
-              class="w-full bg-transparent border-none focus:outline-none text-slate-800 resize-none max-h-32 text-sm py-2 leading-relaxed placeholder:text-slate-400 overflow-hidden" 
-              autocomplete="off" spellcheck="false" 
+            <textarea id="chat-input" rows="1" placeholder="Describe your symptoms..."
+              class="w-full bg-transparent border-none focus:outline-none text-slate-800 resize-none max-h-32 text-sm py-2 leading-relaxed placeholder:text-slate-400 overflow-hidden"
+              autocomplete="off" spellcheck="false"
               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();app.sendMessage();}"></textarea>
           </div>
 
@@ -321,6 +315,7 @@
     </div>
   </section>
 
+  <!-- VITALS -->
   <section id="page-vitals" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
     <div class="max-w-3xl mx-auto space-y-5">
       <div class="text-center mb-4">
@@ -378,6 +373,7 @@
         </div>
       </div>
 
+      <!-- Full Vitals Summary Card (from old version) -->
       <div id="vitals-summary-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hidden">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
@@ -433,6 +429,7 @@
     </div>
   </section>
 
+  <!-- X-RAY -->
   <section id="page-xray" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
     <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-6">
       <div class="space-y-4">
@@ -477,6 +474,7 @@
     </div>
   </section>
 
+  <!-- LABS -->
   <section id="page-labs" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
     <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-6">
       <div class="space-y-4">
@@ -521,6 +519,7 @@
     </div>
   </section>
 
+  <!-- CARE FINDER -->
   <section id="page-care" class="page-section hidden p-4 animate-fade-in">
     <div class="max-w-5xl mx-auto">
       <div class="text-center mb-6">
@@ -547,7 +546,7 @@
             </button>
           </div>
         </div>
-        <div class="grid md:grid-cols-2 gap-3">
+        <div class="grid md:grid-cols-2 gap-3 items-center">
           <select id="care-filter" onchange="app.renderProviders()" class="px-4 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
             <option value="All">All Providers</option>
             <option value="ER">Emergency Room</option>
@@ -559,8 +558,13 @@
             <option value="Dentist">Dentist</option>
             <option value="Pediatrician">Pediatrician</option>
           </select>
-          <div id="care-status" class="text-xs text-slate-400 flex items-center" aria-live="polite"></div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400 whitespace-nowrap">Radius</span>
+            <input id="care-radius" type="range" min="2" max="20" step="1" value="8" class="w-full">
+            <span class="text-xs font-semibold text-slate-600 whitespace-nowrap"><span id="care-radius-val">8</span> mi</span>
+          </div>
         </div>
+        <div id="care-status" class="text-xs text-slate-400 flex items-center" aria-live="polite"></div>
       </div>
 
       <div id="care-map-host" class="hidden h-1 w-1"></div>
@@ -568,6 +572,7 @@
     </div>
   </section>
 
+  <!-- ABOUT -->
   <section id="page-about" class="page-section hidden p-4 animate-fade-in">
     <div class="max-w-4xl mx-auto py-12">
       <div class="text-center mb-14">
@@ -625,8 +630,18 @@
       </div>
     </div>
   </section>
+
 </main>
 
+<!-- Toast -->
+<div id="toast">
+  <div class="bg-slate-900 text-white text-sm px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
+    <i id="toast-ico" data-lucide="info" class="w-4 h-4"></i>
+    <span id="toast-text">...</span>
+  </div>
+</div>
+
+<!-- Voice Overlay -->
 <div id="voice-overlay" class="voice-overlay flex-col">
   <div class="voice-overlay-bg"></div>
 
@@ -658,9 +673,9 @@
     </div>
 
     <h2 id="voice-title" class="text-2xl font-bold text-white mb-2">Voice Mode</h2>
-    <p id="voice-subtitle" class="text-slate-400 text-sm max-w-sm leading-relaxed">
+    <div id="voice-subtitle" class="text-sm text-slate-300 max-w-md">
       Tap <strong class="text-white">Start Listening</strong> to begin a hands-free conversation.
-    </p>
+    </div>
 
     <div class="mt-4 w-full max-w-md space-y-2">
       <div id="voice-transcript-preview" class="text-sm text-slate-300 italic min-h-[18px]"></div>
@@ -675,13 +690,15 @@
             Toggle English panel
           </button>
         </div>
-
         <div class="space-y-2">
           <div>
             <div class="text-[11px] text-slate-400 mb-1">You (original)</div>
             <div id="voice-orig" class="text-sm text-white/90"></div>
           </div>
-
+          <div id="voice-en-wrap">
+            <div class="text-[11px] text-slate-400 mb-1">You (English)</div>
+            <div id="voice-en" class="text-sm text-white/90"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -720,28 +737,25 @@ class PulseNovaApp {
       'hi-IN': "नमस्ते। मैं पल्स-नोवा हूँ। कृपया अपने लक्षणों का विस्तार से वर्णन करें, या यदि प्रासंगिक हो तो मुझे एक फोटो भेजें।"
     };
 
-    this.selectedLanguage = 'en-US';
-    this.messages = [{ role: 'assistant', text: this.greetings[this.selectedLanguage] }];
+    // Persist user prefs
+    this.selectedLanguage = localStorage.getItem('pulseNova_lang') || 'en-US';
+    this.speakOutput = (localStorage.getItem('pulseNova_speak') === '1') || false;
+
+    this.messages = [{ role: 'assistant', text: this.greetings[this.selectedLanguage] || this.greetings['en-US'] }];
     this.chatImage = null;
+    this.chatBusy = false;
     this.xrayImage = null;
     this.labImage = null;
-    this.chatBusy = false;
-    this.speakOutput = false;
 
-    // Language support
     this.supportedLanguages = [
-      { code: 'en-US', label: 'English (US)' },
-      { code: 'en-GB', label: 'English (UK)' },
-      { code: 'en-AU', label: 'English (Australia)' },
-      { code: 'en-IN', label: 'English (India)' },
-      { code: 'fr-FR', label: 'Français (France)' },
-      { code: 'de-DE', label: 'Deutsch (Germany)' },
-      { code: 'es-US', label: 'Español (US)' },
-      { code: 'it-IT', label: 'Italiano (Italy)' },
-      { code: 'pt-BR', label: 'Português (Brazil)' },
-      { code: 'hi-IN', label: 'हिन्दी (India)' }
+      { code: 'en-US', label: 'English (US)' }, { code: 'en-GB', label: 'English (UK)' },
+      { code: 'en-AU', label: 'English (Australia)' }, { code: 'en-IN', label: 'English (India)' },
+      { code: 'fr-FR', label: 'Français (France)' }, { code: 'de-DE', label: 'Deutsch (Germany)' },
+      { code: 'es-US', label: 'Español (US)' }, { code: 'it-IT', label: 'Italiano (Italy)' },
+      { code: 'pt-BR', label: 'Português (Brazil)' }, { code: 'hi-IN', label: 'हिन्दी (India)' }
     ];
 
+    // Voice
     this.voiceState = 'idle';
     this.voiceOverlayOpen = false;
     this.voiceLoopActive = false;
@@ -750,46 +764,76 @@ class PulseNovaApp {
     this.voiceBarsAnimId = null;
     this._pendingTranscript = '';
     this._iosResumeTimer = null;
-
-    // Translation panel state
     this.showEnglishPanel = true;
 
-    // Vitals Init
+    // Vitals
     this.vitals = {
       stream: null, video: null, canvas: null, ctx: null,
-      processCanvas: document.createElement('canvas'),
-      processCtx: null, animId: null,
+      processCanvas: document.createElement('canvas'), processCtx: null, animId: null,
       redValues: [], smoothed: [], bpmHistory: [],
       stableBpmCount: 0, lastPeakTime: 0,
       isMonitoring: false, timeoutId: null,
       torchTrack: null, torchOn: false,
-      signalQuality: 0,
-      context: 'resting',
-      lastStableBpm: null,
-      summaryReady: false
+      signalQuality: 0, context: 'resting',
+      lastStableBpm: null, summaryReady: false
     };
     this.vitals.processCanvas.width = 20;
     this.vitals.processCanvas.height = 20;
     this.vitals.processCtx = this.vitals.processCanvas.getContext('2d', { willReadFrequently: true });
     this.processVitalsFrame = this.processVitalsFrame.bind(this);
 
-    // Care Init
-    this.googleMapsReady = false; this.googleMapsLoading = null;
-    this.gmap = null; this.placesService = null; this.geocoder = null;
+    // Care
+    this.googleMapsReady = false;
+    this.googleMapsLoading = null;
+    this.gmap = null;
+    this.placesService = null;
+    this.geocoder = null;
     this.providers = [];
     this.care = { userLat: null, userLon: null, centerLabel: null };
 
+    // Init
     this.initSpeech();
     this.initCareSearch();
     this.initDropzones();
     this.initLanguageControls();
     this.initChatInputAutoResize();
+    this.syncSpeechToggleIcon();
 
     this.renderChat();
     this.renderProviders();
-    this.updateSpeechToggleUI();
     this.setVitalsContext('resting');
     this.resetVitalsSummary();
+
+    // iOS TTS unlock
+    document.addEventListener('touchstart', () => this._unlockIOSTTS(), { once: true, passive: true });
+    document.addEventListener('click', () => this._unlockIOSTTS(), { once: true });
+    if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
+
+  _unlockIOSTTS() {
+    if (this._iosTTSUnlocked) return;
+    this._iosTTSUnlocked = true;
+    try {
+      const u = new SpeechSynthesisUtterance('');
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.getVoices();
+    } catch(_) {}
+  }
+
+  /* -------------------- TOAST -------------------- */
+  toast(msg, icon = 'info') {
+    const t = document.getElementById('toast'),
+          txt = document.getElementById('toast-text'),
+          ico = document.getElementById('toast-ico');
+    if (!t || !txt || !ico) return;
+    txt.textContent = msg;
+    ico.setAttribute('data-lucide', icon);
+    t.classList.add('show');
+    if (window.lucide) lucide.createIcons();
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
   }
 
   /* -------------------- NAV -------------------- */
@@ -802,21 +846,13 @@ class PulseNovaApp {
     document.querySelectorAll('.nav-btn').forEach(el => {
       el.classList.toggle('active', el.dataset.page === pageId);
     });
-
     document.getElementById('mobile-menu').classList.add('hidden');
-    if (pageId !== 'triage') { this.closeVoiceMode(); window.speechSynthesis.cancel(); }
 
-    if (pageId === 'triage') {
-      setTimeout(() => {
-        const input = document.getElementById('chat-input');
-        if (input) input.focus();
-      }, 100);
-    }
+    if (pageId !== 'triage') { this.closeVoiceMode(); try { window.speechSynthesis.cancel(); } catch(_) {} }
+    if (pageId === 'triage') setTimeout(() => { const i = document.getElementById('chat-input'); if (i) i.focus(); }, 100);
   }
 
-  toggleMobileMenu() {
-    document.getElementById('mobile-menu').classList.toggle('hidden');
-  }
+  toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
 
   /* -------------------- LANGUAGE -------------------- */
   initLanguageControls() {
@@ -826,11 +862,7 @@ class PulseNovaApp {
       if (right) {
         const wrap = document.createElement('div');
         wrap.className = 'hidden sm:block';
-        wrap.innerHTML = `
-          <select id="triage-lang-select" class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 outline-none">
-            ${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}
-          </select>
-        `;
+        wrap.innerHTML = `<select id="triage-lang-select" class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 outline-none">${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}</select>`;
         right.prepend(wrap);
         const sel = wrap.querySelector('select');
         sel.value = this.selectedLanguage;
@@ -838,17 +870,23 @@ class PulseNovaApp {
       }
     }
 
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileMenu && !document.getElementById('mobile-lang-select')) {
+      const wrap = document.createElement('div');
+      wrap.className = 'px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between';
+      wrap.innerHTML = `<span class="text-sm font-medium text-slate-600">Language</span><select id="mobile-lang-select" class="text-sm border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 outline-none">${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}</select>`;
+      mobileMenu.prepend(wrap);
+      const sel = wrap.querySelector('select');
+      sel.value = this.selectedLanguage;
+      sel.addEventListener('change', (e) => { this.setLanguage(e.target.value); this.toggleMobileMenu(); });
+    }
+
     const subtitle = document.getElementById('voice-subtitle');
     if (subtitle && !document.getElementById('voice-lang-wrap')) {
       const wrap = document.createElement('div');
       wrap.id = 'voice-lang-wrap';
       wrap.className = 'mt-3';
-      wrap.innerHTML = `
-        <label class="text-xs text-slate-400 mr-2">Language</label>
-        <select id="voice-lang-select" class="text-xs border border-white/10 bg-white/5 text-white rounded-lg px-2 py-1 outline-none">
-          ${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}
-        </select>
-      `;
+      wrap.innerHTML = `<label class="text-xs text-slate-400 mr-2">Language</label><select id="voice-lang-select" class="text-xs border border-white/10 bg-white/5 text-white rounded-lg px-2 py-1 outline-none">${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}</select>`;
       subtitle.insertAdjacentElement('afterend', wrap);
       const sel = wrap.querySelector('select');
       sel.value = this.selectedLanguage;
@@ -858,24 +896,21 @@ class PulseNovaApp {
 
   setLanguage(code) {
     this.selectedLanguage = code;
+    localStorage.setItem('pulseNova_lang', code);
     if (this.recognition) this.recognition.lang = code;
-
-    const a = document.getElementById('triage-lang-select');
-    const b = document.getElementById('voice-lang-select');
-    if (a && a.value !== code) a.value = code;
-    if (b && b.value !== code) b.value = code;
-    
-    this.resetChat(); 
+    ['triage-lang-select', 'voice-lang-select', 'mobile-lang-select'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value !== code) el.value = code;
+    });
+    this.resetChat();
+    this.toast('Language updated', 'globe');
   }
 
   /* -------------------- CHAT UX -------------------- */
   initChatInputAutoResize() {
     const input = document.getElementById('chat-input');
     if (!input) return;
-    const resize = () => {
-      input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 128) + 'px';
-    };
+    const resize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 128) + 'px'; };
     input.addEventListener('input', resize);
     resize();
   }
@@ -887,6 +922,35 @@ class PulseNovaApp {
     input.setSelectionRange(input.value.length, input.value.length);
   }
 
+  /* -------------------- TTS TOGGLE -------------------- */
+  toggleSpeechOutput() {
+    this.speakOutput = !this.speakOutput;
+    localStorage.setItem('pulseNova_speak', this.speakOutput ? '1' : '0');
+    this.syncSpeechToggleIcon();
+    this.toast(this.speakOutput ? 'Spoken replies: ON' : 'Spoken replies: OFF', this.speakOutput ? 'volume-2' : 'volume-x');
+    if (!this.speakOutput) { try { window.speechSynthesis.cancel(); } catch(_) {} }
+  }
+
+  syncSpeechToggleIcon() {
+    const btn = document.getElementById('btn-speech-toggle');
+    if (!btn) return;
+    btn.innerHTML = this.speakOutput
+      ? `<i data-lucide="volume-2" class="w-4 h-4"></i>`
+      : `<i data-lucide="volume-x" class="w-4 h-4"></i>`;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  // Triage TTS (respects toggle)
+  speakText(text) {
+    if (!this.speakOutput) return;
+    try { window.speechSynthesis.cancel(); } catch(_) {}
+    const cleaned = (text || '').replace(/\*+/g,'').replace(/#{1,3}\s*/g,'').replace(/\[TRIGGER_[^\]]+\]/g,'').trim();
+    if (!cleaned) return;
+    const utter = new SpeechSynthesisUtterance(cleaned.slice(0, 1200));
+    utter.lang = this.selectedLanguage || 'en-US';
+    try { window.speechSynthesis.speak(utter); } catch(_) {}
+  }
+
   /* -------------------- VOICE UI -------------------- */
   toggleEnglishPanel() {
     this.showEnglishPanel = !this.showEnglishPanel;
@@ -895,12 +959,11 @@ class PulseNovaApp {
   }
 
   _showTranslationPanel({ detectedLabel, orig, en }) {
-    const panel = document.getElementById('voice-translation-panel');
-    const d = document.getElementById('voice-lang-detected');
-    const o = document.getElementById('voice-orig');
-    const e = document.getElementById('voice-en');
-    const wrap = document.getElementById('voice-en-wrap');
-
+    const panel = document.getElementById('voice-translation-panel'),
+          d = document.getElementById('voice-lang-detected'),
+          o = document.getElementById('voice-orig'),
+          e = document.getElementById('voice-en'),
+          wrap = document.getElementById('voice-en-wrap');
     if (panel) panel.classList.remove('hidden');
     if (d) d.textContent = detectedLabel || '--';
     if (o) o.textContent = orig || '';
@@ -910,60 +973,45 @@ class PulseNovaApp {
 
   setVoiceState(state) {
     this.voiceState = state;
-    const orb = document.getElementById('voice-orb');
-    const title = document.getElementById('voice-title');
-    const subtitle = document.getElementById('voice-subtitle');
-    const dot = document.getElementById('voice-indicator-dot');
-    const btn = document.getElementById('voice-main-btn');
-    const bars = document.getElementById('voice-bars');
-    const preview = document.getElementById('voice-transcript-preview');
+    const orb = document.getElementById('voice-orb'),
+          title = document.getElementById('voice-title'),
+          subtitle = document.getElementById('voice-subtitle'),
+          dot = document.getElementById('voice-indicator-dot'),
+          btn = document.getElementById('voice-main-btn'),
+          bars = document.getElementById('voice-bars'),
+          preview = document.getElementById('voice-transcript-preview');
 
     if (orb) { orb.className = 'voice-orb'; orb.classList.add(`state-${state}`); }
-    if (bars) {
-      bars.className = 'voice-bars';
-      if (state === 'speaking') bars.classList.add('speaking');
-      if (state === 'thinking') bars.classList.add('thinking');
-    }
+    if (bars) { bars.className = 'voice-bars'; if (state === 'speaking') bars.classList.add('speaking'); if (state === 'thinking') bars.classList.add('thinking'); }
 
     switch (state) {
       case 'idle':
         if (title) title.textContent = 'Voice Mode';
         if (subtitle) subtitle.innerHTML = 'Tap <strong class="text-white">Start Listening</strong> to begin.';
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-600 inline-block transition-colors duration-300';
-        if (btn) btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span id="voice-btn-label">Start Listening</span>';
-        if (btn) btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all text-sm';
+        if (btn) { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span id="voice-btn-label">Start Listening</span>'; btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all text-sm'; }
         if (preview) preview.textContent = '';
         this.voiceLoopActive = false; this.stopBarAnimation(); this.resetBars(); break;
-
       case 'listening':
         if (title) title.textContent = 'Listening…';
         if (subtitle) subtitle.innerHTML = "Speak naturally. I'm listening.";
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-blue-400 inline-block transition-colors duration-300 status-pulse';
-        if (btn) btn.innerHTML = '<i data-lucide="mic-off" class="w-4 h-4"></i><span>Stop</span>';
-        if (btn) btn.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm';
+        if (btn) { btn.innerHTML = '<i data-lucide="mic-off" class="w-4 h-4"></i><span>Stop</span>'; btn.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
         if (preview) preview.textContent = '';
-        this.startBarAnimation('listening');
-        break;
-
+        this.startBarAnimation('listening'); break;
       case 'thinking':
         if (title) title.textContent = 'Thinking…';
         if (subtitle) subtitle.innerHTML = 'PulseNova is processing your message.';
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-purple-400 inline-block';
-        if (btn) btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Processing…</span>';
-        if (btn) btn.className = 'w-full bg-slate-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 opacity-70 cursor-not-allowed text-sm';
-        this.stopBarAnimation();
-        break;
-
+        if (btn) { btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Processing…</span>'; btn.className = 'w-full bg-slate-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 opacity-70 cursor-not-allowed text-sm'; }
+        this.stopBarAnimation(); break;
       case 'speaking':
         if (title) title.textContent = 'Speaking…';
         if (subtitle) subtitle.innerHTML = 'Speak to interrupt.';
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 inline-block status-pulse';
-        if (btn) btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span>Interrupt</span>';
-        if (btn) btn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm';
-        this.startBarAnimation('speaking');
-        break;
+        if (btn) { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span>Interrupt</span>'; btn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
+        this.startBarAnimation('speaking'); break;
     }
-
     this.initLanguageControls();
     if (window.lucide) lucide.createIcons();
   }
@@ -980,8 +1028,7 @@ class PulseNovaApp {
         let h = mode === 'listening'
           ? 6 + Math.abs(Math.sin(frame * 0.12 + i * 0.9)) * 30
           : mode === 'speaking'
-          ? 6 + Math.abs(Math.sin(frame * 0.18 + i * 1.2)) * 34
-          : 6;
+            ? 6 + Math.abs(Math.sin(frame * 0.18 + i * 1.2)) * 34 : 6;
         el.style.height = h + 'px';
       });
       this.voiceBarsAnimId = requestAnimationFrame(animate);
@@ -995,7 +1042,6 @@ class PulseNovaApp {
   initSpeech() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
-
     this.recognition = new SR();
     this.recognition.continuous = false;
     this.recognition.interimResults = true;
@@ -1006,7 +1052,6 @@ class PulseNovaApp {
       this.currentUtterance = null;
       this.setVoiceState('listening');
     };
-
     this.recognition.onresult = (event) => {
       let interim = '', final = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -1017,38 +1062,21 @@ class PulseNovaApp {
       if (p) p.textContent = `"${final || interim}"`;
       if (final.trim()) this._pendingTranscript = final.trim();
     };
-
     this.recognition.onend = () => {
       if (!this.voiceOverlayOpen) return;
       const transcript = this._pendingTranscript || '';
       this._pendingTranscript = '';
-
-      if (transcript && this.voiceLoopActive) {
-        this._voiceSendAndReply(transcript);
-      } else if (this.voiceLoopActive) {
+      if (transcript && this.voiceLoopActive) this._voiceSendAndReply(transcript);
+      else if (this.voiceLoopActive) {
         this.setVoiceState('listening');
-        setTimeout(() => {
-          if (this.voiceState === 'listening' && this.voiceLoopActive) {
-            try { this.recognition.start(); } catch(e){}
-          }
-        }, 300);
-      } else {
-        this.setVoiceState('idle');
-      }
+        setTimeout(() => { if (this.voiceState === 'listening' && this.voiceLoopActive) { try { this.recognition.start(); } catch(e){} } }, 300);
+      } else this.setVoiceState('idle');
     };
-
     this.recognition.onerror = (e) => {
       if (e.error === 'aborted') return;
       if (this.voiceLoopActive && this.voiceOverlayOpen) {
-        setTimeout(() => {
-          if (this.voiceLoopActive && this.voiceOverlayOpen) {
-            this.setVoiceState('listening');
-            try { this.recognition.start(); } catch(_) {}
-          }
-        }, 600);
-      } else {
-        this.setVoiceState('idle');
-      }
+        setTimeout(() => { if (this.voiceLoopActive && this.voiceOverlayOpen) { this.setVoiceState('listening'); try { this.recognition.start(); } catch(_) {} } }, 600);
+      } else this.setVoiceState('idle');
     };
   }
 
@@ -1064,10 +1092,8 @@ class PulseNovaApp {
     document.getElementById('voice-overlay').classList.add('show');
     this.setVoiceState('idle');
     this.initLanguageControls();
-
     const panel = document.getElementById('voice-translation-panel');
     if (panel) panel.classList.add('hidden');
-
     if (window.lucide) lucide.createIcons();
   }
 
@@ -1075,52 +1101,34 @@ class PulseNovaApp {
     this.voiceLoopActive = false;
     this.voiceOverlayOpen = false;
     this._pendingTranscript = '';
-
     if (this.recognition) { try { this.recognition.abort(); } catch(_){} }
     try { window.speechSynthesis.cancel(); } catch (_) {}
     this.currentUtterance = null;
-
     if (this._iosResumeTimer) { clearInterval(this._iosResumeTimer); this._iosResumeTimer = null; }
     this.stopBarAnimation();
     this.resetBars();
-
     document.getElementById('voice-overlay').classList.remove('show');
   }
 
   voicePrimaryAction() {
-    if (this.voiceState === 'idle') {
-      this.voiceLoopActive = true;
-      this._startListening();
-    } else if (this.voiceState === 'listening') {
-      this.voiceLoopActive = false;
-      try { this.recognition.stop(); } catch(_) {}
-      this.setVoiceState('idle');
-    } else if (this.voiceState === 'speaking') {
-      try { window.speechSynthesis.cancel(); } catch (_) {}
-      this.currentUtterance = null;
-      this.setVoiceState('listening');
-      setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 200);
-    }
+    if (this.voiceState === 'idle') { this.voiceLoopActive = true; this._startListening(); }
+    else if (this.voiceState === 'listening') { this.voiceLoopActive = false; try { this.recognition.stop(); } catch(_) {} this.setVoiceState('idle'); }
+    else if (this.voiceState === 'speaking') { try { window.speechSynthesis.cancel(); } catch (_) {} this.setVoiceState('listening'); setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 200); }
   }
 
   _startListening() {
-    if (!this.recognition) {
-      alert("Speech recognition not supported. Try Chrome.");
-      return;
-    }
+    if (!this.recognition) { alert("Speech recognition not supported. Try Chrome."); return; }
     this.recognition.lang = this.selectedLanguage;
     this.setVoiceState('listening');
     this._pendingTranscript = '';
-    try { this.recognition.start(); }
-    catch(e) { setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 500); }
+    try { this.recognition.start(); } catch(e) { setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 500); }
   }
 
-  /* -------------------- UPDATED VOICE FLOW -------------------- */
+  /* -------------------- VOICE FLOW -------------------- */
   async _voiceSendAndReply(text) {
     this.setVoiceState('thinking');
     const p = document.getElementById('voice-transcript-preview');
     if (p) p.textContent = `You said: "${text}"`;
-
     this._showTranslationPanel({ detectedLabel: 'detecting…', orig: text, en: '' });
 
     this.messages.push({ role: 'user', text });
@@ -1130,21 +1138,19 @@ class PulseNovaApp {
     const vt = await this.callVoiceTurn(history, text);
 
     let assistantText = (vt && vt.reply_local) ? vt.reply_local : "I didn't get a response.";
-    
-    // NEW: First Aid Gatekeeper Interception
     let triggerFirstAid = false;
-    if (assistantText.includes('[TRIGGER_FIRST_AID]')) {
-      triggerFirstAid = true;
-      assistantText = assistantText.replace('[TRIGGER_FIRST_AID]', '').trim();
-    }
+    let triggerCareFinder = false;
+
+    if (assistantText.includes('[TRIGGER_FIRST_AID]')) { triggerFirstAid = true; assistantText = assistantText.replace('[TRIGGER_FIRST_AID]', '').trim(); }
+    if (assistantText.includes('[TRIGGER_CARE_FINDER]')) { triggerCareFinder = true; assistantText = assistantText.replace('[TRIGGER_CARE_FINDER]', '').trim(); }
 
     this.messages.push({ role: 'assistant', text: assistantText });
+    if (triggerCareFinder) this.messages.push({ role: 'assistant', type: 'care_finder' });
     this.renderChat();
 
     if (vt) {
-      const detectedLabel = `${vt.source_language_name || vt.source_language || '--'} (${vt.source_language || '--'})`;
       this._showTranslationPanel({
-        detectedLabel,
+        detectedLabel: `${vt.source_language_name || vt.source_language || '--'} (${vt.source_language || '--'})`,
         orig: vt.transcript_original || text,
         en: vt.transcript_en || ''
       });
@@ -1152,65 +1158,35 @@ class PulseNovaApp {
 
     this._voiceSpeak(assistantText);
 
-    // NEW: Trigger visual guide silently in the background
     if (triggerFirstAid) {
       const guideData = await this.callFirstAidGuide(text);
       if (guideData && guideData.steps) {
         this.messages.push({ role: 'assistant', type: 'first_aid', steps: guideData.steps });
         this.renderChat();
-        setTimeout(() => {
-          const container = document.getElementById('chat-messages');
-          if (container) container.scrollTop = container.scrollHeight;
-        }, 100);
+        setTimeout(() => { const c = document.getElementById('chat-messages'); if (c) c.scrollTop = c.scrollHeight; }, 100);
       }
     }
   }
 
   async callVoiceTurn(history, transcript) {
     try {
-      let cleanHistory = (history || [])
-        .map(t => ({ role: t.role, text: (t.text || '').trim() }))
-        .filter(t => t.text);
+      let cleanHistory = (history || []).map(t => ({ role: t.role, text: (t.text || '').trim() })).filter(t => t.text);
       while (cleanHistory.length && cleanHistory[0].role !== 'user') cleanHistory.shift();
-
       const res = await fetch('/api/voice-turn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: transcript || '',
-          detected_lang: this.selectedLanguage,
-          history: cleanHistory,
-          include_english_reply: true,
-          max_tokens: 350,
-          temperature: 0.3
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: transcript || '', detected_lang: this.selectedLanguage, history: cleanHistory, include_english_reply: true, max_tokens: 350, temperature: 0.3 }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
-    } catch (e) {
-      console.error(e);
-      return null;
-    }
+    } catch (e) { console.error(e); return null; }
   }
 
   _voiceSpeak(text) {
     try { window.speechSynthesis.cancel(); } catch (_) {}
     this.setVoiceState('speaking');
-
-    const cleaned = (text || '')
-      .replace(/\*+/g,'')
-      .replace(/#{1,3}\s*/g,'')
-      .trim()
-      .slice(0, 1500);
-
+    const cleaned = (text || '').replace(/\*+/g,'').replace(/#{1,3}\s*/g,'').trim().slice(0, 1500);
     const utter = new SpeechSynthesisUtterance(cleaned);
-    utter.rate = 1.0;
-    utter.pitch = 1.0;
-    utter.volume = 1.0;
+    utter.rate = 1.0; utter.pitch = 1.0; utter.volume = 1.0;
     utter.lang = this.selectedLanguage || 'en-US';
 
     const voices = window.speechSynthesis.getVoices() || [];
@@ -1221,60 +1197,18 @@ class PulseNovaApp {
     const onDone = () => {
       if (this._iosResumeTimer) { clearInterval(this._iosResumeTimer); this._iosResumeTimer = null; }
       if (!this.voiceOverlayOpen) return;
-
-      if (this.voiceLoopActive) {
-        setTimeout(() => {
-          if (this.voiceLoopActive && this.voiceOverlayOpen) this._startListening();
-        }, 500);
-      } else {
-        this.setVoiceState('idle');
-      }
+      if (this.voiceLoopActive) setTimeout(() => { if (this.voiceLoopActive && this.voiceOverlayOpen) this._startListening(); }, 500);
+      else this.setVoiceState('idle');
     };
-
     utter.onend = onDone;
-    utter.onerror = (e) => {
-      if (e.error === 'interrupted' || e.error === 'canceled') return;
-      onDone();
-    };
-
+    utter.onerror = (e) => { if (e.error === 'interrupted' || e.error === 'canceled') return; onDone(); };
     this.currentUtterance = utter;
 
     this._iosResumeTimer = setInterval(() => {
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      } else {
-        clearInterval(this._iosResumeTimer);
-        this._iosResumeTimer = null;
-      }
+      if (window.speechSynthesis.speaking) { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
+      else { clearInterval(this._iosResumeTimer); this._iosResumeTimer = null; }
     }, 10000);
 
-    window.speechSynthesis.speak(utter);
-  }
-
-  /* -------------------- TTS toggle -------------------- */
-  updateSpeechToggleUI() {
-    const btn = document.getElementById('btn-speech-toggle');
-    if (!btn) return;
-    if (this.speakOutput) {
-      btn.classList.add('text-blue-600'); btn.classList.remove('text-slate-400');
-      btn.innerHTML = `<i data-lucide="volume-2" class="w-4 h-4"></i>`;
-    } else {
-      btn.classList.remove('text-blue-600'); btn.classList.add('text-slate-400');
-      btn.innerHTML = `<i data-lucide="volume-x" class="w-4 h-4"></i>`;
-    }
-    if (window.lucide) lucide.createIcons();
-  }
-  toggleSpeechOutput() {
-    this.speakOutput = !this.speakOutput;
-    if (!this.speakOutput) { try { window.speechSynthesis.cancel(); } catch (_) {} }
-    this.updateSpeechToggleUI();
-  }
-  speak(text) {
-    if (!this.speakOutput || !text) return;
-    try { window.speechSynthesis.cancel(); } catch (_) {}
-    const utter = new SpeechSynthesisUtterance((text || '').replace(/\*+/g,'').slice(0, 1200));
-    utter.lang = this.selectedLanguage || 'en-US';
     window.speechSynthesis.speak(utter);
   }
 
@@ -1288,18 +1222,13 @@ class PulseNovaApp {
       const isUser = msg.role === 'user';
       const div = document.createElement('div');
       div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`;
-
       const wrapper = document.createElement('div');
       wrapper.className = 'max-w-[85%] space-y-1.5';
 
       if (msg.image) {
         const imgWrap = document.createElement('div');
         imgWrap.className = `p-1.5 rounded-2xl ${isUser ? 'bg-blue-600 rounded-tr-none' : 'bg-white border'}`;
-        const img = document.createElement('img');
-        img.src = `data:image/png;base64,${msg.image}`;
-        img.className = 'max-h-40 rounded-lg object-cover';
-        img.alt = 'Uploaded image';
-        imgWrap.appendChild(img);
+        imgWrap.innerHTML = `<img src="data:image/png;base64,${msg.image}" class="max-h-40 rounded-lg object-cover" alt="Uploaded image">`;
         wrapper.appendChild(imgWrap);
       }
 
@@ -1310,36 +1239,39 @@ class PulseNovaApp {
         wrapper.appendChild(bubble);
       }
 
-      // NEW: Render Visual First Aid Steps
+      if (msg.type === 'care_finder') {
+        const careContainer = document.createElement('div');
+        careContainer.className = 'w-full mt-2 animate-fade-in';
+        careContainer.innerHTML = `
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center space-y-2 shadow-sm">
+            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center mx-auto shadow-md">
+              <i data-lucide="map-pin" class="w-5 h-5 text-white"></i>
+            </div>
+            <p class="text-sm font-semibold text-blue-900">Find Medical Care</p>
+            <p class="text-xs text-blue-700 pb-1">I can help you locate nearby providers.</p>
+            <button onclick="app.navigate('care'); setTimeout(() => app.locateUser(), 300);" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
+              <i data-lucide="navigation" class="w-4 h-4"></i> Show Care Near Me
+            </button>
+          </div>`;
+        wrapper.appendChild(careContainer);
+      }
+
       if (msg.type === 'first_aid' && msg.steps) {
         const guideContainer = document.createElement('div');
         guideContainer.className = 'w-full mt-2 space-y-3';
-        
         const header = document.createElement('div');
         header.className = 'flex items-center gap-2 mb-3 text-blue-700';
-        header.innerHTML = '<i data-lucide="image" class="w-5 h-5"></i><span class="font-bold text-sm">Visual First Aid Guide</span>';
+        header.innerHTML = '<i data-lucide="sparkles" class="w-5 h-5"></i><span class="font-bold text-sm">Visual First Aid Guide</span>';
         guideContainer.appendChild(header);
 
         msg.steps.forEach((step, index) => {
           const stepCard = document.createElement('div');
           stepCard.className = 'bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col';
-          
           let imgHtml = '';
           if (step.image_base64) {
-            imgHtml = `<div class="bg-slate-100 flex items-center justify-center p-4 border-b border-slate-100">
-                         <img src="data:image/png;base64,${step.image_base64}" alt="Step ${index+1}" class="max-h-48 object-contain rounded-lg shadow-sm">
-                       </div>`;
+            imgHtml = `<div class="bg-slate-100 flex items-center justify-center p-4 border-b border-slate-100"><img src="data:image/png;base64,${step.image_base64}" alt="Step ${index+1}" class="max-h-48 object-contain rounded-lg shadow-sm"></div>`;
           }
-
-          stepCard.innerHTML = `
-            ${imgHtml}
-            <div class="p-3">
-              <div class="flex items-start gap-2">
-                <span class="bg-blue-100 text-blue-700 min-w-[20px] h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5">${index + 1}</span>
-                <p class="text-sm text-slate-700 leading-relaxed flex-1">${this.formatText(step.step_text)}</p>
-              </div>
-            </div>
-          `;
+          stepCard.innerHTML = `${imgHtml}<div class="p-3"><div class="flex items-start gap-2"><span class="bg-blue-100 text-blue-700 min-w-[20px] h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5">${index + 1}</span><p class="text-sm text-slate-700 leading-relaxed flex-1">${this.formatText(step.step_text)}</p></div></div>`;
           guideContainer.appendChild(stepCard);
         });
         wrapper.appendChild(guideContainer);
@@ -1350,30 +1282,23 @@ class PulseNovaApp {
     });
 
     container.scrollTop = container.scrollHeight;
-    
-    // Refresh icons inside dynamically created elements
-    setTimeout(() => {
-      if (window.lucide) window.lucide.createIcons();
-    }, 10);
+    setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 10);
   }
 
   async sendMessage() {
     if (this.chatBusy) return;
-
-    const input = document.getElementById('chat-input');
-    const text = input?.value.trim() || '';
-    const image = this.chatImage;
+    const input = document.getElementById('chat-input'),
+          text = input?.value.trim() || '',
+          image = this.chatImage;
     if (!text && !image) return;
 
     this.chatBusy = true;
     const btn = document.getElementById('btn-send');
     if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
-
     try { window.speechSynthesis.cancel(); } catch (_) {}
 
     this.messages.push({ role: 'user', text, image });
     this.renderChat();
-
     if (input) { input.value = ''; input.style.height = 'auto'; }
     this.clearChatImage();
     this.showLoading();
@@ -1381,33 +1306,27 @@ class PulseNovaApp {
     const history = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
     const rawResponse = await this.callNovaTriage(history, text, image);
 
-    // NEW: First Aid Gatekeeper Interception
-    let cleanResponse = rawResponse;
+    let cleanResponse = rawResponse || "I didn't get a response.";
     let triggerFirstAid = false;
-    
-    if (cleanResponse.includes('[TRIGGER_FIRST_AID]')) {
-      triggerFirstAid = true;
-      cleanResponse = cleanResponse.replace('[TRIGGER_FIRST_AID]', '').trim();
-    }
+    let triggerCareFinder = false;
+
+    if (cleanResponse.includes('[TRIGGER_FIRST_AID]')) { triggerFirstAid = true; cleanResponse = cleanResponse.replace('[TRIGGER_FIRST_AID]', '').trim(); }
+    if (cleanResponse.includes('[TRIGGER_CARE_FINDER]')) { triggerCareFinder = true; cleanResponse = cleanResponse.replace('[TRIGGER_CARE_FINDER]', '').trim(); }
 
     this.removeLoading();
     this.messages.push({ role: 'assistant', text: cleanResponse });
+    if (triggerCareFinder) this.messages.push({ role: 'assistant', type: 'care_finder' });
     this.renderChat();
-    if (this.speakOutput) this.speak(cleanResponse);
-    
-    // NEW: Generate Visual Guide if triggered
+    this.speakText(cleanResponse);
+
     if (triggerFirstAid) {
       this.showLoading("Generating visual guide...");
       const guideData = await this.callFirstAidGuide(text);
       this.removeLoading();
-      
       if (guideData && guideData.steps) {
         this.messages.push({ role: 'assistant', type: 'first_aid', steps: guideData.steps });
         this.renderChat();
-        setTimeout(() => {
-          const container = document.getElementById('chat-messages');
-          if (container) container.scrollTop = container.scrollHeight;
-        }, 100);
+        setTimeout(() => { const c = document.getElementById('chat-messages'); if (c) c.scrollTop = c.scrollHeight; }, 100);
       }
     }
 
@@ -1422,14 +1341,9 @@ class PulseNovaApp {
     const div = document.createElement('div');
     div.id = 'chat-loading';
     div.className = 'flex justify-start';
-    
-    let innerHTML = `<div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-1 items-center h-9"><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div></div>`;
-    
-    if (customText) {
-      innerHTML = `<div class="bg-blue-50 border border-blue-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-2 items-center"><div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div><span class="text-xs text-blue-700 font-semibold">${customText}</span></div>`;
-    }
-    
-    div.innerHTML = innerHTML;
+    div.innerHTML = customText
+      ? `<div class="bg-blue-50 border border-blue-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-2 items-center"><div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div><span class="text-xs text-blue-700 font-semibold">${this.escapeHtml(customText)}</span></div>`
+      : `<div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-1 items-center h-9"><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div></div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
   }
@@ -1443,6 +1357,7 @@ class PulseNovaApp {
       this.chatImage = reader.result.split(',')[1];
       document.getElementById('chat-image-preview').src = reader.result;
       document.getElementById('chat-image-preview-container').classList.remove('hidden');
+      this.toast('Image attached', 'image');
     };
     reader.readAsDataURL(file);
   }
@@ -1458,106 +1373,57 @@ class PulseNovaApp {
 
   resetChat() {
     try { window.speechSynthesis.cancel(); } catch (_) {}
-    const greetingText = this.greetings[this.selectedLanguage] || this.greetings['en-US'];
-    this.messages = [{ role: 'assistant', text: greetingText }];
+    this.messages = [{ role: 'assistant', text: this.greetings[this.selectedLanguage] || this.greetings['en-US'] }];
     this.renderChat();
     this.focusChatInput();
   }
 
   async callNovaTriage(history, userMessage, base64Image) {
     try {
-      let cleanHistory = (history || [])
-        .map(t => ({ role: t.role, text: (t.text || '').trim() }))
-        .filter(t => t.text);
+      let cleanHistory = (history || []).map(t => ({ role: t.role, text: (t.text || '').trim() })).filter(t => t.text);
       while (cleanHistory.length && cleanHistory[0].role !== 'user') cleanHistory.shift();
-
       const res = await fetch('/api/triage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage || '',
-          history: cleanHistory,
-          image_base64: base64Image || null,
-          language: this.selectedLanguage
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage || '', history: cleanHistory, image_base64: base64Image || null, language: this.selectedLanguage }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).text || "I didn't get a response.";
-    } catch (e) {
-      console.error(e);
-      return "I'm having trouble connecting. If this is an emergency, please call 911.";
-    }
+    } catch (e) { console.error(e); return "I'm having trouble connecting. If this is an emergency, please call local emergency services."; }
   }
 
-  // NEW: Call the First Aid endpoint to generate images and steps
   async callFirstAidGuide(description) {
     try {
       const res = await fetch('/api/first-aid-guide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          injury_description: description,
-          language: this.selectedLanguage
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ injury_description: description, language: this.selectedLanguage })
       });
       if (!res.ok) throw new Error("Failed to generate first aid guide");
       return await res.json();
-    } catch (e) {
-      console.error(e);
-      return null;
-    }
+    } catch (e) { console.error(e); return null; }
   }
 
   async callNovaVision(base64Data, prompt) {
     try {
       const res = await fetch('/api/vision', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          image_base64: base64Data, 
-          prompt: prompt,
-          language: this.selectedLanguage 
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_base64: base64Data, prompt: prompt, language: this.selectedLanguage }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).text || "I didn't get a response.";
-    } catch (e) {
-      console.error(e);
-      return "Analysis failed. Please try a clearer image.";
-    }
+    } catch (e) { console.error(e); return "Analysis failed. Please try a clearer image."; }
   }
 
-  /* -------------------- DROPZONES / UPLOADS -------------------- */
-  initDropzones() { this.setupDropzone('xray-dropzone', 'xray-input', (file) => this.handleDroppedFile(file, 'xray')); this.setupDropzone('lab-dropzone', 'lab-input', (file) => this.handleDroppedFile(file, 'lab')); }
+  /* -------------------- DROPZONES -------------------- */
+  initDropzones() {
+    this.setupDropzone('xray-dropzone', 'xray-input', (file) => this.handleDroppedFile(file, 'xray'));
+    this.setupDropzone('lab-dropzone', 'lab-input', (file) => this.handleDroppedFile(file, 'lab'));
+  }
   setupDropzone(dropId, inputId, onFile) {
     const zone = document.getElementById(dropId);
     if (!zone) return;
-
-    ['dragenter','dragover'].forEach(evt => {
-      zone.addEventListener(evt, (e) => {
-        e.preventDefault(); e.stopPropagation();
-        zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active');
-      });
-    });
-
-    ['dragleave','drop'].forEach(evt => {
-      zone.addEventListener(evt, (e) => {
-        e.preventDefault(); e.stopPropagation();
-        zone.classList.remove('drag-active', 'drag-active-purple');
-      });
-    });
-
-    zone.addEventListener('drop', (e) => {
-      const file = e.dataTransfer?.files?.[0];
-      if (file) onFile(file);
-    });
+    ['dragenter','dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); }));
+    ['dragleave','drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-active', 'drag-active-purple'); }));
+    zone.addEventListener('drop', (e) => { const file = e.dataTransfer?.files?.[0]; if (file) onFile(file); });
   }
   handleDroppedFile(file, type) { if (type === 'xray') this.handleXrayUpload({ files: [file] }); else if (type === 'lab') this.handleLabUpload({ files: [file] }); }
   handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
@@ -1567,26 +1433,24 @@ class PulseNovaApp {
     const file = input.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { alert("Please upload an image file."); return; }
-
     const reader = new FileReader();
     reader.onloadend = () => {
       const fullData = reader.result;
       const base64 = fullData.split(',')[1];
-
       if (type === 'xray') {
         this.xrayImage = base64;
         const img = document.getElementById('xray-preview-img');
-        img.src = fullData;
-        img.classList.remove('hidden');
+        img.src = fullData; img.classList.remove('hidden');
         document.getElementById('xray-placeholder').classList.add('hidden');
         document.getElementById('btn-analyze-xray').disabled = false;
+        this.toast('Scan uploaded', 'scan-line');
       } else {
         this.labImage = base64;
         const img = document.getElementById('lab-preview-img');
-        img.src = fullData;
-        img.classList.remove('hidden');
+        img.src = fullData; img.classList.remove('hidden');
         document.getElementById('lab-placeholder').classList.add('hidden');
         document.getElementById('btn-analyze-lab').disabled = false;
+        this.toast('Lab uploaded', 'microscope');
       }
     };
     reader.readAsDataURL(file);
@@ -1597,8 +1461,10 @@ class PulseNovaApp {
     const btn = document.getElementById('btn-analyze-xray');
     btn.disabled = true;
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Analyzing…`;
-
+    const langObj = this.supportedLanguages.find(l => l.code === this.selectedLanguage);
+    const langName = langObj ? langObj.label.split(' (')[0] : 'English';
     const prompt = `Analyze this X-Ray/MRI image carefully.
+CRITICAL: Generate this ENTIRE report, including ALL formatting headers, exclusively in ${langName}. Do not leave headers in English.
 Output format:
 ### 🏥 Summary
 [1-2 sentences]
@@ -1609,10 +1475,8 @@ Output format:
 [Practical next steps]
 ***
 *DISCLAIMER: Not a diagnosis.*`;
-
     const text = await this.callNovaVision(this.xrayImage, prompt);
     document.getElementById('xray-result').innerHTML = this.formatMarkdown(text);
-
     btn.disabled = false;
     btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Analyze Scan`;
     if (window.lucide) lucide.createIcons();
@@ -1623,8 +1487,10 @@ Output format:
     const btn = document.getElementById('btn-analyze-lab');
     btn.disabled = true;
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Translating…`;
-
+    const langObj = this.supportedLanguages.find(l => l.code === this.selectedLanguage);
+    const langName = langObj ? langObj.label.split(' (')[0] : 'English';
     const prompt = `Analyze this medical lab report image.
+CRITICAL: Generate this ENTIRE report, including ALL formatting headers, exclusively in ${langName}. Do not leave headers in English.
 Output format:
 ### 🩸 Summary
 [1-2 sentences]
@@ -1636,10 +1502,8 @@ Output format:
 [Practical next steps]
 ***
 *DISCLAIMER: Not a diagnosis.*`;
-
     const text = await this.callNovaVision(this.labImage, prompt);
     document.getElementById('lab-result').innerHTML = this.formatMarkdown(text);
-
     btn.disabled = false;
     btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Translate Report`;
     if (window.lucide) lucide.createIcons();
@@ -1655,8 +1519,7 @@ Output format:
         : 'vitals-context-btn bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold';
     });
     const labelMap = { resting: 'Resting', after_exercise: 'After exercise', feeling_unwell: 'Feeling unwell' };
-    const contextEl = document.getElementById('sum-context');
-    if (contextEl) contextEl.textContent = labelMap[ctx] || 'Resting';
+    this._setText('sum-context', labelMap[ctx] || 'Resting');
   }
 
   resetVitalsSummary() {
@@ -1664,7 +1527,6 @@ Output format:
     this.vitals.summaryReady = false;
     const card = document.getElementById('vitals-summary-card');
     if (card) card.classList.remove('hidden');
-
     this._setSummaryBadge('Waiting', 'chip-slate');
     this._setText('sum-bpm', '--');
     this._setText('sum-confidence', '--');
@@ -1676,20 +1538,9 @@ Output format:
     this.setVitalsContext(this.vitals.context || 'resting');
   }
 
-  _setText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-  }
-
-  _setSummaryBadge(text, cls) {
-    const badge = document.getElementById('vitals-summary-badge');
-    if (!badge) return;
-    badge.className = `chip ${cls}`;
-    badge.textContent = text;
-  }
-
+  _setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+  _setSummaryBadge(text, cls) { const badge = document.getElementById('vitals-summary-badge'); if (!badge) return; badge.className = `chip ${cls}`; badge.textContent = text; }
   _qualityLabel(q) { if (q >= 60) return 'Good'; if (q >= 25) return 'Fair'; return 'Poor'; }
-
   _confidenceLabel({ signalQuality = 0, bpmHistory = [], stableBpmCount = 0 }) {
     const variance = bpmHistory.length > 1 ? (Math.max(...bpmHistory) - Math.min(...bpmHistory)) : 999;
     if (signalQuality >= 60 && bpmHistory.length >= 5 && variance <= 12 && stableBpmCount >= 1) return 'High';
@@ -1702,51 +1553,18 @@ Output format:
     let status = '', badge = ['chip-slate','Measured'], summary = '', guidance = '', warning = '';
 
     if (ctx === 'after_exercise') {
-      if (bpm < 60) {
-        status = 'Lower than expected after activity';
-        badge = ['chip-amber','Check again'];
-        summary = 'Your pulse estimate is on the lower side for a post-exercise reading.';
-        guidance = 'Sit and retake the reading in 1–2 minutes. Make sure your finger fully covers the camera lens.';
-      } else if (bpm <= 140) {
-        status = 'Expected after activity';
-        badge = ['chip-green','Expected'];
-        summary = 'This pulse reading can be normal shortly after exercise, especially if you just moved around.';
-        guidance = 'Rest for a few minutes, hydrate, and retake the reading to see if it trends down.';
-      } else {
-        status = 'High after activity';
-        badge = ['chip-amber','Elevated'];
-        summary = 'Your pulse is fairly high for a post-exercise reading.';
-        guidance = 'Stop activity, rest, and retake after 3–5 minutes. If it stays high or you feel unwell, seek care.';
-      }
+      if (bpm < 60) { status = 'Lower than expected after activity'; badge = ['chip-amber','Check again']; summary = 'Your pulse estimate is on the lower side for a post-exercise reading.'; guidance = 'Sit and retake the reading in 1–2 minutes. Make sure your finger fully covers the camera lens.'; }
+      else if (bpm <= 140) { status = 'Expected after activity'; badge = ['chip-green','Expected']; summary = 'This pulse reading can be normal shortly after exercise, especially if you just moved around.'; guidance = 'Rest for a few minutes, hydrate, and retake the reading to see if it trends down.'; }
+      else { status = 'High after activity'; badge = ['chip-amber','Elevated']; summary = 'Your pulse is fairly high for a post-exercise reading.'; guidance = 'Stop activity, rest, and retake after 3–5 minutes. If it stays high or you feel unwell, seek care.'; }
     } else {
-      if (bpm < 60) {
-        status = 'Below typical resting range';
-        badge = ['chip-amber','Below Range'];
-        summary = 'A resting pulse under 60 can be normal for some people (especially athletes), but can also happen with fatigue or medications.';
-        guidance = 'If you feel fine, retake once while seated and relaxed. If you feel dizzy, weak, or faint, seek medical care.';
-      } else if (bpm <= 100) {
-        status = 'Within typical resting range';
-        badge = ['chip-green','Normal Range'];
-        summary = 'This reading is within a common resting heart-rate range for many adults.';
-        guidance = 'If symptoms continue, use Triage to describe how you feel and get next-step guidance.';
-      } else if (bpm <= 120) {
-        status = 'Mildly elevated';
-        badge = ['chip-amber','Elevated'];
-        summary = 'Your pulse is mildly elevated. This can happen with stress, anxiety, caffeine, dehydration, fever, or movement.';
-        guidance = 'Rest for 2–3 minutes, drink water, and retake. If you feel unwell, use Triage or seek urgent care.';
-      } else {
-        status = 'High pulse reading';
-        badge = ['chip-red','High'];
-        summary = 'Your pulse reading is high and may need attention, especially if you are resting.';
-        guidance = 'Sit down and retake after 2–3 minutes. If it stays high or you have symptoms (chest pain, trouble breathing, fainting), seek urgent care.';
-      }
+      if (bpm < 60) { status = 'Below typical resting range'; badge = ['chip-amber','Below Range']; summary = 'A resting pulse under 60 can be normal for some people (especially athletes), but can also happen with fatigue or medications.'; guidance = 'If you feel fine, retake once while seated and relaxed. If you feel dizzy, weak, or faint, seek medical care.'; }
+      else if (bpm <= 100) { status = 'Within typical resting range'; badge = ['chip-green','Normal Range']; summary = 'This reading is within a common resting heart-rate range for many adults.'; guidance = 'If symptoms continue, use Triage to describe how you feel and get next-step guidance.'; }
+      else if (bpm <= 120) { status = 'Mildly elevated'; badge = ['chip-amber','Elevated']; summary = 'Your pulse is mildly elevated. This can happen with stress, anxiety, caffeine, dehydration, fever, or movement.'; guidance = 'Rest for 2–3 minutes, drink water, and retake. If you feel unwell, use Triage or seek urgent care.'; }
+      else { status = 'High pulse reading'; badge = ['chip-red','High']; summary = 'Your pulse reading is high and may need attention, especially if you are resting.'; guidance = 'Sit down and retake after 2–3 minutes. If it stays high or you have symptoms (chest pain, trouble breathing, fainting), seek urgent care.'; }
     }
 
-    if (ctx === 'feeling_unwell') {
-      warning = 'Because you selected “Feeling unwell,” take this reading seriously if you also have chest pain, shortness of breath, dizziness, or fainting. Consider urgent evaluation.';
-    } else {
-      warning = 'This is a camera-based estimate and not a diagnosis. For severe symptoms, call emergency services or seek urgent care.';
-    }
+    if (ctx === 'feeling_unwell') warning = 'Because you selected "Feeling unwell," take this reading seriously if you also have chest pain, shortness of breath, dizziness, or fainting. Consider urgent evaluation.';
+    else warning = 'This is a camera-based estimate and not a diagnosis. For severe symptoms, call emergency services or seek urgent care.';
 
     return { status, badge, summary, guidance, warning };
   }
@@ -1782,15 +1600,12 @@ Output format:
 
   useVitalsInTriage() {
     const bpm = this.vitals.lastStableBpm;
-    if (!bpm) { alert("Take a pulse reading first."); return; }
-
+    if (!bpm) { this.toast('Take a pulse reading first.', 'alert-triangle'); return; }
     const q = Math.round(this.vitals.signalQuality || 0);
     const confidence = this._confidenceLabel(this.vitals);
     const contextLabel = { resting: 'resting', after_exercise: 'after exercise', feeling_unwell: 'feeling unwell' }[this.vitals.context] || 'resting';
-
     const draft = `My pulse reading was ${Math.round(bpm)} BPM (${confidence.toLowerCase()} confidence, ${q}% signal quality) while ${contextLabel}. Please help me interpret this with my symptoms.`;
     this.navigate('triage');
-
     const input = document.getElementById('chat-input');
     if (input) {
       input.value = draft;
@@ -1811,7 +1626,6 @@ Output format:
 
     const statusEl = document.getElementById('vitals-status');
     const qualWrap = document.getElementById('signal-quality-wrap');
-
     this.resetVitalsSummary();
 
     try {
@@ -1831,13 +1645,9 @@ Output format:
       if (qualWrap) qualWrap.classList.remove('hidden');
 
       this.vitals.isMonitoring = true;
-      this.vitals.redValues = [];
-      this.vitals.smoothed = [];
-      this.vitals.bpmHistory = [];
-      this.vitals.stableBpmCount = 0;
-      this.vitals.lastPeakTime = 0;
-      this.vitals.signalQuality = 0;
-      this.vitals.lastStableBpm = null;
+      this.vitals.redValues = []; this.vitals.smoothed = []; this.vitals.bpmHistory = [];
+      this.vitals.stableBpmCount = 0; this.vitals.lastPeakTime = 0;
+      this.vitals.signalQuality = 0; this.vitals.lastStableBpm = null;
 
       statusEl.innerText = "Cover lens with fingertip…";
       this._setSummaryBadge('Measuring', 'chip-blue');
@@ -1856,6 +1666,7 @@ Output format:
       }, 20000);
 
       this.processVitalsFrame();
+      this.toast('Pulse reading started', 'activity');
     } catch (err) {
       console.error(err);
       statusEl.innerText = "Camera access denied.";
@@ -1872,10 +1683,7 @@ Output format:
     if (!track) return;
     try {
       const caps = track.getCapabilities ? track.getCapabilities() : {};
-      if (caps.torch) {
-        await track.applyConstraints({ advanced: [{ torch: on }] });
-        this.vitals.torchOn = on;
-      }
+      if (caps.torch) { await track.applyConstraints({ advanced: [{ torch: on }] }); this.vitals.torchOn = on; }
     } catch(e) {}
   }
 
@@ -1883,13 +1691,8 @@ Output format:
     this.vitals.isMonitoring = false;
     if (this.vitals.animId) cancelAnimationFrame(this.vitals.animId);
     if (this.vitals.timeoutId) clearTimeout(this.vitals.timeoutId);
-
     this._setTorch(false).catch(()=>{});
-    if (this.vitals.stream) {
-      this.vitals.stream.getTracks().forEach(t => t.stop());
-      this.vitals.stream = null;
-      this.vitals.torchTrack = null;
-    }
+    if (this.vitals.stream) { this.vitals.stream.getTracks().forEach(t => t.stop()); this.vitals.stream = null; this.vitals.torchTrack = null; }
 
     document.getElementById('btn-stop-vitals').classList.add('hidden');
     document.getElementById('btn-start-vitals').classList.remove('hidden');
@@ -1900,29 +1703,22 @@ Output format:
     statusEl.className = '';
     statusEl.innerText = autoStop ? '✓ Reading captured' : 'Stopped';
 
-    if (autoStop) {
-      this.vitals.summaryReady = true;
-      this.updateVitalsSummary(true);
-    } else if (this.vitals.lastStableBpm) {
-      this.updateVitalsSummary(true);
-    } else {
-      this.updateVitalsSummary(false);
-    }
+    if (autoStop) { this.vitals.summaryReady = true; this.updateVitalsSummary(true); }
+    else if (this.vitals.lastStableBpm) { this.updateVitalsSummary(true); }
+    else { this.updateVitalsSummary(false); }
+
+    this.toast(autoStop ? 'Reading captured' : 'Reading stopped', autoStop ? 'check' : 'square');
   }
 
   processVitalsFrame() {
     if (!this.vitals.isMonitoring) return;
-
     const now = performance.now();
     this.vitals.processCtx.drawImage(this.vitals.video, 0, 0, 20, 20);
     const imageData = this.vitals.processCtx.getImageData(0, 0, 20, 20).data;
 
     let redSum = 0, greenSum = 0;
     const pixels = imageData.length / 4;
-    for (let i = 0; i < imageData.length; i += 4) {
-      redSum += imageData[i];
-      greenSum += imageData[i + 1];
-    }
+    for (let i = 0; i < imageData.length; i += 4) { redSum += imageData[i]; greenSum += imageData[i + 1]; }
 
     const avgRed = redSum / pixels, avgGreen = greenSum / pixels;
     const quality = Math.min(100, Math.max(0, ((avgRed - avgGreen) / 80) * 100));
@@ -1950,29 +1746,19 @@ Output format:
     const bar = document.getElementById('signal-quality-bar');
     const text = document.getElementById('signal-quality-text');
     if (!bar || !text) return;
-
     bar.style.width = quality + '%';
-    if (quality < 25) {
-      bar.className = 'h-full bg-red-400 rounded-full transition-all duration-500';
-      text.textContent = 'Poor — cover lens more';
-    } else if (quality < 60) {
-      bar.className = 'h-full bg-yellow-400 rounded-full transition-all duration-500';
-      text.textContent = 'Fair — hold still';
-    } else {
-      bar.className = 'h-full bg-green-400 rounded-full transition-all duration-500';
-      text.textContent = 'Good signal';
-    }
+    if (quality < 25) { bar.className = 'h-full bg-red-400 rounded-full transition-all duration-500'; text.textContent = 'Poor — cover lens more'; }
+    else if (quality < 60) { bar.className = 'h-full bg-yellow-400 rounded-full transition-all duration-500'; text.textContent = 'Fair — hold still'; }
+    else { bar.className = 'h-full bg-green-400 rounded-full transition-all duration-500'; text.textContent = 'Good signal'; }
   }
 
   detectHeartbeat(now) {
     const data = this.vitals.smoothed;
     if (data.length < 40) return;
-
     const vals = data.slice(-60).map(d => d.val);
     const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
     const std = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
     const threshold = mean + std * 0.6;
-
     const len = data.length;
     const cur = data[len-1].val, prev = data[len-2].val, prev2 = data[len-3].val;
 
@@ -1980,7 +1766,6 @@ Output format:
       const minInterval = 350;
       if (now - this.vitals.lastPeakTime > minInterval) {
         const timeDiff = now - this.vitals.lastPeakTime;
-
         if (this.vitals.lastPeakTime > 0 && timeDiff < 1500) {
           const instantBPM = 60000 / timeDiff;
           if (instantBPM >= 45 && instantBPM <= 180) {
@@ -1990,11 +1775,9 @@ Output format:
             if (this.vitals.bpmHistory.length >= 4) {
               const avgBPM = this.vitals.bpmHistory.reduce((a,b)=>a+b,0)/this.vitals.bpmHistory.length;
               const bpmRange = Math.max(...this.vitals.bpmHistory) - Math.min(...this.vitals.bpmHistory);
-
               document.getElementById('bpm-display').innerText = Math.round(avgBPM);
               const statusEl = document.getElementById('vitals-status');
               if (statusEl) statusEl.innerText = 'Detecting pulse…';
-
               this.vitals.lastStableBpm = Math.round(avgBPM);
               this.updateVitalsSummary(false);
 
@@ -2007,9 +1790,7 @@ Output format:
                   this.updateVitalsSummary(true);
                   setTimeout(() => this.stopVitals(true), 800);
                 }
-              } else {
-                this.vitals.stableBpmCount = 0;
-              }
+              } else { this.vitals.stableBpmCount = 0; }
             }
           }
         }
@@ -2023,21 +1804,14 @@ Output format:
     const data = this.vitals.smoothed.length >= 5 ? this.vitals.smoothed : this.vitals.redValues;
     ctx.clearRect(0,0,w,h);
     if (data.length < 2) return;
-
     let min = Infinity, max = -Infinity;
     for (const d of data) { if (d.val < min) min = d.val; if (d.val > max) max = d.val; }
     const range = max - min || 1;
-
-    ctx.beginPath();
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = 'round';
-
+    ctx.beginPath(); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
     for (let i = 0; i < data.length; i++) {
       const x = (i / (data.length - 1)) * w;
       const y = h - ((data[i].val - min) / range) * (h * 0.8) - (h * 0.1);
-      if (i === 0) ctx.moveTo(x,y);
-      else ctx.lineTo(x,y);
+      if (i === 0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.stroke();
   }
@@ -2050,7 +1824,6 @@ Output format:
     this.googleMapsLoading = new Promise(async (resolve, reject) => {
       try {
         if (window.google?.maps?.places) { this.googleMapsReady = true; this.initGoogleServices(); resolve(); return; }
-
         const cfgRes = await fetch('/config');
         if (!cfgRes.ok) throw new Error(`/config failed (${cfgRes.status})`);
         const cfg = await cfgRes.json();
@@ -2065,12 +1838,10 @@ Output format:
         };
 
         if (document.getElementById('pulse-nova-gmaps')) return;
-
         const script = document.createElement('script');
         script.id = 'pulse-nova-gmaps';
         script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry&callback=__pulseNovaMapsInit&loading=async`;
-        script.async = true;
-        script.defer = true;
+        script.async = true; script.defer = true;
         script.onerror = () => reject(new Error("Failed to load Google Maps SDK"));
         document.head.appendChild(script);
       } catch (err) { reject(err); }
@@ -2082,27 +1853,29 @@ Output format:
   initGoogleServices() {
     if (this.gmap) return;
     const host = document.getElementById('care-map-host');
-    this.gmap = new google.maps.Map(host,{center:{lat:41.7658,lng:-72.6734},zoom:12,disableDefaultUI:true});
+    this.gmap = new google.maps.Map(host, { center: { lat: 41.7658, lng: -72.6734 }, zoom: 12, disableDefaultUI: true });
     this.placesService = new google.maps.places.PlacesService(this.gmap);
     this.geocoder = new google.maps.Geocoder();
   }
 
-  setCareStatus(text,isError=false) {
+  setCareStatus(text, isError = false) {
     const el = document.getElementById('care-status');
-    if(!el) return;
+    if (!el) return;
     el.textContent = text || "";
     el.className = `text-xs flex items-center ${isError ? 'text-red-500' : 'text-slate-400'}`;
   }
 
   initCareSearch() {
     const input = document.getElementById('care-search');
-    if (!input) return;
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.searchCareByText();
-      }
-    });
+    const r = document.getElementById('care-radius');
+    const rv = document.getElementById('care-radius-val');
+    if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.searchCareByText(); } });
+    if (r && rv) { rv.textContent = r.value; r.addEventListener('input', () => rv.textContent = r.value); }
+  }
+
+  _careRadiusMeters() {
+    const mi = Number(document.getElementById('care-radius')?.value || 8);
+    return Math.round(mi * 1609.34);
   }
 
   async searchCareByText() {
@@ -2113,20 +1886,16 @@ Output format:
     try {
       this.setCareStatus("Finding area…");
       await this.ensureGoogleMaps();
-
-      const geo = await new Promise((resolve,reject) => {
-        this.geocoder.geocode({ address: query }, (results,status) => {
+      const geo = await new Promise((resolve, reject) => {
+        this.geocoder.geocode({ address: query }, (results, status) => {
           if (status === "OK" && results?.length) resolve(results[0]);
           else reject(new Error(`Geocoding failed: ${status}`));
         });
       });
-
       const loc = geo.geometry.location;
-      this.care.userLat = loc.lat();
-      this.care.userLon = loc.lng();
+      this.care.userLat = loc.lat(); this.care.userLon = loc.lng();
       this.care.centerLabel = geo.formatted_address || query;
-
-      if (this.gmap) { this.gmap.setCenter({lat:this.care.userLat,lng:this.care.userLon}); this.gmap.setZoom(12); }
+      if (this.gmap) { this.gmap.setCenter({ lat: this.care.userLat, lng: this.care.userLon }); this.gmap.setZoom(12); }
       await this.fetchNearbyProviders(this.care.userLat, this.care.userLon);
     } catch (err) {
       console.error(err);
@@ -2135,35 +1904,31 @@ Output format:
   }
 
   async locateUser() {
-    const btn = document.getElementById('btn-locate'), orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = 'Locating…';
+    const btn = document.getElementById('btn-locate'), orig = btn?.innerHTML;
+    if (btn) { btn.disabled = true; btn.innerHTML = 'Locating…'; }
     this.setCareStatus("Requesting location…");
-
     try {
       await this.ensureGoogleMaps();
-      const pos = await new Promise((resolve,reject) => {
+      const pos = await new Promise((resolve, reject) => {
         if (!navigator.geolocation) { reject(new Error("Geolocation not supported")); return; }
-        navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:10000});
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
       });
-
-      this.care.userLat = pos.coords.latitude;
-      this.care.userLon = pos.coords.longitude;
+      this.care.userLat = pos.coords.latitude; this.care.userLon = pos.coords.longitude;
       this.care.centerLabel = "your location";
-      await this.fetchNearbyProviders(this.care.userLat,this.care.userLon);
+      await this.fetchNearbyProviders(this.care.userLat, this.care.userLon);
     } catch (e) {
       console.error(e);
       this.setCareStatus("Couldn't get location. Try a ZIP/city.", true);
+      this.toast("Enable location permission or search by city/ZIP", 'alert-triangle');
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = orig;
+      if (btn) { btn.disabled = false; btn.innerHTML = orig; }
       if (window.lucide) lucide.createIcons();
     }
   }
 
   nearbySearchPromise(request) {
-    return new Promise((resolve,reject) => {
-      this.placesService.nearbySearch(request, (results,status) => {
+    return new Promise((resolve, reject) => {
+      this.placesService.nearbySearch(request, (results, status) => {
         const ok = google.maps.places.PlacesServiceStatus;
         if (status === ok.OK || status === ok.ZERO_RESULTS) resolve(results || []);
         else reject(new Error(`Places search failed: ${status}`));
@@ -2172,8 +1937,8 @@ Output format:
   }
 
   textSearchPromise(request) {
-    return new Promise((resolve,reject) => {
-      this.placesService.textSearch(request, (results,status) => {
+    return new Promise((resolve, reject) => {
+      this.placesService.textSearch(request, (results, status) => {
         const ok = google.maps.places.PlacesServiceStatus;
         if (status === ok.OK || status === ok.ZERO_RESULTS) resolve(results || []);
         else reject(new Error(`Places text search failed: ${status}`));
@@ -2181,20 +1946,21 @@ Output format:
     });
   }
 
-  getDistanceMiles(lat1,lon1,lat2,lon2) {
+  getDistanceMiles(lat1, lon1, lat2, lon2) {
     if (window.google?.maps?.geometry?.spherical) {
-      const a = new google.maps.LatLng(lat1,lon1), b = new google.maps.LatLng(lat2,lon2);
-      return google.maps.geometry.spherical.computeDistanceBetween(a,b)/1609.344;
+      const a = new google.maps.LatLng(lat1, lon1), b = new google.maps.LatLng(lat2, lon2);
+      return google.maps.geometry.spherical.computeDistanceBetween(a, b) / 1609.344;
     }
-    const R = 6371000, toRad = x => x*Math.PI/180, dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
-    const aa = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    return R*2*Math.atan2(Math.sqrt(aa),Math.sqrt(1-aa))/1609.344;
+    const R = 6371000, toRad = x => x * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    const aa = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa)) / 1609.344;
   }
 
-  normalizePlace(place,inferredType) {
+  normalizePlace(place, inferredType) {
     const loc = place.geometry?.location;
-    const lat = typeof loc?.lat==='function' ? loc.lat() : loc?.lat;
-    const lon = typeof loc?.lng==='function' ? loc.lng() : loc?.lng;
+    const lat = typeof loc?.lat === 'function' ? loc.lat() : loc?.lat;
+    const lon = typeof loc?.lng === 'function' ? loc.lng() : loc?.lng;
     const name = (place.name || '').toLowerCase(), types = place.types || [];
     let type = inferredType || 'Clinic';
 
@@ -2207,19 +1973,13 @@ Output format:
     if (type === 'Hospital' && (name.includes('emergency') || name.includes(' er '))) type = 'ER';
 
     const distance = (this.care.userLat != null && lat != null)
-      ? this.getDistanceMiles(this.care.userLat,this.care.userLon,lat,lon)
-      : null;
+      ? this.getDistanceMiles(this.care.userLat, this.care.userLon, lat, lon) : null;
 
     return {
-      id: place.place_id,
-      name: place.name || "Unknown provider",
-      type,
+      id: place.place_id, name: place.name || "Unknown provider", type,
       address: place.vicinity || place.formatted_address || "Address unavailable",
-      rating: place.rating || null,
-      distance,
-      lat,
-      lon,
-      placeId: place.place_id
+      rating: place.rating || null, openNow: place.opening_hours?.open_now ?? null,
+      distance, lat, lon, placeId: place.place_id
     };
   }
 
@@ -2227,43 +1987,43 @@ Output format:
     const seen = new Map();
     for (const p of list) {
       if (!p?.id) continue;
-      if (!seen.has(p.id)) seen.set(p.id,p);
-      else if (seen.get(p.id).type === 'Hospital' && p.type === 'Urgent Care') seen.set(p.id,p);
+      if (!seen.has(p.id)) seen.set(p.id, p);
+      else if (seen.get(p.id).type === 'Hospital' && p.type === 'Urgent Care') seen.set(p.id, p);
     }
     return Array.from(seen.values());
   }
 
-  async fetchNearbyProviders(lat,lon) {
+  async fetchNearbyProviders(lat, lon) {
     this.setCareStatus("Searching nearby care…");
     this.providers = [];
     this.renderProviders();
 
     try {
-      const center = new google.maps.LatLng(lat,lon);
+      const center = new google.maps.LatLng(lat, lon);
       this.gmap.setCenter(center);
-      const radius = 12000;
+      const radius = this._careRadiusMeters();
 
-      const [hospitals,pharmacies,dentists,urgentCare,primaryCare,pediatrics] = await Promise.all([
-        this.nearbySearchPromise({location:center,radius,type:'hospital'}),
-        this.nearbySearchPromise({location:center,radius,type:'pharmacy'}),
-        this.nearbySearchPromise({location:center,radius,type:'dentist'}),
-        this.textSearchPromise({location:center,radius,query:'urgent care'}),
-        this.textSearchPromise({location:center,radius,query:'primary care clinic'}),
-        this.textSearchPromise({location:center,radius,query:'pediatrician'})
+      const [hospitals, pharmacies, dentists, urgentCare, primaryCare, pediatrics] = await Promise.all([
+        this.nearbySearchPromise({ location: center, radius, type: 'hospital' }),
+        this.nearbySearchPromise({ location: center, radius, type: 'pharmacy' }),
+        this.nearbySearchPromise({ location: center, radius, type: 'dentist' }),
+        this.textSearchPromise({ location: center, radius, query: 'urgent care' }),
+        this.textSearchPromise({ location: center, radius, query: 'primary care clinic' }),
+        this.textSearchPromise({ location: center, radius, query: 'pediatrician' })
       ]);
 
       let merged = [
-        ...hospitals.map(p => this.normalizePlace(p,'Hospital')),
-        ...pharmacies.map(p => this.normalizePlace(p,'Pharmacy')),
-        ...dentists.map(p => this.normalizePlace(p,'Dentist')),
-        ...urgentCare.map(p => this.normalizePlace(p,'Urgent Care')),
-        ...primaryCare.map(p => this.normalizePlace(p,'Primary Care')),
-        ...pediatrics.map(p => this.normalizePlace(p,'Pediatrician'))
+        ...hospitals.map(p => this.normalizePlace(p, 'Hospital')),
+        ...pharmacies.map(p => this.normalizePlace(p, 'Pharmacy')),
+        ...dentists.map(p => this.normalizePlace(p, 'Dentist')),
+        ...urgentCare.map(p => this.normalizePlace(p, 'Urgent Care')),
+        ...primaryCare.map(p => this.normalizePlace(p, 'Primary Care')),
+        ...pediatrics.map(p => this.normalizePlace(p, 'Pediatrician'))
       ];
 
       merged = this.dedupeProviders(merged);
-      merged.sort((a,b) => ((a.distance ?? 999) - (b.distance ?? 999)));
-      this.providers = merged.slice(0,30);
+      merged.sort((a, b) => ((a.distance ?? 999) - (b.distance ?? 999)));
+      this.providers = merged.slice(0, 30);
 
       const filterEl = document.getElementById('care-filter');
       if (filterEl) filterEl.value = 'All';
@@ -2271,10 +2031,10 @@ Output format:
       if (textEl) textEl.value = '';
 
       this.renderProviders();
-
       const visible = this.getFilteredProviders().length;
       const label = this.care.centerLabel ? ` near ${this.care.centerLabel}` : '';
       this.setCareStatus(this.providers.length ? `Found ${this.providers.length} providers${label}. Showing ${visible}.` : `No providers found${label}.`);
+      this.toast(`${this.providers.length} providers found`, 'map-pin');
     } catch (e) {
       console.error(e);
       this.setCareStatus("Care search failed. Check Maps API key.", true);
@@ -2285,14 +2045,8 @@ Output format:
     const typeFilter = document.getElementById('care-filter')?.value || 'All';
     const textFilter = (document.getElementById('provider-filter')?.value || '').trim().toLowerCase();
     let filtered = this.providers.slice();
-
     if (typeFilter !== 'All') filtered = filtered.filter(p => p.type === typeFilter);
-    if (textFilter) {
-      filtered = filtered.filter(p =>
-        (p.name || '').toLowerCase().includes(textFilter) ||
-        (p.address || '').toLowerCase().includes(textFilter)
-      );
-    }
+    if (textFilter) filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(textFilter) || (p.address || '').toLowerCase().includes(textFilter));
     return filtered;
   }
 
@@ -2323,11 +2077,18 @@ Output format:
         ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+' '+p.address)}`;
 
+      const openChip = p.openNow === true
+        ? `<span class="chip chip-green">OPEN</span>`
+        : p.openNow === false
+          ? `<span class="chip chip-red">CLOSED</span>`
+          : '';
+
       list.innerHTML += `
         <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex justify-between items-start gap-3">
           <div class="min-w-0">
             <div class="flex items-center gap-2 mb-1 flex-wrap">
               <span class="text-xs font-bold px-2 py-0.5 rounded-md ${colorClass}">${this.escapeHtml(p.type)}</span>
+              ${openChip}
               ${p.rating ? `<span class="text-xs text-slate-400">★ ${this.escapeHtml(String(p.rating))}</span>` : ''}
             </div>
             <h3 class="font-bold text-slate-800 leading-tight text-sm">${this.escapeHtml(p.name)}</h3>
@@ -2366,35 +2127,16 @@ Output format:
       .replace(/^\- (.*)$/gm,'<li class="ml-4 list-disc mb-1 text-sm">$1</li>')
       .replace(/\*DISCLAIMER:(.*)\*/g,'<p class="text-xs text-slate-400 italic mt-4 border-t pt-2">$1</p>')
       .replace(/\n/g,'<br>');
-
     if (html.includes('<li')) {
-      html = html
-        .replace(/(<li[\s\S]*?<\/li>)/g,'<ul class="my-2">$1</ul>')
-        .replace(/<\/ul><br><ul[^>]*>/g,'');
+      html = html.replace(/(<li[\s\S]*?<\/li>)/g,'<ul class="my-2">$1</ul>').replace(/<\/ul><br><ul[^>]*>/g,'');
     }
     return html;
   }
 }
 
-// bootstrap
+// Bootstrap
 const app = new PulseNovaApp();
 app.navigate('home');
-
-// iOS TTS unlock
-let _iosTTSUnlocked = false;
-function _unlockIOSTTS() {
-  if (_iosTTSUnlocked) return;
-  _iosTTSUnlocked = true;
-  const silent = new SpeechSynthesisUtterance('');
-  silent.volume = 0;
-  window.speechSynthesis.speak(silent);
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.getVoices();
-}
-document.addEventListener('touchstart', _unlockIOSTTS, { once: true, passive: true });
-document.addEventListener('click', _unlockIOSTTS, { once: true });
-if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-
 if (window.lucide) lucide.createIcons();
 </script>
 </body>
