@@ -434,9 +434,17 @@
     <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-6">
       <div class="space-y-4">
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <i data-lucide="scan-line" class="w-5 h-5 text-blue-600"></i> Upload Scan
-          </h2>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="scan-line" class="w-5 h-5 text-blue-600"></i> Upload Scan
+            </h2>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-400 font-medium">Language</label>
+              <select id="xray-lang-select" onchange="app.setXrayLanguage(this.value)"
+                class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+              </select>
+            </div>
+          </div>
           <div onclick="document.getElementById('xray-input').click()" id="xray-dropzone" tabindex="0" role="button"
                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('xray-input').click();}"
                class="border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-slate-50 rounded-xl h-[360px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
@@ -455,7 +463,7 @@
           </button>
         </div>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[520px] lg:h-auto overflow-hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[520px] lg:min-h-[calc(100vh-120px)] overflow-hidden">
         <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
             <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i> Medical Report
@@ -464,7 +472,7 @@
             <i data-lucide="printer" class="w-3 h-3"></i> Print
           </button>
         </div>
-        <div id="xray-result" class="flex-1 p-5 overflow-y-auto text-slate-700 prose prose-blue max-w-none text-sm">
+        <div id="xray-result" class="flex-1 p-5 overflow-y-auto text-slate-700 max-w-none text-sm">
           <div class="flex flex-col items-center justify-center h-full text-slate-300 gap-3 opacity-60">
             <i data-lucide="file-image" class="w-14 h-14"></i>
             <p class="text-center text-sm">Upload and analyze a scan to generate a report.</p>
@@ -479,9 +487,17 @@
     <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-6">
       <div class="space-y-4">
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <i data-lucide="microscope" class="w-5 h-5 text-purple-600"></i> Upload Lab Results
-          </h2>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="microscope" class="w-5 h-5 text-purple-600"></i> Upload Lab Results
+            </h2>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-400 font-medium">Language</label>
+              <select id="lab-lang-select" onchange="app.setLabLanguage(this.value)"
+                class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400">
+              </select>
+            </div>
+          </div>
           <div onclick="document.getElementById('lab-input').click()" id="lab-dropzone" tabindex="0" role="button"
                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('lab-input').click();}"
                class="border-2 border-dashed border-slate-200 hover:border-purple-400 hover:bg-slate-50 rounded-xl h-[360px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden">
@@ -500,7 +516,7 @@
           </button>
         </div>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[520px] lg:h-auto overflow-hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[520px] lg:min-h-[calc(100vh-120px)] overflow-hidden">
         <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
             <i data-lucide="file-text" class="w-4 h-4 text-purple-600"></i> Interpretation
@@ -509,7 +525,7 @@
             <i data-lucide="printer" class="w-3 h-3"></i> Print
           </button>
         </div>
-        <div id="lab-result" class="flex-1 p-5 overflow-y-auto text-slate-700 prose prose-purple max-w-none text-sm">
+        <div id="lab-result" class="flex-1 p-5 overflow-y-auto text-slate-700 max-w-none text-sm">
           <div class="flex flex-col items-center justify-center h-full text-slate-300 gap-3 opacity-60">
             <i data-lucide="file-text" class="w-14 h-14"></i>
             <p class="text-center text-sm">Upload a lab document to get a plain-English explanation.</p>
@@ -739,6 +755,8 @@ class PulseNovaApp {
 
     // Persist user prefs
     this.selectedLanguage = localStorage.getItem('pulseNova_lang') || 'en-US';
+    this.xrayLanguage     = localStorage.getItem('pulseNova_xray_lang') || this.selectedLanguage;
+    this.labLanguage      = localStorage.getItem('pulseNova_lab_lang')  || this.selectedLanguage;
     this.speakOutput = (localStorage.getItem('pulseNova_speak') === '1') || false;
 
     this.messages = [{ role: 'assistant', text: this.greetings[this.selectedLanguage] || this.greetings['en-US'] }];
@@ -850,6 +868,7 @@ class PulseNovaApp {
 
     if (pageId !== 'triage') { this.closeVoiceMode(); try { window.speechSynthesis.cancel(); } catch(_) {} }
     if (pageId === 'triage') setTimeout(() => { const i = document.getElementById('chat-input'); if (i) i.focus(); }, 100);
+    if (pageId === 'xray' || pageId === 'labs') setTimeout(() => this._initVisionLangSelects(), 50);
   }
 
   toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
@@ -1406,7 +1425,7 @@ class PulseNovaApp {
     try {
       const res = await fetch('/api/vision', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: base64Data, prompt: prompt, language: this.selectedLanguage }),
+        body: JSON.stringify({ image_base64: base64Data, prompt: prompt, language: this.selectedLanguage, max_tokens: 2000 }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).text || "I didn't get a response.";
@@ -1456,25 +1475,73 @@ class PulseNovaApp {
     reader.readAsDataURL(file);
   }
 
+  setXrayLanguage(code) {
+    this.xrayLanguage = code;
+    localStorage.setItem('pulseNova_xray_lang', code);
+  }
+
+  setLabLanguage(code) {
+    this.labLanguage = code;
+    localStorage.setItem('pulseNova_lab_lang', code);
+  }
+
+  _initVisionLangSelects() {
+    const opts = this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('');
+    const xsel = document.getElementById('xray-lang-select');
+    const lsel = document.getElementById('lab-lang-select');
+    if (xsel && !xsel.children.length) {
+      xsel.innerHTML = opts;
+      xsel.value = this.xrayLanguage || this.selectedLanguage;
+    }
+    if (lsel && !lsel.children.length) {
+      lsel.innerHTML = opts;
+      lsel.value = this.labLanguage || this.selectedLanguage;
+    }
+  }
+
   async analyzeXray() {
     if (!this.xrayImage) return;
+    this._initVisionLangSelects();
     const btn = document.getElementById('btn-analyze-xray');
     btn.disabled = true;
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Analyzing…`;
-    const langObj = this.supportedLanguages.find(l => l.code === this.selectedLanguage);
+
+    const langCode = this.xrayLanguage || this.selectedLanguage;
+    const langObj  = this.supportedLanguages.find(l => l.code === langCode);
     const langName = langObj ? langObj.label.split(' (')[0] : 'English';
-    const prompt = `Analyze this X-Ray/MRI image carefully.
-CRITICAL: Generate this ENTIRE report, including ALL formatting headers, exclusively in ${langName}. Do not leave headers in English.
-Output format:
-### 🏥 Summary
-[1-2 sentences]
-### 🦴 Findings
-- **Anatomy:** ...
-- **Observations:** ...
-### 🩺 Next Steps
-[Practical next steps]
-***
-*DISCLAIMER: Not a diagnosis.*`;
+
+    const prompt = `You are an expert radiologist assistant. Analyze this X-Ray, MRI, or CT scan image in thorough detail.
+CRITICAL: Write this ENTIRE report — every heading, label, and sentence — exclusively in ${langName}. Do NOT use English for any part.
+
+Use exactly this structure:
+
+### 🏥 Overview
+Describe the scan type (X-Ray / MRI / CT), the body region shown, and the patient position (e.g. AP view, lateral view). State clearly which bone(s) or structure(s) are visible.
+
+### 🦴 Bone & Structural Findings
+- **Bone(s) Identified:** Name every bone or structure visible in the image.
+- **Fracture / Injury:** State whether a fracture or abnormality is present. If yes, specify: location on the bone (e.g. mid-shaft, distal end, neck), fracture type if visible (e.g. transverse, oblique, comminuted, hairline), and which side of the body (left / right / not determinable).
+- **Alignment:** Is the bone aligned normally or displaced/angulated? Describe the degree if visible.
+- **Soft Tissue:** Note any visible swelling, calcification, or soft-tissue abnormality.
+- **Bone Density & Quality:** Comment on bone density — normal, reduced (possible osteoporosis), or irregular.
+- **Surrounding Structures:** Note any joint involvement, adjacent bone changes, or hardware (screws, plates) if present.
+
+### ⚠️ Key Concerns
+List any urgent or notable findings in plain language. If this appears to be an emergency finding, state that clearly.
+
+### 🩺 Next Steps & Which Doctor to See
+- **Recommended Specialist:** Name the exact type of doctor to consult (e.g. Orthopedic Surgeon, Rheumatologist, Neurosurgeon, Physiotherapist) and explain why.
+- **Urgency:** State whether this needs emergency care (go to ER now), urgent care within 24–48 hours, or a scheduled outpatient appointment.
+- **Likely Treatment Options:** Briefly describe what treatment may involve (e.g. casting, surgery, physical therapy, observation).
+- **What to Tell the Doctor:** List 2–3 specific things the patient should mention at the appointment (e.g. when the injury happened, level of pain, any numbness).
+- **What to Avoid:** Note any activities or movements the patient should avoid until evaluated.
+
+### 📋 Questions to Ask Your Doctor
+List 3–4 questions the patient should ask their specialist to better understand their condition and treatment.
+
+---
+*⚕️ IMPORTANT: This is an AI-assisted observation only and is NOT a medical diagnosis. Always consult a qualified medical professional for evaluation and treatment.*`;
+
     const text = await this.callNovaVision(this.xrayImage, prompt);
     document.getElementById('xray-result').innerHTML = this.formatMarkdown(text);
     btn.disabled = false;
@@ -1484,24 +1551,44 @@ Output format:
 
   async analyzeLabs() {
     if (!this.labImage) return;
+    this._initVisionLangSelects();
     const btn = document.getElementById('btn-analyze-lab');
     btn.disabled = true;
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Translating…`;
-    const langObj = this.supportedLanguages.find(l => l.code === this.selectedLanguage);
+
+    const langCode = this.labLanguage || this.selectedLanguage;
+    const langObj  = this.supportedLanguages.find(l => l.code === langCode);
     const langName = langObj ? langObj.label.split(' (')[0] : 'English';
-    const prompt = `Analyze this medical lab report image.
-CRITICAL: Generate this ENTIRE report, including ALL formatting headers, exclusively in ${langName}. Do not leave headers in English.
-Output format:
-### 🩸 Summary
-[1-2 sentences]
-### 🔍 Key Findings
-- **[Test Name]:** [Value] — [Plain English meaning]
-### ⚠️ Flags
-[Anything out of range]
-### 📋 Next Steps
-[Practical next steps]
-***
-*DISCLAIMER: Not a diagnosis.*`;
+
+    const prompt = `You are an expert medical lab analyst. Carefully read this lab report image and produce a comprehensive patient-friendly interpretation.
+CRITICAL: Write this ENTIRE report — every heading, label, and sentence — exclusively in ${langName}. Do NOT use English for any part.
+
+Use exactly this structure:
+
+### 🩸 Overview
+Identify the type of lab panel(s) present (e.g. Complete Blood Count, Metabolic Panel, Lipid Panel, Thyroid Panel, Liver Function Test, Urine Analysis, HbA1c, etc.). State the date of the report if visible.
+
+### 🔬 Detailed Test Results
+For EVERY test result visible in the report, create a row with:
+- **[Test Name] ([Abbreviation]):** Reported value and unit — Normal range — Status (Normal / High / Low / Critical) — Plain-English meaning in 1–2 sentences.
+
+### ⚠️ Out-of-Range Flags
+List every result that is outside the normal range. For each:
+- **[Test Name]:** Value found vs. normal range — What this could mean in simple language — How serious it may be (Minor / Moderate / Requires prompt attention).
+
+### 🩺 Next Steps & Which Doctor to See
+- **Recommended Specialist:** Based on the flagged results, name the specific type of doctor to consult (e.g. Endocrinologist for blood sugar, Cardiologist for lipids, Hematologist for blood cell counts, Nephrologist for kidney markers, Hepatologist for liver enzymes, General Practitioner for a follow-up).
+- **Urgency:** State whether results require emergency care, a prompt appointment within a week, or a routine follow-up.
+- **Lifestyle Adjustments:** List any immediate diet, activity, or lifestyle changes that are generally recommended for the flagged markers (e.g. reduce sodium, increase hydration, limit alcohol).
+- **Possible Follow-up Tests:** Mention any additional tests a doctor may order to investigate the flagged results further.
+- **What to Tell the Doctor:** List 3 specific things to mention — current medications, symptoms, or relevant history that relates to the flagged values.
+
+### 📋 Questions to Ask Your Doctor
+List 4 questions the patient should ask their doctor about these results to fully understand the implications and next steps.
+
+---
+*⚕️ IMPORTANT: This is an AI-assisted interpretation only and is NOT a medical diagnosis. Lab results must always be reviewed by a qualified healthcare provider in the context of your full medical history.*`;
+
     const text = await this.callNovaVision(this.labImage, prompt);
     document.getElementById('lab-result').innerHTML = this.formatMarkdown(text);
     btn.disabled = false;
@@ -2122,13 +2209,18 @@ Output format:
   formatMarkdown(text) {
     const safe = this.escapeHtml(text || '');
     let html = safe
-      .replace(/^### (.*)$/gm,'<h3 class="text-base font-bold text-blue-800 mt-4 mb-1.5">$1</h3>')
-      .replace(/\*\*(.*?)\*\*/g,'<span class="font-semibold text-slate-900">$1</span>')
-      .replace(/^\- (.*)$/gm,'<li class="ml-4 list-disc mb-1 text-sm">$1</li>')
-      .replace(/\*DISCLAIMER:(.*)\*/g,'<p class="text-xs text-slate-400 italic mt-4 border-t pt-2">$1</p>')
-      .replace(/\n/g,'<br>');
+      .replace(/^#### (.*)$/gm, '<h4 class="text-sm font-bold text-slate-700 mt-3 mb-1">$1</h4>')
+      .replace(/^### (.*)$/gm,  '<h3 class="text-base font-bold text-blue-800 mt-5 mb-2 pb-1 border-b border-blue-100">$1</h3>')
+      .replace(/^## (.*)$/gm,   '<h2 class="text-lg font-bold text-slate-900 mt-5 mb-2">$1</h2>')
+      .replace(/\*\*(.*?)\*\*/g, '<span class="font-semibold text-slate-900">$1</span>')
+      .replace(/^\-{3,}$/gm,    '<hr class="my-4 border-slate-200">')
+      .replace(/^\*⚕️(.*)\*$/gm, '<p class="text-xs text-slate-400 italic mt-4 pt-3 border-t border-slate-100">⚕️$1</p>')
+      .replace(/^\*DISCLAIMER:(.*)\*$/gm, '<p class="text-xs text-slate-400 italic mt-4 border-t pt-2">$1</p>')
+      .replace(/^\- (.*)$/gm,   '<li class="ml-4 list-disc mb-1.5 text-sm leading-relaxed">$1</li>')
+      .replace(/\n/g, '<br>');
     if (html.includes('<li')) {
-      html = html.replace(/(<li[\s\S]*?<\/li>)/g,'<ul class="my-2">$1</ul>').replace(/<\/ul><br><ul[^>]*>/g,'');
+      html = html.replace(/(<li[\s\S]*?<\/li>)/g, '<ul class="my-2 space-y-0.5">$1</ul>')
+                 .replace(/<\/ul><br><ul[^>]*>/g, '');
     }
     return html;
   }
