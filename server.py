@@ -359,8 +359,6 @@ def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
         "   emergency room, urgent care, or pharmacy near them, append the EXACT string "
         "   '[TRIGGER_CARE_FINDER]' as the very last characters of your response so the UI can redirect them.\n\n"
 
-        "DISCLAIMER RULE:\n"
-        "Only add 'Not a diagnosis' at the end of a response when actively discussing symptoms.\n"
     )
 
 
