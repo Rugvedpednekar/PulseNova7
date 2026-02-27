@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PulseNova Intro (Icon + Gradient Text Right)</title>
+
+  <!-- Sora font (matches your site) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --blue:#2d6cff;         /* icon blue */
+      --glow: rgba(45,108,255,.22);
+      --bg:#ffffff;
+
+      /* Tailwind-like gradient: from-blue-700 to-cyan-500 */
+      --grad-from:#1d4ed8;
+      --grad-to:#06b6d4;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      font-family: 'Sora', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .wrap{height:100%;display:grid;place-items:center;}
+    .stage{
+      width:min(960px, 94vw);
+      aspect-ratio:16/9;
+      position:relative;
+      overflow:hidden;
+      background:var(--bg);
+    }
+
+    /* ---------------- Final lockup layout ---------------- */
+    .lockup{
+      position:absolute;
+      left:10%;
+      top:42%;
+      transform: translateY(-50%);
+      display:flex;
+      align-items:center;
+      gap:18px;
+
+      opacity:0;
+      animation: lockupIn .7s ease-out forwards;
+      animation-delay: 2.4s; /* reveal after the icon ECG runs */
+    }
+
+    .icon{
+      width:84px;
+      height:84px;
+      border-radius:22px;
+      background: var(--blue);
+      display:grid;
+      place-items:center;
+      box-shadow: 0 14px 38px rgba(0,0,0,.07);
+      filter: drop-shadow(0 0 14px rgba(45,108,255,.12));
+      position:relative;
+      overflow:hidden;
+    }
+    .icon::after{
+      content:"";
+      position:absolute;
+      inset:-35%;
+      background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.38), rgba(255,255,255,0) 55%);
+      opacity:.6;
+      transform: rotate(10deg);
+      pointer-events:none;
+    }
+    .icon svg{width:64px;height:64px;}
+
+    /* Wave inside icon (animate slightly) */
+    .wave{
+      fill:none;
+      stroke:#fff;
+      stroke-width:4;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      stroke-dasharray: 260;
+      stroke-dashoffset: 0;
+      animation: waveMove 1.0s ease-in-out 2.55s 2;
+    }
+
+    /* Wordmark on the RIGHT — updated to match your Tailwind gradient text */
+    .wordmark{
+      /* Tailwind: text-lg + font-bold + tracking-tight */
+      font-size:48px;
+      line-height:1;
+      font-weight:700;
+      letter-spacing:-0.025em;
+
+      /* Tailwind: bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent */
+      background-image: linear-gradient(to right, var(--grad-from), var(--grad-to));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+
+      opacity:0;
+      transform: translateX(12px);
+      animation: wordIn .55s ease-out forwards, glowSettle 1.0s ease-out forwards;
+      animation-delay: 2.65s, 2.65s;
+
+      /* subtle glow like your UI */
+      filter: drop-shadow(0 0 18px rgba(59,130,246,.18));
+      white-space:nowrap;
+      user-select:none;
+      cursor:default;
+    }
+
+    /* ---------------- Intro ECG line across screen (optional) ---------------- */
+    .ecgIntro{
+      position:absolute;
+      inset:0;
+      opacity:1;
+      animation: fadeOut .6s ease-out forwards;
+      animation-delay: 2.2s;
+    }
+    .ecgIntro svg{position:absolute; inset:0;}
+
+    .ecgPath{
+      fill:none;
+      stroke: #1d4ed8; /* match gradient start (from-blue-700) */
+      stroke-width: 9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 2200;
+      stroke-dashoffset: 2200;
+      filter: drop-shadow(0 0 12px var(--glow));
+      animation: draw 1.35s ease-out forwards, shimmer .9s ease-in-out 1.35s 1;
+    }
+
+    .spark{
+      position:absolute;
+      top:50%;
+      left:-22%;
+      width:18%;
+      height:8px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg,
+        rgba(29,78,216,0) 0%,
+        rgba(6,182,212,.65) 55%,
+        rgba(29,78,216,0) 100%);
+      filter: blur(1px);
+      opacity:0;
+      animation: spark 1.0s ease-in-out 0.9s 2;
+    }
+
+    .scan{
+      position:absolute;
+      top:12%;
+      bottom:12%;
+      left:-30%;
+      width:16%;
+      opacity:0;
+      background: linear-gradient(90deg,
+        rgba(29,78,216,0) 0%,
+        rgba(29,78,216,.12) 35%,
+        rgba(6,182,212,.40) 55%,
+        rgba(29,78,216,.10) 75%,
+        rgba(29,78,216,0) 100%);
+      filter: blur(1px);
+      animation: scan 0.95s ease-in-out forwards;
+      animation-delay: 1.55s;
+    }
+
+    /* ---------------- Keyframes ---------------- */
+    @keyframes lockupIn{
+      from{opacity:0; transform: translateY(-50%) translateY(10px) scale(.985);}
+      to{opacity:1; transform: translateY(-50%) translateY(0) scale(1);}
+    }
+    @keyframes wordIn{ to{opacity:1; transform: translateX(0);} }
+    @keyframes glowSettle{
+      0%{ filter: drop-shadow(0 0 26px rgba(29,78,216,.24)); }
+      100%{ filter: drop-shadow(0 0 12px rgba(6,182,212,.14)); }
+    }
+    @keyframes waveMove{
+      0%{ stroke-dashoffset: 0; }
+      50%{ stroke-dashoffset: -60; }
+      100%{ stroke-dashoffset: -120; }
+    }
+    @keyframes draw{ to{ stroke-dashoffset:0; } }
+    @keyframes shimmer{
+      0%,100%{ filter: drop-shadow(0 0 10px var(--glow)); }
+      50%{ filter: drop-shadow(0 0 18px rgba(6,182,212,.30)); }
+    }
+    @keyframes spark{
+      0%{ left:-22%; opacity:0; }
+      15%{ opacity:1; }
+      50%{ left:45%; opacity:1; }
+      85%{ opacity:1; }
+      100%{ left:122%; opacity:0; }
+    }
+    @keyframes scan{
+      0%{ left:-30%; opacity:0; }
+      10%{ opacity:1; }
+      50%{ left:45%; opacity:1; }
+      90%{ opacity:1; }
+      100%{ left:120%; opacity:0; }
+    }
+    @keyframes fadeOut{ to{ opacity:0; } }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <!-- Optional: ECG line across screen first -->
+      <div class="ecgIntro" aria-hidden="true">
+        <div class="spark"></div>
+        <svg viewBox="0 0 1920 1080" preserveAspectRatio="none">
+          <path class="ecgPath"
+            d="M 150 540
+               L 520 540
+               L 640 540
+               L 710 430
+               L 780 660
+               L 845 540
+               L 930 540
+               L 1770 540" />
+        </svg>
+      </div>
+
+      <div class="scan" aria-hidden="true"></div>
+
+      <!-- FINAL: icon on the LEFT, PulseNova on the RIGHT -->
+      <div class="lockup" aria-label="PulseNova logo lockup">
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <path class="wave"
+              d="M 8 34
+                 L 22 34
+                 L 26 34
+                 L 30 12
+                 L 35 56
+                 L 40 34
+                 L 46 34
+                 L 56 34" />
+          </svg>
+        </div>
+
+        <!-- Updated wordmark (gradient text like your Tailwind styles) -->
+        <div class="wordmark">PulseNova</div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
