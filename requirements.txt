@@ -4,3 +4,5 @@ boto3
 python-dotenv
 PyJWT
 cryptography
+sqlalchemy
+psycopg2-binary
