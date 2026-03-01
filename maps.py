@@ -1,7 +1,7 @@
 import requests
 import json
 
-API_KEY = "AIzaSyA5YB0JWPxkgVQiLHHQAYbUx4ELb2H-V2M"
+API_KEY = 
 
 URL = "https://places.googleapis.com/v1/places:searchNearby"
 
@@ -53,3 +53,4 @@ else:
         print(f"   {addr}")
         print(f"   rating: {rating} ({count})")
         print(f"   location: {loc}\n")
+
