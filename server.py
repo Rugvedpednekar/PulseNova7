@@ -442,7 +442,7 @@ _jwks_cache: Dict[str, Any] = {"keys": None, "fetched_at": 0}
 
 def _cognito_issuer() -> str:
     if COGNITO_ISSUER:
-        return COGNITO_ISSUER.rstrip("/")
+        return os.getenv("COGNITO_ISSUER").rstrip('/')
     if COGNITO_USER_POOL_ID:
         return f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}"
     return ""
@@ -454,7 +454,7 @@ def _fetch_jwks() -> Dict[str, Any]:
     now = int(time.time())
     if _jwks_cache["keys"] and (now - _jwks_cache["fetched_at"] < 3600):
         return _jwks_cache["keys"]
-    jwks_url = issuer + "/.well-known/jwks.json"
+    jwks_url = f"{issuer.rstrip('/')}/.well-known/jwks.json"
     try:
         with urlopen(jwks_url, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -489,7 +489,7 @@ def _verify_cognito_jwt(token: str, audience: Optional[str] = None) -> Dict[str,
         raise HTTPException(status_code=401, detail="Signing key not found.")
 
     public_key = RSAAlgorithm.from_jwk(json.dumps(key))
-    issuer = _cognito_issuer()
+    issuer = os.getenv("COGNITO_ISSUER")
     aud = audience or COGNITO_CLIENT_ID
 
     try:
