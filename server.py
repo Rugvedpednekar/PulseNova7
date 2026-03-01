@@ -19,7 +19,8 @@ from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from sqlalchemy.orm import Session, create_engine
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 from database import init_db, get_db, User, TriageSession, VitalReading, MedicalDocument
 from .models import Base
 
