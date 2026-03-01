@@ -739,11 +739,11 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
     if not req.message and not req.image_base64:
         raise HTTPException(status_code=400, detail="Provide a message or an image.")
 
-    # 2. Get User ID from session (so history is tied to the right person)
+    # 2. Get User ID from session
     session_id = req_fastapi.cookies.get(SESSION_COOKIE)
     s = _sessions.get(session_id)
-    # Fallback to 'anonymous' if not logged in, but your app should require login
-    user_id = s["profile"].get("sub") if s else "anonymous"
+    # Match the 'sub' field from Cognito
+    u_sub = s["profile"].get("sub") if s else "anonymous"
 
     # 3. Prepare Bedrock request
     system_list = [{"text": _triage_system_prompt(req.language)}]
@@ -770,17 +770,19 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
     # 4. Get AI Response
     ai_text = _nova_invoke(MODEL_ID_TEXT, request_body)
 
-    # 5. SAVE TO POSTGRESQL [CRITICAL ADDITION]
+    # 5. SAVE TO POSTGRESQL
     try:
-        # Convert history objects to dictionaries for JSON storage
-        history_list = [h.dict() for h in req.history]
-        # Add the current turn
+        # Pydantic v2 uses model_dump() instead of dict()
+        history_list = [h.model_dump() if hasattr(h, 'model_dump') else h.dict() for h in req.history]
+        
+        # Add the current turn to the list
         history_list.append({"role": "user", "text": req.message or "[Image Uploaded]"})
         history_list.append({"role": "assistant", "text": ai_text})
 
+        # CORRECTED: Changed 'user_id' to 'user_sub' to match database.py
         new_session = TriageSession(
             id=str(uuid.uuid4()),
-            user_id=user_id,
+            user_sub=u_sub,
             title=(req.message[:47] + "...") if req.message else "Image Analysis",
             messages=history_list
         )
@@ -788,7 +790,6 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
         db.commit()
     except Exception as e:
         logger.error(f"Failed to save triage history: {e}")
-        # We don't raise an error here because the AI response still worked
 
     return TextResponse(text=ai_text)
 
@@ -868,15 +869,16 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
         user_id = s["profile"].get("sub") if s else "anonymous"
 
         # Create record in MriRecord table
-        new_record = MriRecord(
-            user_id=user_id,
-            file_name="Analysis_" + str(int(time.time())),
-            result=ai_analysis
+        new_doc = MedicalDocument(
+            user_sub=u_sub,
+            doc_type="xray" if req.image_base64 else "lab",
+            image_b64=req.image_base64 or req.pdf_base64 or "",
+            report_html=ai_analysis
         )
-        db.add(new_record)
+        db.add(new_doc)
         db.commit()
     except Exception as e:
-        logger.error(f"Failed to save vision/MRI record: {e}")
+        logger.error(f"Failed to save document: {e}")
 
     return TextResponse(text=ai_analysis)
 
