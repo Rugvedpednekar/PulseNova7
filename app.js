@@ -791,7 +791,57 @@ class PulseNovaApp {
     reader.readAsDataURL(file);
   }
 
-  /* -------------------- SESSION HISTORY -------------------- */
+  
+    
+   
+  /* -------------------- DATABASE SYNC -------------------- */
+  async loadUserHistory() {
+    if (!this.isAuthenticated) return;
+
+    try {
+      const response = await fetch('/api/history');
+      if (!response.ok) return; 
+
+      const data = await response.json();
+
+      // 1. Sync Triage Chats from PostgreSQL
+      if (data.triage && data.triage.length > 0) {
+        // Map database records into your local triageHistory format
+        this.triageHistory = data.triage.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(chat => ({
+          id: chat.id,
+          title: chat.title,
+          messages: chat.messages,
+          time: new Date(chat.created_at).toLocaleDateString()
+        }));
+        // Update the UI sidebar
+        this._renderTriageHistory();
+      }
+
+      // 2. Sync Medical Documents from PostgreSQL
+      if (data.documents && data.documents.length > 0) {
+        this.xrayHistory = [];
+        this.labHistory = [];
+        
+        data.documents.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).forEach(doc => {
+          const entry = {
+            id: doc.id,
+            thumb: doc.image_b64,
+            reportHtml: doc.report_html,
+            time: new Date(doc.created_at).toLocaleDateString()
+          };
+          if (doc.doc_type === 'xray') this.xrayHistory.push(entry);
+          if (doc.doc_type === 'lab') this.labHistory.push(entry);
+        });
+
+        // Update the UI history panels
+        this._renderXrayHistory();
+        this._renderLabHistory();
+      }
+    } catch (error) {
+      console.error("Failed to fetch history from database:", error);
+    }
+  }
+    /* -------------------- SESSION HISTORY -------------------- */
   startNewTriageChat() {
     this._saveCurrentTriageChat(); // Save current before wiping
     this.currentChatId = Date.now(); // Generate new ID
@@ -1569,5 +1619,14 @@ List 4 questions the patient should ask about these results.
 const app = new PulseNovaApp();
 window.app = app;
 app.navigate('home');
-pulseNovaInitAuthNav();
+
+// We await the auth check, and if successful, we load the database history
+pulseNovaInitAuthNav().then(() => {
+  if (app.isAuthenticated) {
+    app.loadUserHistory();
+  }
+});
+
+if (window.lucide) lucide.createIcons();
+
 if (window.lucide) lucide.createIcons();
