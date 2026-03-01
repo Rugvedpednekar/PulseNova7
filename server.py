@@ -931,6 +931,23 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
 
     return TextResponse(text=ai_analysis)
 
+@app.get("/api/history")
+def get_all_history(req: FastAPIRequest, db: Session = Depends(get_db)):
+    session_id = req.cookies.get(SESSION_COOKIE)
+    s = _get_session(session_id)
+    if not s:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    u_sub = s["profile"].get("sub")
+
+    # Fetch both chats and documents for the logged-in user
+    chats = db.query(TriageSession).filter(TriageSession.user_sub == u_sub).all()
+    docs = db.query(MedicalDocument).filter(MedicalDocument.user_sub == u_sub).all()
+
+    return {
+        "triage": chats,
+        "documents": docs
+    }
 
 @app.post("/api/voice-turn", response_model=VoiceTurnResponse)
 def voice_turn(req: VoiceTurnRequest):
@@ -1043,68 +1060,73 @@ def _alexa_response(text: str, end_session: bool = False, link_account: bool = F
 
 @app.post("/alexa/triage-turn")
 async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
-    body = await req.json()
-    
-    # 1. Extract Token and Session Attributes (Memory)
-    access_token = body.get("session", {}).get("user", {}).get("accessToken")
-    session_attrs = body.get("session", {}).get("attributes", {})
-    history = session_attrs.get("history", []) # Retrieve previous chat turns
-    
-    if not access_token:
-        return _alexa_response("Please link your account in the Alexa app to continue.", link_account=True)
+    try: # <--- CRITICAL: Wraps the entire function to catch crashes
+        body = await req.json()
+        
+        # 1. Extract Token and Session Attributes (Memory)
+        access_token = body.get("session", {}).get("user", {}).get("accessToken")
+        session_attrs = body.get("session", {}).get("attributes") or {}
+        history = session_attrs.get("history", []) 
+        
+        if not access_token:
+            return _alexa_response("Please link your account in the Alexa app to continue.", link_account=True)
 
-    try:
-        claims = _verify_cognito_jwt(access_token)
-        user_sub = claims.get("sub")
-    except Exception:
-        return _alexa_response("Your session expired. Please relink your account.", link_account=True)
+        try:
+            claims = _verify_cognito_jwt(access_token)
+            user_sub = claims.get("sub")
+        except Exception:
+            return _alexa_response("Your session expired. Please relink your account.", link_account=True)
 
-    req_data = body.get("request", {})
-    req_type = req_data.get("type")
+        req_data = body.get("request", {})
+        req_type = req_data.get("type")
 
-    # Launch Request (Alexa, open Pulse Nova)
-    if req_type == "LaunchRequest":
-        return _alexa_response(
-            "Welcome to Pulse Nova. You can describe your symptoms, or ask me to read your last lab report.",
-            attributes={"history": []} # Start with fresh memory
-        )
+        # Launch Request (Alexa, open Pulse Nova)
+        if req_type == "LaunchRequest":
+            return _alexa_response(
+                "Welcome to Pulse Nova. You can describe your symptoms, or ask me to read your last lab report.",
+                attributes={"history": []} # Start with fresh memory
+            )
 
-    if req_type == "IntentRequest":
-        intent_name = req_data.get("intent", {}).get("name")
-        slots = req_data.get("intent", {}).get("slots", {})
+        if req_type == "IntentRequest":
+            intent_name = req_data.get("intent", {}).get("name")
+            slots = req_data.get("intent", {}).get("slots", {})
 
-        # Handle Triage AND our new CatchAll intent
-        if intent_name in ["TriageIntent", "CatchAllIntent"]:
-            # Extract text from whichever slot was triggered
-            user_text = ""
-            if "symptoms" in slots and slots["symptoms"].get("value"):
-                user_text = slots["symptoms"]["value"]
-            elif "catchall" in slots and slots["catchall"].get("value"):
-                user_text = slots["catchall"]["value"]
-            
-            if not user_text:
-                return _alexa_response("I didn't quite catch that. Could you repeat?", end_session=False, attributes={"history": history})
+            # Handle Triage AND our CatchAll intent
+            if intent_name in ["TriageIntent", "CatchAllIntent"]:
+                user_text = slots.get("symptoms", {}).get("value") or slots.get("catchall", {}).get("value")
+                
+                if not user_text:
+                    return _alexa_response("I didn't quite catch that. Could you repeat?", end_session=False, attributes={"history": history})
 
-            # Append the user's message to the history
-            history.append({"role": "user", "content": [{"text": user_text}]})
+                history.append({"role": "user", "content": [{"text": user_text}]})
 
-            system_prompt = "You are PulseNova on Alexa. Keep responses short and conversational. Ask ONE clarifying question at a time."
-            bedrock_req = {
-                "schemaVersion": "messages-v1",
-                "system": [{"text": system_prompt}],
-                "messages": history[-10:], # Keep the last 10 turns so the payload doesn't get too large
-                "inferenceConfig": {"maxTokens": 200, "temperature": 0.3}
-            }
-            reply = _nova_invoke(MODEL_ID_TEXT, bedrock_req).strip()
+                system_prompt = "You are PulseNova on Alexa. Keep responses short and conversational. Ask ONE clarifying question at a time."
+                bedrock_req = {
+                    "schemaVersion": "messages-v1",
+                    "system": [{"text": system_prompt}],
+                    "messages": history[-10:], # Keep payload size manageable
+                    "inferenceConfig": {"maxTokens": 200, "temperature": 0.3}
+                }
+                
+                # Protect specifically against AWS Bedrock timeouts
+                try:
+                    reply = _nova_invoke(MODEL_ID_TEXT, bedrock_req).strip()
+                except Exception as e:
+                    logger.error(f"Bedrock Alexa Error: {e}")
+                    return _alexa_response("I'm having trouble connecting to my medical database right now. Please try again later.", end_session=True)
 
-            # Append the AI's reply to the history
-            history.append({"role": "assistant", "content": [{"text": reply}]})
+                history.append({"role": "assistant", "content": [{"text": reply}]})
+                return _alexa_response(reply, end_session=False, attributes={"history": history})
 
-            return _alexa_response(reply, end_session=False, attributes={"history": history})
+            elif intent_name == "GetMedicalDataIntent":
+                # Ensure you implement your DB query here
+                return _alexa_response("I couldn't find any recent lab reports.", end_session=True)
 
-        # --- GetMedicalDataIntent logic remains the same ---
-        elif intent_name == "GetMedicalDataIntent":
-            # ... (Your existing lab report logic goes here) ...
-            return _alexa_response("I couldn't find any recent lab reports.", end_session=True)
+        # If the intent name doesn't match anything
+        logger.warning(f"Unhandled Intent: {req_data.get('intent', {}).get('name')}")
+        return _alexa_response("I'm not sure how to help with that yet.", end_session=False, attributes={"history": history})
 
-    return _alexa_response("I'm not sure how to help with that yet.", end_session=False, attributes={"history": history})
+    except Exception as e:
+        # THE SAFETY NET: Prevents the "Protocol Violation" / "Valid Response" Alexa error
+        logger.error(f"Fatal Alexa Webhook Error: {e}")
+        return _alexa_response("Sorry, Pulse Nova encountered an internal error. Please check the server logs.", end_session=True)
