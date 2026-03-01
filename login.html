@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseNova • Sign in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="bg-white text-slate-900 min-h-screen grain">
+  <div class="max-w-xl mx-auto px-4 py-16">
+    <a href="/" class="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 text-sm font-semibold">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to PulseNova
+    </a>
+
+    <div class="mt-6 bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+      <div class="flex items-center gap-2.5 mb-6">
+        <div class="bg-blue-600 p-1.5 rounded-lg shadow-sm shadow-blue-200">
+          <i data-lucide="activity" class="w-5 h-5 text-white"></i>
+        </div>
+        <span class="text-lg font-bold tracking-tight bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">PulseNova</span>
+      </div>
+
+      <h1 class="text-2xl font-extrabold tracking-tight">Sign in</h1>
+      <p class="text-slate-500 text-sm mt-2">
+        Use <span class="font-semibold">Sign in with Amazon</span> to access your PulseNova account and connect Alexa.
+      </p>
+
+      <a href="/auth/login"
+         class="mt-6 w-full inline-flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md shadow-blue-200 transition-colors text-sm">
+        <i data-lucide="log-in" class="w-4 h-4"></i> Sign in with Amazon
+      </a>
+
+      <div class="mt-5 p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-500 space-y-1.5">
+        <p class="font-semibold text-slate-700">What you get by signing in:</p>
+        <p>• Manage privacy settings and data consent</p>
+        <p>• Link your Alexa device to PulseNova</p>
+        <p>• Control data retention preferences</p>
+      </div>
+
+      <p class="text-xs text-slate-400 mt-4 leading-relaxed">
+        By signing in, you agree to PulseNova's <a href="/privacy" class="underline hover:text-blue-600">privacy policy</a>.
+        PulseNova uses Amazon Cognito for secure authentication.
+      </p>
+    </div>
+  </div>
+
+  <script>if (window.lucide) lucide.createIcons();</script>
+</body>
+</html>

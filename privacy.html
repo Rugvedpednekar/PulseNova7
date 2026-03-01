@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseNova • Privacy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="bg-white text-slate-900 min-h-screen grain">
+  <div class="max-w-3xl mx-auto px-4 py-14">
+    <a href="/account" class="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 text-sm font-semibold">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Account
+    </a>
+
+    <h1 class="text-3xl font-extrabold tracking-tight mt-6">Privacy & Data Use</h1>
+    <p class="text-slate-500 text-sm mt-2">Clear rules for web uploads, Alexa, and consent.</p>
+
+    <div class="mt-6 space-y-4">
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 class="text-base font-extrabold flex items-center gap-2">
+          <i data-lucide="file-lock" class="w-4 h-4 text-blue-600"></i> Web uploads
+        </h2>
+        <p class="text-sm text-slate-500 mt-2">
+          X-rays and lab reports are uploaded via the web app only. Alexa does not support uploads.
+        </p>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 class="text-base font-extrabold flex items-center gap-2">
+          <i data-lucide="mic" class="w-4 h-4 text-emerald-600"></i> Alexa limitations
+        </h2>
+        <ul class="mt-2 text-sm text-slate-500 list-disc ml-5 space-y-1">
+          <li>Alexa can do symptom conversations and basic “find care” prompts.</li>
+          <li>Alexa can’t upload images or PDFs.</li>
+          <li>If you want to reference labs/scans, PulseNova will ask you to open the web app.</li>
+        </ul>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+        <h2 class="text-base font-extrabold flex items-center gap-2 text-amber-900">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i> Medical disclaimer
+        </h2>
+        <p class="text-sm text-amber-900 mt-2">
+          PulseNova provides guidance, not diagnosis. If you have severe symptoms (chest pain, trouble breathing, confusion, fainting),
+          seek emergency care immediately.
+        </p>
+      </div>
+    </div>
+  </div>
+  <script>if (window.lucide) lucide.createIcons();</script>
+</body>
+</html>
