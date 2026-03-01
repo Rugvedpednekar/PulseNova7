@@ -994,6 +994,30 @@ def search(req: SearchRequest):
     ]
     return SearchResponse(hits=hits)
 
+def _cognito_userinfo(access_token: str) -> Dict[str, Any]:
+    """
+    Validates an OAuth access token by calling Cognito Hosted UI /oauth2/userInfo.
+    Returns the user profile JSON (contains 'sub', 'email', etc.) if valid.
+    """
+    if not COGNITO_DOMAIN:
+        raise HTTPException(status_code=500, detail="Missing COGNITO_DOMAIN env var.")
+
+    url = f"{COGNITO_DOMAIN.rstrip('/')}/oauth2/userInfo"
+    req = Request(url, method="GET")
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8")
+            return json.loads(body) if body else {}
+    except HTTPError as e:
+        # Usually 401/403 when expired/invalid
+        logger.error(f"UserInfo HTTPError {e.code}")
+        raise HTTPException(status_code=401, detail="Invalid/expired access token.")
+    except URLError as e:
+        logger.error(f"UserInfo URLError: {e}")
+        raise HTTPException(status_code=502, detail="Could not reach Cognito userInfo endpoint.")
+
 
 # =============================================================================
 # ALEXA (Native Webhook Handler)
@@ -1018,11 +1042,16 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
         return _alexa_response("Welcome to Pulse Nova. Please link your account in the Alexa app to continue.", link_account=True)
 
     try:
-        claims = _verify_cognito_jwt(access_token)
-        user_sub = claims.get("sub")
+        profile = _cognito_userinfo(access_token)
+        user_sub = profile.get("sub")
+        if not user_sub:
+            raise Exception("No sub returned from userInfo")
     except Exception as e:
         logger.error(f"Alexa Token Error: {e}")
-        return _alexa_response("Your session has expired. Please relink your account in the Alexa app.", link_account=True)
+        return _alexa_response(
+            "Your session has expired. Please relink your account in the Alexa app.",
+            link_account=True
+        )
 
     req_data = body.get("request", {})
     req_type = req_data.get("type")
