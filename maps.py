@@ -1,7 +1,7 @@
 import requests
 import json
 
-API_KEY = 
+API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
 URL = "https://places.googleapis.com/v1/places:searchNearby"
 
@@ -53,4 +53,5 @@ else:
         print(f"   {addr}")
         print(f"   rating: {rating} ({count})")
         print(f"   location: {loc}\n")
+
 
