@@ -19,12 +19,11 @@ from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from database import init_db, get_db, User, TriageSession, VitalReading, MedicalDocument, Base 
-
+from database import init_db as db_init_db, get_db, User, TriageSession, VitalReading, MedicalDocument
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # =============================================================================
@@ -43,20 +42,20 @@ os.environ.setdefault("AWS_DEFAULT_REGION", AWS_REGION)
 # ---------------------------------------------------------------------------
 # Model IDs
 # ---------------------------------------------------------------------------
-MODEL_ID_TEXT   = os.getenv("MODEL_ID", "us.amazon.nova-lite-v2:0")
+MODEL_ID_TEXT = os.getenv("MODEL_ID", "us.amazon.nova-lite-v2:0")
 MODEL_ID_VISION = os.getenv("VISION_MODEL_ID", "us.amazon.nova-lite-v2:0")
-MODEL_ID_EMBED  = os.getenv("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
+MODEL_ID_EMBED = os.getenv("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
 MODEL_ID_CANVAS = os.getenv("CANVAS_MODEL_ID", "amazon.nova-canvas-v1:0")
-MODEL_ID_SONIC  = os.getenv("SONIC_MODEL_ID",  "us.amazon.nova-sonic-v1:0")
+MODEL_ID_SONIC = os.getenv("SONIC_MODEL_ID", "us.amazon.nova-sonic-v1:0")
 
 NOVA_ACT_ENDPOINT = os.getenv("NOVA_ACT_ENDPOINT", "")
-NOVA_ACT_API_KEY  = os.getenv("NOVA_ACT_API_KEY",  "")
+NOVA_ACT_API_KEY = os.getenv("NOVA_ACT_API_KEY", "")
 
 VOICE_INTERNAL_LANGUAGE = os.getenv("VOICE_INTERNAL_LANGUAGE", "en")
 TRANSLATE_ENABLED = os.getenv("TRANSLATE_ENABLED", "1") == "1"
 
 MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(8 * 1024 * 1024)))
-MAX_PDF_BYTES   = int(os.getenv("MAX_PDF_BYTES",   str(12 * 1024 * 1024)))
+MAX_PDF_BYTES = int(os.getenv("MAX_PDF_BYTES", str(12 * 1024 * 1024)))
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
 # ---------------------------------------------------------------------------
@@ -70,11 +69,9 @@ COGNITO_LOGOUT_REDIRECT_URI = os.getenv("COGNITO_LOGOUT_REDIRECT_URI", "")
 COGNITO_SCOPES = os.getenv("COGNITO_SCOPES", "openid email profile")
 COGNITO_IDP = os.getenv("COGNITO_IDP", "")  # e.g. LoginWithAmazon
 
-# These are needed for proper JWT verification (recommended).
 COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID", "")
 COGNITO_ISSUER = os.getenv("COGNITO_ISSUER", "")
 
-# Session cookie name
 SESSION_COOKIE = os.getenv("SESSION_COOKIE", "pulsenova_session")
 
 BEDROCK_CONFIG = Config(
@@ -91,19 +88,7 @@ _comprehend = boto3.client("comprehend", region_name=AWS_REGION, config=BEDROCK_
 # IN-MEMORY STORES
 # =============================================================================
 _embed_store: Dict[str, Dict[str, Any]] = {}
-
-# Sessions: session_id -> {tokens, profile, created_at}
 _sessions: Dict[str, Dict[str, Any]] = {}
-
-# Database initialization function
-def init_db():
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if DATABASE_URL:
-        engine = create_engine(DATABASE_URL)
-        Base.metadata.create_all(engine)
-        print("Database tables initialized successfully.")
-    else:
-        print("DATABASE_URL not found. Skipping table initialization.")
 
 # =============================================================================
 # FASTAPI
@@ -124,25 +109,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve /static/app.js and /static/styles.css from project root
+# Serve /static/* from project root (you can point this to a dedicated folder later)
 app.mount("/static", StaticFiles(directory=".", html=False), name="static")
 
 
 @app.on_event("startup")
 def on_startup():
-    init_db()
-    logger.info("Database tables initialized successfully.")
+    # Use database.py init_db (handles postgres:// -> postgresql:// and engine config)
+    try:
+        db_init_db()
+        logger.info("Database tables initialized successfully.")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+
+
 # =============================================================================
 # PYDANTIC MODELS
 # =============================================================================
 Role = Literal["user", "assistant"]
 
+
 class ChatTurn(BaseModel):
     role: Role
     text: str
 
+
 class TriageRequest(BaseModel):
-    message: str = Field(..., description="User message (symptoms, questions, etc.)")
+    # Allow image-only requests without failing validation
+    message: Optional[str] = Field(default=None, description="User message (symptoms, questions, etc.)")
     history: List[ChatTurn] = Field(default_factory=list, description="Prior chat turns")
     image_base64: Optional[str] = Field(default=None, description="Optional base64 image.")
     language: Optional[str] = Field(default="en-US", description="UI language hint.")
@@ -151,10 +145,12 @@ class TriageRequest(BaseModel):
 
     @field_validator("message")
     @classmethod
-    def message_must_not_be_empty(cls, v):
+    def normalize_message(cls, v):
         if v is None:
-            raise ValueError("Message is required.")
-        return v.strip()
+            return None
+        v = v.strip()
+        return v if v else None
+
 
 class VisionRequest(BaseModel):
     image_base64: Optional[str] = Field(default=None, description="Base64 image.")
@@ -164,19 +160,24 @@ class VisionRequest(BaseModel):
     temperature: float = 0.2
     max_tokens: int = 900
 
+
 class TextResponse(BaseModel):
     text: str
+
 
 class FirstAidRequest(BaseModel):
     injury_description: str = Field(..., description="Description of the physical injury")
     language: Optional[str] = Field(default="en-US", description="Target language for steps")
 
+
 class FirstAidStep(BaseModel):
     step_text: str
     image_base64: str
 
+
 class FirstAidResponse(BaseModel):
     steps: List[FirstAidStep]
+
 
 class VoiceTurnRequest(BaseModel):
     transcript: str = Field(...)
@@ -185,6 +186,7 @@ class VoiceTurnRequest(BaseModel):
     include_english_reply: bool = Field(default=True)
     max_tokens: int = 350
     temperature: float = 0.3
+
 
 class VoiceTurnResponse(BaseModel):
     session_id: str
@@ -196,19 +198,23 @@ class VoiceTurnResponse(BaseModel):
     reply_en: Optional[str] = None
     internal_language: str = "en"
 
+
 class EmbedRequest(BaseModel):
     text: str
     image_base64: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
     doc_id: Optional[str] = None
 
+
 class EmbedResponse(BaseModel):
     doc_id: str
     embedding_dim: int
 
+
 class SearchRequest(BaseModel):
     query: str
     top_k: int = Field(default=5, ge=1, le=20)
+
 
 class SearchHit(BaseModel):
     doc_id: str
@@ -216,18 +222,22 @@ class SearchHit(BaseModel):
     text: str
     metadata: dict
 
+
 class SearchResponse(BaseModel):
     hits: List[SearchHit]
+
 
 class AlexaTurnRequest(BaseModel):
     transcript: str
     locale: Optional[str] = "en-US"
     session: Optional[dict] = Field(default_factory=dict)
 
+
 class AlexaTurnResponse(BaseModel):
     speech: str
     cardText: Optional[str] = None
     shouldEndSession: bool = False
+
 
 # =============================================================================
 # HELPERS
@@ -239,6 +249,7 @@ def _strip_data_url(b64: str) -> str:
         return b64.split(",", 1)[1]
     return b64
 
+
 def _b64_to_bytes(b64: str, max_bytes: int) -> bytes:
     b64_clean = _strip_data_url(b64).strip()
     try:
@@ -248,6 +259,7 @@ def _b64_to_bytes(b64: str, max_bytes: int) -> bytes:
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail=f"Payload too large (>{max_bytes} bytes).")
     return raw
+
 
 def _guess_image_format(raw: bytes) -> str:
     if raw.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -260,6 +272,7 @@ def _guess_image_format(raw: bytes) -> str:
         return "gif"
     raise ValueError("Unsupported file format. Please upload PNG, JPEG, WEBP, or GIF.")
 
+
 def _sanitize_history_for_nova(history: List[ChatTurn]) -> List[dict]:
     cleaned = []
     for turn in history[-20:]:
@@ -271,6 +284,7 @@ def _sanitize_history_for_nova(history: List[ChatTurn]) -> List[dict]:
         cleaned.pop(0)
     return cleaned
 
+
 def _normalize_lang_code(code: Optional[str]) -> str:
     if not code:
         return ""
@@ -279,11 +293,18 @@ def _normalize_lang_code(code: Optional[str]) -> str:
         code = code.split("-")[0]
     return re.sub(r"[^a-z]", "", code)[:5]
 
+
 def _language_name(code: str) -> str:
     return {
-        "en": "English", "hi": "Hindi", "mr": "Marathi", "es": "Spanish",
-        "fr": "French", "de": "German", "ar": "Arabic"
+        "en": "English",
+        "hi": "Hindi",
+        "mr": "Marathi",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "ar": "Arabic",
     }.get(code, code or "Unknown")
+
 
 def _detect_language(text: str, browser_hint: Optional[str] = None) -> str:
     hint = _normalize_lang_code(browser_hint)
@@ -292,6 +313,7 @@ def _detect_language(text: str, browser_hint: Optional[str] = None) -> str:
     if re.search(r"[\u0900-\u097F]", text):
         return "hi"
     return "en"
+
 
 def _translate_text(text: str, source_lang: str, target_lang: str) -> str:
     if not TRANSLATE_ENABLED or not text or source_lang == target_lang:
@@ -302,6 +324,7 @@ def _translate_text(text: str, source_lang: str, target_lang: str) -> str:
     except Exception as e:
         logger.warning(f"Translate API skipped/failed: {e}")
         return text
+
 
 def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
     c = _normalize_lang_code(ui_lang)
@@ -327,6 +350,7 @@ def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
         "DISCLAIMER RULE:\n"
     )
 
+
 def _extract_text_from_invoke(data: Dict[str, Any]) -> str:
     text = data.get("output", {}).get("message", {}).get("content", [{}])
     if isinstance(text, list) and text:
@@ -341,6 +365,7 @@ def _extract_text_from_invoke(data: Dict[str, Any]) -> str:
         return data["text"]
     return ""
 
+
 def _nova_invoke(model_id: str, request_body: dict) -> str:
     try:
         resp = bedrock.invoke_model(
@@ -354,6 +379,7 @@ def _nova_invoke(model_id: str, request_body: dict) -> str:
     except Exception as e:
         logger.error(f"Bedrock Error: {e}")
         raise HTTPException(status_code=500, detail="Model invocation failed.")
+
 
 def _nova_canvas_invoke(prompt: str) -> str:
     enhanced_prompt = (
@@ -378,14 +404,17 @@ def _nova_canvas_invoke(prompt: str) -> str:
         logger.error(f"Canvas invocation failed: {e}")
         return ""
 
+
 def _pdf_first_page_to_png_b64(pdf_bytes: bytes) -> str:
     try:
         import fitz  # PyMuPDF
+
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         page = doc.load_page(0)
         return base64.b64encode(page.get_pixmap(dpi=200).tobytes("png")).decode("utf-8")
     except Exception:
         raise HTTPException(status_code=400, detail="Could not read PDF. Try a screenshot.")
+
 
 # =============================================================================
 # OAuth helpers (Cognito Hosted UI)
@@ -396,6 +425,7 @@ def _require_oauth_config():
             status_code=500,
             detail="Missing Cognito OAuth configuration. Set COGNITO_DOMAIN, COGNITO_CLIENT_ID, COGNITO_REDIRECT_URI in .env",
         )
+
 
 def _http_post_form(url: str, data: Dict[str, str], headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     encoded = urlencode(data).encode("utf-8")
@@ -417,24 +447,12 @@ def _http_post_form(url: str, data: Dict[str, str], headers: Optional[Dict[str, 
     except URLError as e:
         return {"error": "url_error", "detail": str(e)}
 
+
 def _get_session(session_id: Optional[str]) -> Optional[Dict[str, Any]]:
     if not session_id:
         return None
-    s = _sessions.get(session_id)
-    return s
+    return _sessions.get(session_id)
 
-def _create_session(tokens: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
-    session_id = str(uuid.uuid4())
-    profile = {}
-    id_token = tokens.get("id_token")
-    if id_token:
-        profile = _decode_jwt_no_verify(id_token) or {}
-    _sessions[session_id] = {
-        "tokens": tokens,
-        "profile": profile,
-        "created_at": int(time.time()),
-    }
-    return session_id, profile
 
 def _decode_jwt_no_verify(token: str) -> Dict[str, Any]:
     try:
@@ -447,17 +465,30 @@ def _decode_jwt_no_verify(token: str) -> Dict[str, Any]:
     except Exception:
         return {}
 
-# -----------------------------------------------------------------------------
+
+def _create_session(tokens: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    session_id = str(uuid.uuid4())
+    profile = {}
+    id_token = tokens.get("id_token")
+    if id_token:
+        profile = _decode_jwt_no_verify(id_token) or {}
+    _sessions[session_id] = {"tokens": tokens, "profile": profile, "created_at": int(time.time())}
+    return session_id, profile
+
+
+# ---------------------------------------------------------------------------
 # JWT verification for Cognito
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 _jwks_cache: Dict[str, Any] = {"keys": None, "fetched_at": 0}
+
 
 def _cognito_issuer() -> str:
     if COGNITO_ISSUER:
-        return os.getenv("COGNITO_ISSUER").rstrip('/')
+        return COGNITO_ISSUER.rstrip("/")
     if COGNITO_USER_POOL_ID:
         return f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}"
     return ""
+
 
 def _fetch_jwks() -> Dict[str, Any]:
     issuer = _cognito_issuer()
@@ -476,6 +507,7 @@ def _fetch_jwks() -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch JWKS: {e}")
 
+
 def _verify_cognito_jwt(token: str, audience: Optional[str] = None) -> Dict[str, Any]:
     try:
         import jwt  # PyJWT
@@ -492,16 +524,12 @@ def _verify_cognito_jwt(token: str, audience: Optional[str] = None) -> Dict[str,
     if not kid:
         raise HTTPException(status_code=401, detail="Invalid token header (no kid).")
 
-    key = None
-    for k in jwks.get("keys", []):
-        if k.get("kid") == kid:
-            key = k
-            break
+    key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
     if not key:
         raise HTTPException(status_code=401, detail="Signing key not found.")
 
     public_key = RSAAlgorithm.from_jwk(json.dumps(key))
-    issuer = os.getenv("COGNITO_ISSUER")
+    issuer = _cognito_issuer()
     aud = audience or COGNITO_CLIENT_ID
 
     try:
@@ -517,11 +545,13 @@ def _verify_cognito_jwt(token: str, audience: Optional[str] = None) -> Dict[str,
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")
 
+
 def _get_bearer_token(req: FastAPIRequest) -> str:
     auth = req.headers.get("authorization") or ""
     if not auth.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing Bearer token.")
     return auth.split(" ", 1)[1].strip()
+
 
 # =============================================================================
 # Embeddings
@@ -535,6 +565,7 @@ def _get_text_embedding(text: str) -> List[float]:
     )
     return json.loads(resp["body"].read())["embedding"]
 
+
 def _get_multimodal_embedding(text: str, image_b64: Optional[str]) -> List[float]:
     body: dict = {"inputText": text[:2048]}
     if image_b64:
@@ -547,10 +578,12 @@ def _get_multimodal_embedding(text: str, image_b64: Optional[str]) -> List[float
     )
     return json.loads(resp["body"].read())["embedding"]
 
+
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b))
     mag_a, mag_b = sum(x * x for x in a) ** 0.5, sum(x * x for x in b) ** 0.5
     return dot / (mag_a * mag_b) if mag_a and mag_b else 0.0
+
 
 # =============================================================================
 # PAGES
@@ -559,25 +592,31 @@ def _cosine_similarity(a: List[float], b: List[float]) -> float:
 def page_index():
     return FileResponse("index.html")
 
+
 @app.get("/login")
 def page_login():
     return FileResponse("login.html")
+
 
 @app.get("/account")
 def page_account():
     return FileResponse("accounts.html")
 
+
 @app.get("/privacy")
 def page_privacy():
     return FileResponse("privacy.html")
+
 
 @app.get("/health")
 def health():
     return {"ok": True, "region": AWS_REGION}
 
+
 @app.get("/config")
 def public_config():
     return {"google_maps_api_key": GOOGLE_MAPS_API_KEY}
+
 
 # =============================================================================
 # AUTH (Cognito Hosted UI)
@@ -590,13 +629,14 @@ def auth_login():
         "response_type": "code",
         "scope": COGNITO_SCOPES,
         "redirect_uri": COGNITO_REDIRECT_URI,
+        "state": str(uuid.uuid4()),
     }
     if COGNITO_IDP:
         params["identity_provider"] = COGNITO_IDP
-    params["state"] = str(uuid.uuid4())
 
     url = f"{COGNITO_DOMAIN}/oauth2/authorize?{urlencode(params)}"
     return RedirectResponse(url=url, status_code=302)
+
 
 @app.get("/auth/callback")
 def auth_callback(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
@@ -625,7 +665,7 @@ def auth_callback(code: Optional[str] = None, state: Optional[str] = None, error
     if token_resp.get("error"):
         raise HTTPException(status_code=400, detail=f"Token exchange failed: {token_resp}")
 
-    session_id, profile = _create_session(token_resp)
+    session_id, _profile = _create_session(token_resp)
 
     resp = RedirectResponse(url="/account", status_code=302)
     secure_cookie = os.getenv("SECURE_COOKIES", "0") == "1"
@@ -640,6 +680,7 @@ def auth_callback(code: Optional[str] = None, state: Optional[str] = None, error
     )
     return resp
 
+
 @app.post("/auth/logout")
 def auth_logout(req: FastAPIRequest):
     session_id = req.cookies.get(SESSION_COOKIE)
@@ -647,9 +688,9 @@ def auth_logout(req: FastAPIRequest):
         del _sessions[session_id]
 
     resp = JSONResponse({"ok": True})
-    secure_cookie = os.getenv("SECURE_COOKIES", "0") == "1"
     resp.delete_cookie(key=SESSION_COOKIE, path="/")
     return resp
+
 
 @app.get("/me")
 def me(req: FastAPIRequest, db: Session = Depends(get_db)):
@@ -660,34 +701,29 @@ def me(req: FastAPIRequest, db: Session = Depends(get_db)):
 
     profile = s.get("profile") or {}
     sub = profile.get("sub") or profile.get("username") or ""
-    
-    # Fetch user from the PostgreSQL database
+
     user = db.query(User).filter(User.sub == sub).first()
-    
+
     if user:
         prefs = {
-            "consent_store_history": user.consent_store_history, 
+            "consent_store_history": user.consent_store_history,
             "data_retention_days": user.data_retention_days,
             "age": user.age,
             "gender": user.gender,
             "height": user.height,
             "weight": user.weight,
             "allergies": user.allergies,
-            "medical_history": user.medical_history
+            "medical_history": user.medical_history,
         }
     else:
-        # Default preferences if user hasn't saved any yet
         prefs = {"consent_store_history": False, "data_retention_days": 30}
 
     return {
         "authenticated": True,
-        "profile": {
-            "sub": sub,
-            "email": profile.get("email"),
-            "name": profile.get("name") or profile.get("given_name"),
-        },
+        "profile": {"sub": sub, "email": profile.get("email"), "name": profile.get("name") or profile.get("given_name")},
         "prefs": prefs,
     }
+
 
 @app.post("/prefs")
 async def set_prefs(req: FastAPIRequest, db: Session = Depends(get_db)):
@@ -702,54 +738,50 @@ async def set_prefs(req: FastAPIRequest, db: Session = Depends(get_db)):
     if not sub:
         raise HTTPException(status_code=400, detail="Missing user identifier in token.")
 
-    # 1. Look up the user in the database
     user = db.query(User).filter(User.sub == sub).first()
-    
-    # 2. If they don't exist, create a new record
     if not user:
         user = User(sub=sub, email=profile.get("email"))
         db.add(user)
 
-    # 3. Update their fields based on the incoming request
     if "consent_store_history" in body:
         user.consent_store_history = bool(body["consent_store_history"])
     if "data_retention_days" in body:
         user.data_retention_days = max(1, min(int(body["data_retention_days"]), 3650))
-    
-    # Update Medical Profile fields
-    if "age" in body: user.age = body["age"]
-    if "gender" in body: user.gender = body["gender"]
-    if "height" in body: user.height = body["height"]
-    if "weight" in body: user.weight = body["weight"]
-    if "allergies" in body: user.allergies = body["allergies"]
-    if "medical_history" in body: user.medical_history = body["medical_history"]
 
-    # 4. Save to PostgreSQL
+    if "age" in body:
+        user.age = body["age"]
+    if "gender" in body:
+        user.gender = body["gender"]
+    if "height" in body:
+        user.height = body["height"]
+    if "weight" in body:
+        user.weight = body["weight"]
+    if "allergies" in body:
+        user.allergies = body["allergies"]
+    if "medical_history" in body:
+        user.medical_history = body["medical_history"]
+
     db.commit()
     db.refresh(user)
-
     return {"ok": True, "message": "Profile saved successfully."}
+
 
 # =============================================================================
 # TRIAGE / VISION / VOICE
 # =============================================================================
 @app.post("/api/triage", response_model=TextResponse)
 def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depends(get_db)):
-    # 1. Validation check
     if not req.message and not req.image_base64:
         raise HTTPException(status_code=400, detail="Provide a message or an image.")
 
-    # 2. Get User ID from session
     session_id = req_fastapi.cookies.get(SESSION_COOKIE)
-    s = _sessions.get(session_id)
-    # Match the 'sub' field from Cognito
-    u_sub = s["profile"].get("sub") if s else "anonymous"
+    s = _get_session(session_id)
+    u_sub = (s.get("profile") or {}).get("sub") if s else "anonymous"
 
-    # 3. Prepare Bedrock request
     system_list = [{"text": _triage_system_prompt(req.language)}]
     messages = _sanitize_history_for_nova(req.history)
+
     user_content = []
-    
     if req.message:
         user_content.append({"text": req.message})
 
@@ -767,24 +799,18 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
         "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature), "topP": 0.9},
     }
 
-    # 4. Get AI Response
     ai_text = _nova_invoke(MODEL_ID_TEXT, request_body)
 
-    # 5. SAVE TO POSTGRESQL
     try:
-        # Pydantic v2 uses model_dump() instead of dict()
-        history_list = [h.model_dump() if hasattr(h, 'model_dump') else h.dict() for h in req.history]
-        
-        # Add the current turn to the list
+        history_list = [h.model_dump() if hasattr(h, "model_dump") else h.dict() for h in req.history]
         history_list.append({"role": "user", "text": req.message or "[Image Uploaded]"})
         history_list.append({"role": "assistant", "text": ai_text})
 
-        # CORRECTED: Changed 'user_id' to 'user_sub' to match database.py
         new_session = TriageSession(
             id=str(uuid.uuid4()),
             user_sub=u_sub,
-            title=(req.message[:47] + "...") if req.message else "Image Analysis",
-            messages=history_list
+            title=((req.message or "Triage")[:47] + "...") if (req.message and len(req.message) > 50) else (req.message or "Image Analysis"),
+            messages=history_list,
         )
         db.add(new_session)
         db.commit()
@@ -792,6 +818,7 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
         logger.error(f"Failed to save triage history: {e}")
 
     return TextResponse(text=ai_text)
+
 
 @app.post("/api/first-aid-guide", response_model=FirstAidResponse)
 def first_aid_guide(req: FirstAidRequest):
@@ -827,21 +854,24 @@ def first_aid_guide(req: FirstAidRequest):
         )
     return FirstAidResponse(steps=results)
 
+
 @app.post("/api/vision", response_model=TextResponse)
 def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depends(get_db)):
     system_list = [{"text": _triage_system_prompt(req.language)}]
 
-    # 1. Handle File Conversions (PDF to PNG or direct Image)
     if req.pdf_base64 and not req.image_base64:
         image_b64_for_model = _pdf_first_page_to_png_b64(_b64_to_bytes(req.pdf_base64, MAX_PDF_BYTES))
         image_fmt = "png"
+        raw_payload_b64 = req.pdf_base64
+        doc_type = "lab"
     else:
         if not req.image_base64:
             raise HTTPException(status_code=400, detail="Provide image_base64 or pdf_base64.")
         image_fmt = _guess_image_format(_b64_to_bytes(req.image_base64, MAX_IMAGE_BYTES))
         image_b64_for_model = _strip_data_url(req.image_base64)
+        raw_payload_b64 = req.image_base64
+        doc_type = "xray"
 
-    # 2. Build Bedrock Request
     messages = [
         {
             "role": "user",
@@ -857,23 +887,19 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
         "messages": messages,
         "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature)},
     }
-    
-    # 3. Get AI Analysis
+
     ai_analysis = _nova_invoke(MODEL_ID_VISION, request_body)
 
-    # 4. SAVE TO POSTGRESQL [CRITICAL ADDITION]
     try:
-        # Get User ID from session cookie
         session_id = req_fastapi.cookies.get(SESSION_COOKIE)
-        s = _sessions.get(session_id)
-        user_id = s["profile"].get("sub") if s else "anonymous"
+        s = _get_session(session_id)
+        u_sub = (s.get("profile") or {}).get("sub") if s else "anonymous"
 
-        # Create record in MriRecord table
         new_doc = MedicalDocument(
             user_sub=u_sub,
-            doc_type="xray" if req.image_base64 else "lab",
-            image_b64=req.image_base64 or req.pdf_base64 or "",
-            report_html=ai_analysis
+            doc_type=doc_type,
+            image_b64=raw_payload_b64 or "",
+            report_html=ai_analysis,
         )
         db.add(new_doc)
         db.commit()
@@ -881,6 +907,7 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
         logger.error(f"Failed to save document: {e}")
 
     return TextResponse(text=ai_analysis)
+
 
 @app.post("/api/voice-turn", response_model=VoiceTurnResponse)
 def voice_turn(req: VoiceTurnRequest):
@@ -906,11 +933,7 @@ def voice_turn(req: VoiceTurnRequest):
     reply_local = _nova_invoke(MODEL_ID_TEXT, request_body)
 
     transcript_en = _translate_text(transcript_original, source_lang, "en") if source_lang != "en" else transcript_original
-    reply_en = (
-        _translate_text(reply_local, source_lang, "en")
-        if req.include_english_reply and source_lang != "en"
-        else None
-    )
+    reply_en = _translate_text(reply_local, source_lang, "en") if req.include_english_reply and source_lang != "en" else None
 
     return VoiceTurnResponse(
         session_id=session_id,
@@ -923,8 +946,9 @@ def voice_turn(req: VoiceTurnRequest):
         internal_language=source_lang,
     )
 
+
 # =============================================================================
-# EMBEDDINGS 
+# EMBEDDINGS
 # =============================================================================
 @app.post("/api/embed", response_model=EmbedResponse)
 def embed(req: EmbedRequest):
@@ -932,6 +956,7 @@ def embed(req: EmbedRequest):
     embedding = _get_multimodal_embedding(req.text, req.image_base64) if req.image_base64 else _get_text_embedding(req.text)
     _embed_store[doc_id] = {"text": req.text, "image_b64": req.image_base64, "embedding": embedding, "metadata": req.metadata}
     return EmbedResponse(doc_id=doc_id, embedding_dim=len(embedding))
+
 
 @app.post("/api/search", response_model=SearchResponse)
 def search(req: SearchRequest):
@@ -941,76 +966,51 @@ def search(req: SearchRequest):
     scored = [(doc_id, _cosine_similarity(query_embedding, doc["embedding"])) for doc_id, doc in _embed_store.items()]
     scored.sort(key=lambda x: x[1], reverse=True)
     hits = [
-        SearchHit(
-            doc_id=d_id,
-            score=round(s, 6),
-            text=_embed_store[d_id]["text"],
-            metadata=_embed_store[d_id]["metadata"],
-        )
+        SearchHit(doc_id=d_id, score=round(s, 6), text=_embed_store[d_id]["text"], metadata=_embed_store[d_id]["metadata"])
         for d_id, s in scored[: req.top_k]
     ]
     return SearchResponse(hits=hits)
+
 
 # =============================================================================
 # ALEXA (Native Webhook Handler)
 # =============================================================================
 def _alexa_response(text: str, end_session: bool = False, link_account: bool = False):
-    """Formats the JSON exactly how Amazon Alexa expects it."""
     response_body = {
         "version": "1.0",
-        "response": {
-            "outputSpeech": {
-                "type": "PlainText",
-                "text": text
-            },
-            "shouldEndSession": end_session
-        }
+        "response": {"outputSpeech": {"type": "PlainText", "text": text}, "shouldEndSession": end_session},
     }
     if link_account:
-        # This triggers a card in the Alexa app prompting them to log in
         response_body["response"]["card"] = {"type": "LinkAccount"}
         response_body["response"]["shouldEndSession"] = True
-        
     return JSONResponse(response_body)
+
 
 @app.post("/alexa/triage-turn")
 async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
     body = await req.json()
-    
-    # 1. Extract the Cognito Access Token from Alexa's payload
-    access_token = body.get("session", {}).get("user", {}).get("accessToken")
-    
-    if not access_token:
-        return _alexa_response(
-            "Welcome to Pulse Nova. Please link your account in the Alexa app to continue.", 
-            link_account=True
-        )
 
-    # 2. Verify the User with Cognito
+    access_token = body.get("session", {}).get("user", {}).get("accessToken")
+    if not access_token:
+        return _alexa_response("Welcome to Pulse Nova. Please link your account in the Alexa app to continue.", link_account=True)
+
     try:
         claims = _verify_cognito_jwt(access_token)
         user_sub = claims.get("sub")
     except Exception as e:
         logger.error(f"Alexa Token Error: {e}")
-        return _alexa_response(
-            "Your session has expired. Please relink your account in the Alexa app.", 
-            link_account=True
-        )
+        return _alexa_response("Your session has expired. Please relink your account in the Alexa app.", link_account=True)
 
-    # 3. Parse the Intent (What the user actually asked)
     req_data = body.get("request", {})
     req_type = req_data.get("type")
 
-    # If they just say "Alexa, open Pulse Nova"
     if req_type == "LaunchRequest":
         return _alexa_response("Welcome to Pulse Nova. You can describe your symptoms, or ask me to read your last lab report.")
 
-    # If they use one of the specific commands we set up
     if req_type == "IntentRequest":
         intent_name = req_data.get("intent", {}).get("name")
         slots = req_data.get("intent", {}).get("slots", {})
 
-        # --- COMMAND: "I have a fever and sore throat" ---
         if intent_name == "TriageIntent":
             symptoms = slots.get("symptoms", {}).get("value", "")
             if not symptoms:
@@ -1025,33 +1025,39 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
                 "schemaVersion": "messages-v1",
                 "system": [{"text": system_prompt}],
                 "messages": [{"role": "user", "content": [{"text": symptoms}]}],
-                "inferenceConfig": {"maxTokens": 200, "temperature": 0.3}
+                "inferenceConfig": {"maxTokens": 200, "temperature": 0.3},
             }
             reply = _nova_invoke(MODEL_ID_TEXT, bedrock_req).strip()
             return _alexa_response(reply, end_session=False)
 
-        # --- COMMAND: "What did my last lab report say?" ---
-        elif intent_name == "GetMedicalDataIntent":
+        if intent_name == "GetMedicalDataIntent":
             query = slots.get("query", {}).get("value", "").lower()
-            
+
             if "lab" in query:
-                # Fetch their most recent lab from PostgreSQL
-                doc = db.query(MedicalDocument).filter(
-                    MedicalDocument.user_sub == user_sub, 
-                    MedicalDocument.doc_type == 'lab'
-                ).order_by(MedicalDocument.created_at.desc()).first()
+                doc = (
+                    db.query(MedicalDocument)
+                    .filter(MedicalDocument.user_sub == user_sub, MedicalDocument.doc_type == "lab")
+                    .order_by(MedicalDocument.created_at.desc())
+                    .first()
+                )
 
                 if doc:
-                    # Ask Nova to summarize the HTML report into a spoken sentence
                     summary_req = {
                         "schemaVersion": "messages-v1",
-                        "system": [{"text": "Summarize this medical lab report in one or two short sentences for a patient listening via a smart speaker. Be reassuring."}],
+                        "system": [
+                            {
+                                "text": "Summarize this medical lab report in one or two short sentences for a patient listening via a smart speaker. Be reassuring."
+                            }
+                        ],
                         "messages": [{"role": "user", "content": [{"text": doc.report_html}]}],
-                        "inferenceConfig": {"maxTokens": 150, "temperature": 0.2}
+                        "inferenceConfig": {"maxTokens": 150, "temperature": 0.2},
                     }
                     spoken_summary = _nova_invoke(MODEL_ID_TEXT, summary_req).strip()
                     return _alexa_response(f"Here is the summary of your last lab: {spoken_summary}", end_session=True)
-                else:
-                    return _alexa_response("I couldn't find any recent lab reports saved in your account. You can upload them using the Pulse Nova web app.", end_session=True)
+
+                return _alexa_response(
+                    "I couldn't find any recent lab reports saved in your account. You can upload them using the Pulse Nova web app.",
+                    end_session=True,
+                )
 
     return _alexa_response("I'm not sure how to help with that yet.", end_session=False)
