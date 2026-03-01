@@ -639,7 +639,12 @@ def auth_login():
 
 
 @app.get("/auth/callback")
-def auth_callback(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
+def auth_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
     if error:
         logger.error(f"Cognito returned error: {error}")
         return {"error": error, "message": "Check server logs for details"}
@@ -658,14 +663,31 @@ def auth_callback(code: Optional[str] = None, state: Optional[str] = None, error
 
     headers = {}
     if COGNITO_CLIENT_SECRET:
-        basic = base64.b64encode(f"{COGNITO_CLIENT_ID}:{COGNITO_CLIENT_SECRET}".encode("utf-8")).decode("utf-8")
+        basic = base64.b64encode(
+            f"{COGNITO_CLIENT_ID}:{COGNITO_CLIENT_SECRET}".encode("utf-8")
+        ).decode("utf-8")
         headers["Authorization"] = f"Basic {basic}"
 
     token_resp = _http_post_form(token_url, form, headers=headers)
     if token_resp.get("error"):
         raise HTTPException(status_code=400, detail=f"Token exchange failed: {token_resp}")
 
-    session_id, _profile = _create_session(token_resp)
+    session_id, profile = _create_session(token_resp)
+
+    # --- Ensure user exists in DB (prevents FK violation later) ---
+    sub = (profile or {}).get("sub") or (profile or {}).get("username")
+    email = (profile or {}).get("email")
+
+    if sub:
+        try:
+            user = db.query(User).filter(User.sub == sub).first()
+            if not user:
+                user = User(sub=sub, email=email)
+                db.add(user)
+                db.commit()
+        except Exception as e:
+            # Don’t block login if DB insert fails, but log it
+            logger.error(f"Failed to upsert user on login: {e}")
 
     resp = RedirectResponse(url="/account", status_code=302)
     secure_cookie = os.getenv("SECURE_COOKIES", "0") == "1"
@@ -776,7 +798,7 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
 
     session_id = req_fastapi.cookies.get(SESSION_COOKIE)
     s = _get_session(session_id)
-    u_sub = (s.get("profile") or {}).get("sub") if s else "anonymous"
+    u_sub = (s.get("profile") or {}).get("sub") if s else None  # <-- changed
 
     system_list = [{"text": _triage_system_prompt(req.language)}]
     messages = _sanitize_history_for_nova(req.history)
@@ -801,24 +823,25 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
 
     ai_text = _nova_invoke(MODEL_ID_TEXT, request_body)
 
-    try:
-        history_list = [h.model_dump() if hasattr(h, "model_dump") else h.dict() for h in req.history]
-        history_list.append({"role": "user", "text": req.message or "[Image Uploaded]"})
-        history_list.append({"role": "assistant", "text": ai_text})
+    # Option A: only save if logged in
+    if u_sub:
+        try:
+            history_list = [h.model_dump() if hasattr(h, "model_dump") else h.dict() for h in req.history]
+            history_list.append({"role": "user", "text": req.message or "[Image Uploaded]"})
+            history_list.append({"role": "assistant", "text": ai_text})
 
-        new_session = TriageSession(
-            id=str(uuid.uuid4()),
-            user_sub=u_sub,
-            title=((req.message or "Triage")[:47] + "...") if (req.message and len(req.message) > 50) else (req.message or "Image Analysis"),
-            messages=history_list,
-        )
-        db.add(new_session)
-        db.commit()
-    except Exception as e:
-        logger.error(f"Failed to save triage history: {e}")
+            new_session = TriageSession(
+                id=str(uuid.uuid4()),
+                user_sub=u_sub,
+                title=((req.message or "Triage")[:47] + "...") if (req.message and len(req.message) > 50) else (req.message or "Image Analysis"),
+                messages=history_list,
+            )
+            db.add(new_session)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to save triage history: {e}")
 
     return TextResponse(text=ai_text)
-
 
 @app.post("/api/first-aid-guide", response_model=FirstAidResponse)
 def first_aid_guide(req: FirstAidRequest):
