@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>PulseNova - AI Medical Assistant</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,6 +17,7 @@
   <div class="max-w-7xl mx-auto px-4">
     <div class="flex justify-between items-center h-16 py-3">
 
+      <!-- Brand -->
       <div class="flex items-center gap-2.5 cursor-pointer select-none" onclick="app.navigate('home')">
         <div class="bg-blue-600 p-1.5 rounded-lg shadow-sm shadow-blue-200">
           <i data-lucide="activity" class="w-5 h-5 text-white"></i>
@@ -23,17 +25,41 @@
         <span class="text-lg font-bold tracking-tight bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">PulseNova</span>
       </div>
 
+      <!-- Desktop nav -->
       <div class="hidden md:flex items-center space-x-0.5 bg-slate-50 border border-slate-100 rounded-xl px-1 py-1">
         <button onclick="app.navigate('home')"   class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="home"><i data-lucide="home" class="w-3.5 h-3.5"></i>Home</button>
         <button onclick="app.navigate('triage')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="triage"><i data-lucide="message-square" class="w-3.5 h-3.5"></i>Triage</button>
         <button onclick="app.navigate('vitals')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="vitals"><i data-lucide="heart-pulse" class="w-3.5 h-3.5"></i>Vitals</button>
         <button onclick="app.navigate('xray')"   class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="xray"><i data-lucide="scan-line" class="w-3.5 h-3.5"></i>X-Ray</button>
         <button onclick="app.navigate('labs')"   class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="labs"><i data-lucide="microscope" class="w-3.5 h-3.5"></i>Labs</button>
+        <button onclick="app.navigate('rx')"     class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="rx"><i data-lucide="pill" class="w-3.5 h-3.5"></i>Prescription</button>
         <button onclick="app.navigate('care')"   class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="care"><i data-lucide="map-pin" class="w-3.5 h-3.5"></i>Find Care</button>
         <button onclick="app.navigate('about')"  class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-500 hover:text-blue-600" data-page="about"><i data-lucide="info" class="w-3.5 h-3.5"></i>About</button>
       </div>
 
+      <!-- Desktop right actions -->
       <div class="hidden md:flex items-center gap-2">
+
+        <!-- Global language (Nova Sonic 2 supported) -->
+        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+          <i data-lucide="languages" class="w-4 h-4 text-slate-400"></i>
+          <select id="global-lang-select" onchange="app.setGlobalLanguage(this.value)"
+                  class="text-xs font-semibold text-slate-700 bg-transparent outline-none">
+            <option value="en-US">English</option>
+            <option value="es-ES">Spanish</option>
+            <option value="de-DE">German</option>
+            <option value="fr-FR">French</option>
+            <option value="it-IT">Italian</option>
+            <option value="pt-BR">Portuguese</option>
+            <option value="hi-IN">Hindi</option>
+          </select>
+        </div>
+
+        <button id="nav-history-btn" onclick="app.openHistoryOverlay()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+          <i data-lucide="history" class="w-3.5 h-3.5"></i> History
+        </button>
+
         <a id="nav-signin" href="/login"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
           <i data-lucide="log-in" class="w-3.5 h-3.5"></i> Sign in
@@ -44,21 +70,48 @@
         </a>
       </div>
 
+      <!-- Mobile menu button -->
       <button class="md:hidden text-slate-600 p-2" onclick="app.toggleMobileMenu()">
         <i data-lucide="menu" id="menu-icon"></i>
       </button>
     </div>
   </div>
 
+  <!-- Mobile menu -->
   <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-100 py-2 shadow-lg absolute w-full left-0 top-full z-40">
     <button onclick="app.navigate('home')"   class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="home" class="w-4 h-4"></i>Home</button>
     <button onclick="app.navigate('triage')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="message-square" class="w-4 h-4"></i>Triage</button>
     <button onclick="app.navigate('vitals')" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="heart-pulse" class="w-4 h-4"></i>Vitals</button>
     <button onclick="app.navigate('xray')"   class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="scan-line" class="w-4 h-4"></i>X-Ray</button>
     <button onclick="app.navigate('labs')"   class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="microscope" class="w-4 h-4"></i>Labs</button>
+    <button onclick="app.navigate('rx')"     class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="pill" class="w-4 h-4"></i>Prescription</button>
     <button onclick="app.navigate('care')"   class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="map-pin" class="w-4 h-4"></i>Find Care</button>
     <button onclick="app.navigate('about')"  class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-3"><i data-lucide="info" class="w-4 h-4"></i>About</button>
+
     <div class="border-t border-slate-100 mt-1 pt-1">
+      <!-- Mobile Language -->
+      <div class="px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-sm font-medium text-slate-600">
+          <i data-lucide="languages" class="w-4 h-4 text-slate-400"></i> Language
+        </div>
+        <select id="mobile-lang-select" onchange="app.setGlobalLanguage(this.value)"
+                class="text-sm font-semibold text-slate-700 border border-slate-200 rounded-xl px-3 py-2 bg-white outline-none">
+          <option value="en-US">English</option>
+          <option value="es-ES">Spanish</option>
+          <option value="de-DE">German</option>
+          <option value="fr-FR">French</option>
+          <option value="it-IT">Italian</option>
+          <option value="pt-BR">Portuguese</option>
+          <option value="hi-IN">Hindi</option>
+        </select>
+      </div>
+
+      <!-- Mobile History -->
+      <button id="mobile-history-btn" onclick="app.openHistoryOverlay()"
+              class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50">
+        <i data-lucide="history" class="w-4 h-4"></i> Chat History
+      </button>
+
       <a id="mobile-nav-signin"  href="/login"   class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50"><i data-lucide="log-in" class="w-4 h-4"></i>Sign in</a>
       <a id="mobile-nav-account" href="/account" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50"><i data-lucide="user" class="w-4 h-4"></i>Account</a>
     </div>
@@ -67,6 +120,7 @@
 
 <main id="app-content" class="flex-1 relative">
 
+  <!-- HOME -->
   <section id="page-home" class="page-section animate-fade-in hero-mesh">
     <div class="py-24 px-4">
       <div class="max-w-4xl mx-auto text-center space-y-7">
@@ -78,10 +132,10 @@
           Clarity for your<br><span class="text-blue-600">health concerns.</span>
         </h1>
         <p class="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed font-light">
-          PulseNova helps you triage symptoms, check your pulse, understand medical reports, and find care nearby.
+          PulseNova helps you triage symptoms, check your pulse, understand medical reports, manage prescriptions, and find care nearby.
         </p>
+
         <div id="hero-auth-actions" class="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-          
           <a href="/auth/login" id="btn-hero-signin" class="flex items-center justify-center gap-2 bg-blue-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:-translate-y-0.5 text-sm">
             <i data-lucide="log-in" class="w-4 h-4"></i> Sign In to Save Data
           </a>
@@ -95,11 +149,12 @@
           <button onclick="app.navigate('account')" id="btn-hero-dashboard" class="hidden items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-8 py-3.5 rounded-xl font-bold hover:bg-slate-50 transition-all text-sm">
             <i data-lucide="user" class="w-4 h-4 text-blue-500"></i> My Dashboard
           </button>
-          
         </div>
+
         <div class="text-xs text-slate-400 pt-2">Not medical advice. If you think it's an emergency, call local emergency services.</div>
       </div>
     </div>
+
     <div class="pb-24 px-4 max-w-7xl mx-auto">
       <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         <button onclick="app.navigate('triage')" class="card-lift bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-left group">
@@ -123,26 +178,29 @@
           <p class="text-xs text-slate-500 leading-relaxed">Turn medical lab reports into easy-to-understand explanations.</p>
         </button>
       </div>
+
       <div class="grid md:grid-cols-3 gap-4 mt-4">
         <button onclick="app.navigate('vitals')" class="card-lift bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-left flex items-center gap-4 group">
           <div class="bg-red-50 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors"><i data-lucide="heart-pulse" class="w-5 h-5 text-red-500"></i></div>
           <div><h3 class="text-sm font-bold text-slate-900">Pulse Monitor</h3><p class="text-xs text-slate-400">Camera-based heart rate estimate + summary</p></div>
         </button>
+        <button onclick="app.navigate('rx')" class="card-lift bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-left flex items-center gap-4 group">
+          <div class="bg-sky-50 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-sky-100 transition-colors"><i data-lucide="pill" class="w-5 h-5 text-sky-600"></i></div>
+          <div><h3 class="text-sm font-bold text-slate-900">Prescriptions</h3><p class="text-xs text-slate-400">Add meds manually or extract from photo/PDF</p></div>
+        </button>
         <button onclick="app.navigate('care')" class="card-lift bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-left flex items-center gap-4 group">
           <div class="bg-orange-50 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-orange-100 transition-colors"><i data-lucide="map-pin" class="w-5 h-5 text-orange-500"></i></div>
           <div><h3 class="text-sm font-bold text-slate-900">Care Finder</h3><p class="text-xs text-slate-400">ERs, urgent care, pharmacies nearby</p></div>
-        </button>
-        <button onclick="app.navigate('about')" class="card-lift bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-left flex items-center gap-4 group">
-          <div class="bg-cyan-50 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors"><i data-lucide="sparkles" class="w-5 h-5 text-cyan-600"></i></div>
-          <div><h3 class="text-sm font-bold text-slate-900">How It Works</h3><p class="text-xs text-slate-400">See the workflow, privacy, and demo notes</p></div>
         </button>
       </div>
     </div>
   </section>
 
+  <!-- TRIAGE -->
   <section id="page-triage" class="page-section hidden h-[calc(100vh-57px)] p-0 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
     <div class="max-w-6xl mx-auto h-full flex bg-white sm:rounded-2xl shadow-sm border-0 sm:border border-slate-200 overflow-hidden">
-      
+
+      <!-- Desktop history sidebar -->
       <div class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col flex-shrink-0 z-10">
         <div class="p-4 border-b border-slate-100 bg-slate-50/50">
           <button onclick="app.startNewTriageChat()" class="flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors w-full border border-slate-200 shadow-sm hover:shadow">
@@ -157,6 +215,7 @@
         </div>
       </div>
 
+      <!-- Chat -->
       <div class="flex-1 flex flex-col h-full relative">
         <div class="p-3 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between flex-shrink-0">
           <div class="flex items-center gap-2.5 flex-wrap">
@@ -167,14 +226,22 @@
               <span id="chat-msg-count-num">0</span>
             </span>
           </div>
-          <div class="flex items-center gap-3">
+
+          <div class="flex items-center gap-2">
+            <!-- Mobile history button -->
+            <button onclick="app.openHistoryOverlay()" class="md:hidden p-1.5 rounded-lg hover:bg-slate-200 text-slate-400 transition-colors" title="History">
+              <i data-lucide="history" class="w-4 h-4"></i>
+            </button>
+
             <button onclick="app.toggleSpeechOutput()" id="btn-speech-toggle" class="p-1.5 rounded-lg hover:bg-slate-200 text-slate-400 transition-colors" title="Toggle Voice Response">
               <i data-lucide="volume-x" class="w-4 h-4"></i>
             </button>
             <button onclick="app.startNewTriageChat()" class="text-xs font-medium text-slate-400 hover:text-blue-600 transition-colors bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm md:hidden">New Chat</button>
           </div>
         </div>
+
         <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30"></div>
+
         <div class="p-3 bg-white border-t border-slate-100 flex-shrink-0 pb-4 sm:pb-3">
           <div id="chat-image-preview-container" class="hidden mb-2 relative inline-block">
             <img id="chat-image-preview" src="" alt="Preview" class="h-16 rounded-lg border border-slate-200 shadow-sm">
@@ -182,6 +249,7 @@
               <i data-lucide="x" class="w-3 h-3"></i>
             </button>
           </div>
+
           <div class="flex items-end gap-2">
             <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="app.handleChatImageSelect(this)">
             <button onclick="document.getElementById('chat-file-input').click()" class="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Attach image">
@@ -190,12 +258,14 @@
             <button onclick="app.openVoiceOverlay()" class="p-2.5 rounded-xl transition-all text-slate-400 hover:text-blue-600 hover:bg-blue-50" title="Voice mode">
               <i data-lucide="mic" class="w-4 h-4"></i>
             </button>
+
             <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-1 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
               <textarea id="chat-input" rows="1" placeholder="Describe your symptoms..."
                 class="w-full bg-transparent border-none focus:outline-none text-slate-800 resize-none max-h-32 text-sm py-2 leading-relaxed placeholder:text-slate-400 overflow-hidden"
                 autocomplete="off" spellcheck="false"
                 onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();app.sendMessage();}"></textarea>
             </div>
+
             <button onclick="app.sendMessage()" id="btn-send" class="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200">
               <i data-lucide="send" class="w-4 h-4"></i>
             </button>
@@ -205,338 +275,300 @@
     </div>
   </section>
 
+  <!-- VITALS (unchanged) -->
   <section id="page-vitals" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
-    <div class="max-w-3xl mx-auto space-y-5">
-      <div class="text-center mb-4">
-        <h1 class="text-2xl font-bold text-slate-900 mb-1">Pulse Monitor</h1>
-        <p class="text-slate-400 text-sm">Estimate heart rate using your camera, then get a plain-English pulse summary.</p>
-      </div>
-      <div class="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm flex gap-3">
-        <i data-lucide="smartphone" class="w-5 h-5 shrink-0 mt-0.5"></i>
-        <div>
-          <p class="font-semibold mb-1">Best on a smartphone</p>
-          <p class="text-amber-700 text-xs">Place your fingertip over the back camera lens and stay still. For best results, take the reading while resting.</p>
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col items-center p-6">
-        <div class="w-full mb-4">
-          <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Reading Context</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button class="vitals-context-btn bg-blue-50 border border-blue-200 text-blue-700 rounded-xl px-3 py-2 text-xs font-semibold" data-context="resting"        onclick="app.setVitalsContext('resting')">Resting</button>
-            <button class="vitals-context-btn bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold" data-context="after_exercise"  onclick="app.setVitalsContext('after_exercise')">After Exercise</button>
-            <button class="vitals-context-btn bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold" data-context="feeling_unwell" onclick="app.setVitalsContext('feeling_unwell')">Feeling Unwell</button>
-          </div>
-        </div>
-        <div class="w-full relative bg-slate-900 rounded-xl overflow-hidden mb-5 flex flex-col items-center justify-center min-h-[220px] shadow-inner">
-          <canvas id="ppg-graph" class="w-full h-36 opacity-80"></canvas>
-          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <div class="text-5xl font-extrabold text-white tracking-tight flex items-baseline gap-1">
-              <span id="bpm-display">--</span>
-              <span class="text-lg text-slate-400 font-normal">BPM</span>
-            </div>
-            <div id="vitals-status" class="text-xs text-slate-400 mt-2 bg-slate-900/60 px-3 py-1 rounded-full">Ready</div>
-          </div>
-          <video id="vitals-video" class="hidden" playsinline autoplay muted></video>
-        </div>
-        <div id="signal-quality-wrap" class="hidden w-full mb-4">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs text-slate-400">Signal Quality</span>
-            <span id="signal-quality-text" class="text-xs font-medium text-slate-500">Detecting...</span>
-          </div>
-          <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div id="signal-quality-bar" class="h-full bg-green-400 rounded-full transition-all duration-500" style="width:0%"></div>
-          </div>
-        </div>
-        <div class="flex gap-3">
-          <button onclick="app.startVitals()" id="btn-start-vitals" class="bg-blue-600 text-white px-7 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md text-sm flex items-center gap-2">
-            <i data-lucide="play" class="w-4 h-4"></i> Start
-          </button>
-          <button onclick="app.stopVitals(false)" id="btn-stop-vitals" class="bg-slate-100 text-slate-700 border border-slate-200 px-7 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition-all text-sm flex items-center gap-2 hidden">
-            <i data-lucide="square" class="w-4 h-4"></i> Stop
-          </button>
-        </div>
-      </div>
-      
-      <div id="vitals-summary-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hidden">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-            <i data-lucide="clipboard-heart" class="w-4 h-4 text-red-500"></i> Pulse Summary
-          </h2>
-          <span id="vitals-summary-badge" class="chip chip-slate">Waiting</span>
-        </div>
-        <div class="grid sm:grid-cols-2 gap-3 mb-4">
-          <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-            <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Estimated Heart Rate</p>
-            <p class="text-xl font-bold text-slate-900"><span id="sum-bpm">--</span> <span class="text-xs text-slate-400 font-medium">BPM</span></p>
-          </div>
-          <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-            <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Reading Confidence</p>
-            <p id="sum-confidence" class="text-sm font-semibold text-slate-800">--</p>
-            <p id="sum-signal" class="text-xs text-slate-400 mt-0.5">Signal quality: --</p>
-          </div>
-          <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-            <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Context</p>
-            <p id="sum-context" class="text-sm font-semibold text-slate-800">Resting</p>
-          </div>
-          <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-            <p class="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Status</p>
-            <p id="sum-status" class="text-sm font-semibold text-slate-800">No reading yet</p>
-          </div>
-        </div>
-        <div class="space-y-3">
-          <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
-            <p class="text-xs font-semibold text-blue-800 mb-1">Summary</p>
-            <p id="sum-summary" class="text-xs text-blue-700 leading-relaxed">Take a reading to generate a pulse summary.</p>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
-            <p class="text-xs font-semibold text-emerald-800 mb-1">Suggested Next Step</p>
-            <p id="sum-guidance" class="text-xs text-emerald-700 leading-relaxed">Stay still, place your fingertip fully over the camera, and tap Start.</p>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
-            <p class="text-xs font-semibold text-amber-800 mb-1">Safety Note</p>
-            <p id="sum-warning" class="text-xs text-amber-700 leading-relaxed">This is a camera-based estimate and not a diagnosis. If you have chest pain, trouble breathing, fainting, or severe symptoms, seek urgent care.</p>
-          </div>
-        </div>
-        <div class="mt-4 flex flex-wrap gap-2">
-          <button onclick="app.startVitals()" class="bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 flex items-center gap-1">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Retake
-          </button>
-          <button onclick="app.useVitalsInTriage()" class="bg-blue-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-blue-700 flex items-center gap-1">
-            <i data-lucide="message-square-plus" class="w-3.5 h-3.5"></i> Send to Triage
-          </button>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mt-6">
-        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
-          <i data-lucide="history" class="w-4 h-4 text-slate-500"></i> Reading History
-        </h2>
-        <div id="vitals-history-list" class="space-y-2">
-          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 group">
-            <div class="flex items-center gap-3">
-              <div class="bg-red-100 text-red-600 p-2 rounded-lg"><i data-lucide="heart" class="w-4 h-4"></i></div>
-              <div>
-                <p class="text-sm font-bold text-slate-800">72 BPM <span class="text-xs font-normal text-slate-500 ml-1">Resting</span></p>
-                <p class="text-[10px] text-slate-400">Today, 10:45 AM</p>
-              </div>
-            </div>
-            <button class="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-          </div>
-          <p class="text-sm text-slate-400 text-center py-2 hidden" id="vitals-empty">No saved readings.</p>
-        </div>
-      </div>
-
-    </div>
+    <!-- (your vitals section stays exactly as you had it) -->
+    <!-- For brevity, unchanged content omitted in this comment. Keep your existing vitals block here. -->
+    <!-- IMPORTANT: Paste your original vitals content below (it was already complete in your message). -->
+    <!-- START ORIGINAL VITALS -->
+    <!-- ... -->
+    <!-- END ORIGINAL VITALS -->
   </section>
 
+  <!-- XRAY (unchanged) -->
   <section id="page-xray" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
-    <div class="max-w-6xl mx-auto space-y-6">
-      <div class="grid lg:grid-cols-2 gap-6">
-        <div class="space-y-4">
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <i data-lucide="scan-line" class="w-5 h-5 text-blue-600"></i> Upload Scan
-              </h2>
-              <div class="flex items-center gap-2">
-                <label class="text-xs text-slate-400 font-medium">Language</label>
-                <select id="xray-lang-select" onchange="app.setXrayLanguage(this.value)"
-                  class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"></select>
-              </div>
-            </div>
-            <div onclick="document.getElementById('xray-input').click()" id="xray-dropzone" tabindex="0" role="button"
-                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('xray-input').click();}"
-                 class="border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-slate-50 rounded-xl h-[360px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
-              <div id="xray-placeholder" class="text-center p-6">
-                <div class="bg-blue-50 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <i data-lucide="upload" class="w-7 h-7 text-blue-500"></i>
-                </div>
-                <p class="font-semibold text-slate-600 text-sm">Drag & drop or click to upload</p>
-                <p class="text-xs text-slate-400 mt-1">X-Ray, MRI, CT scan — JPG, PNG</p>
-              </div>
-              <img id="xray-preview-img" class="hidden h-full w-full object-contain bg-slate-900" />
-              <input type="file" id="xray-input" class="hidden" accept="image/*" onchange="app.handleXrayUpload(this)">
-            </div>
-            <button onclick="app.analyzeXray()" id="btn-analyze-xray" disabled class="w-full mt-3 bg-blue-600 text-white py-2.5 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md text-sm flex items-center justify-center gap-2">
-              <i data-lucide="activity" class="w-4 h-4"></i> Analyze Scan
-            </button>
-          </div>
-        </div>
-        
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[520px] lg:h-auto overflow-hidden">
-          <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-              <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i> Medical Report
-            </h2>
-            <button onclick="window.print()" class="text-xs bg-white border border-slate-200 text-slate-600 px-2.5 py-1 rounded-lg hover:bg-slate-50 flex items-center gap-1">
-              <i data-lucide="printer" class="w-3 h-3"></i> Print
-            </button>
-          </div>
-          <div id="xray-result" class="flex-1 p-5 overflow-y-auto text-slate-700 max-w-none text-sm">
-            <div class="flex flex-col items-center justify-center h-full text-slate-300 gap-3 opacity-60">
-              <i data-lucide="file-image" class="w-14 h-14"></i>
-              <p class="text-center text-sm">Upload and analyze a scan to generate a report.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="xray-history-panel" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
-          <i data-lucide="history" class="w-4 h-4 text-slate-500"></i> Past Scans
-        </h2>
-        <div id="xray-history-list" class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          </div>
-      </div>
-    </div>
+    <!-- keep your original xray section -->
+    <!-- ... -->
   </section>
 
+  <!-- LABS (unchanged) -->
   <section id="page-labs" class="page-section hidden p-4 min-h-[calc(100vh-57px)]">
+    <!-- keep your original labs section -->
+    <!-- ... -->
+  </section>
+
+  <!-- PRESCRIPTIONS (NEW) -->
+  <section id="page-rx" class="page-section hidden p-4 min-h-[calc(100vh-57px)] animate-fade-in">
     <div class="max-w-6xl mx-auto space-y-6">
-      <div class="grid lg:grid-cols-2 gap-6">
-        <div class="space-y-4">
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <i data-lucide="microscope" class="w-5 h-5 text-purple-600"></i> Upload Lab Results
-              </h2>
-              <div class="flex items-center gap-2">
-                <label class="text-xs text-slate-400 font-medium">Language</label>
-                <select id="lab-lang-select" onchange="app.setLabLanguage(this.value)"
-                  class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400"></select>
-              </div>
-            </div>
-            <div onclick="document.getElementById('lab-input').click()" id="lab-dropzone" tabindex="0" role="button"
-                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('lab-input').click();}"
-                 class="border-2 border-dashed border-slate-200 hover:border-purple-400 hover:bg-slate-50 rounded-xl h-[360px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
-              <div id="lab-placeholder" class="text-center p-6">
-                <div class="bg-purple-50 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <i data-lucide="upload" class="w-7 h-7 text-purple-500"></i>
-                </div>
-                <p class="font-semibold text-slate-600 text-sm">Drag & drop or click to upload</p>
-                <p class="text-xs text-slate-400 mt-1">Blood work, urine test, panels…</p>
-              </div>
-              <img id="lab-preview-img" class="hidden h-full w-full object-contain" />
-              <input type="file" id="lab-input" class="hidden" accept="image/*" onchange="app.handleLabUpload(this)">
-            </div>
-            <button onclick="app.analyzeLabs()" id="btn-analyze-lab" disabled class="w-full mt-3 bg-purple-600 text-white py-2.5 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md text-sm flex items-center justify-center gap-2">
-              <i data-lucide="activity" class="w-4 h-4"></i> Translate Report
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[520px] lg:h-auto overflow-hidden">
-          <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-              <i data-lucide="file-text" class="w-4 h-4 text-purple-600"></i> Interpretation
-            </h2>
-            <button onclick="window.print()" class="text-xs bg-white border border-slate-200 text-slate-600 px-2.5 py-1 rounded-lg hover:bg-slate-50 flex items-center gap-1">
-              <i data-lucide="printer" class="w-3 h-3"></i> Print
-            </button>
-          </div>
-          <div id="lab-result" class="flex-1 p-5 overflow-y-auto text-slate-700 max-w-none text-sm">
-            <div class="flex flex-col items-center justify-center h-full text-slate-300 gap-3 opacity-60">
-              <i data-lucide="file-text" class="w-14 h-14"></i>
-              <p class="text-center text-sm">Upload a lab document to get a plain-English explanation.</p>
-            </div>
-          </div>
-        </div>
+      <div class="text-center mb-2">
+        <h1 class="text-2xl font-bold text-slate-900 mb-1">Prescriptions</h1>
+        <p class="text-slate-400 text-sm">Add medications manually or extract from a prescription image/PDF. Send reminders to Alexa.</p>
       </div>
 
-      <div id="lab-history-panel" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
-          <i data-lucide="history" class="w-4 h-4 text-slate-500"></i> Past Reports
-        </h2>
-        <div id="lab-history-list" class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="page-care" class="page-section hidden p-4 animate-fade-in">
-    <div class="max-w-5xl mx-auto">
-      <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold text-slate-900 mb-1">Find Care Nearby</h1>
-        <p class="text-slate-400 text-sm">Locate trusted medical providers in your area.</p>
-      </div>
-      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex flex-col gap-3">
-        <div class="grid md:grid-cols-12 gap-3">
-          <div class="md:col-span-6 relative">
-            <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
-            <input type="text" id="care-search" placeholder="City, address, or ZIP..." class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none">
-          </div>
-          <div class="md:col-span-3 relative">
-            <i data-lucide="filter" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
-            <input type="text" id="provider-filter" placeholder="Filter results…" oninput="app.renderProviders()" class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none">
-          </div>
-          <div class="md:col-span-3 flex gap-2">
-            <button onclick="app.searchCareByText()" class="flex-1 px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 flex items-center gap-1 justify-center">
-              <i data-lucide="search" class="w-3.5 h-3.5"></i> Search
-            </button>
-            <button onclick="app.locateUser()" id="btn-locate" class="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 flex items-center gap-1 justify-center transition-colors">
-              <i data-lucide="navigation" class="w-3.5 h-3.5"></i> Near Me
-            </button>
-          </div>
-        </div>
-        <div class="grid md:grid-cols-2 gap-3 items-center">
-          <select id="care-filter" onchange="app.renderProviders()" class="px-4 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-blue-500/20">
-            <option value="All">All Providers</option>
-            <option value="ER">Emergency Room</option>
-            <option value="Urgent Care">Urgent Care</option>
-            <option value="Hospital">Hospital</option>
-            <option value="Primary Care">Primary Care</option>
-            <option value="Clinic">Clinic</option>
-            <option value="Pharmacy">Pharmacy</option>
-            <option value="Dentist">Dentist</option>
-            <option value="Pediatrician">Pediatrician</option>
-          </select>
-          <div class="flex items-center gap-3">
-            <span class="text-xs text-slate-400 whitespace-nowrap">Radius</span>
-            <input id="care-radius" type="range" min="2" max="20" step="1" value="8" class="w-full">
-            <span class="text-xs font-semibold text-slate-600 whitespace-nowrap"><span id="care-radius-val">8</span> mi</span>
-          </div>
-        </div>
-        <div id="care-status" class="text-xs text-slate-400 flex items-center" aria-live="polite"></div>
-      </div>
-      <div id="care-map-host" class="hidden h-1 w-1"></div>
-      <div id="providers-list" class="grid md:grid-cols-2 gap-4"></div>
-    </div>
-  </section>
-
-  <section id="page-about" class="page-section hidden p-4 animate-fade-in">
-    <div class="max-w-4xl mx-auto py-12">
-      <div class="text-center mb-14">
-        <h1 class="text-3xl font-bold text-slate-900 mb-3">About PulseNova</h1>
-        <p class="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">A patient-friendly assistant for triage, vitals, report understanding, and care navigation.</p>
-      </div>
-      <div class="space-y-10">
-        <div class="flex flex-col md:flex-row gap-8 items-center">
-          <div class="flex-1 space-y-3">
-            <div class="inline-block p-2.5 bg-blue-50 rounded-xl text-blue-600 mb-1"><i data-lucide="heart-pulse" class="w-5 h-5"></i></div>
-            <h2 class="text-xl font-bold text-slate-800">Our Mission</h2>
-            <p class="text-slate-500 leading-relaxed text-sm">Reduce medical anxiety and help people decide what to do next. PulseNova provides quick, understandable guidance when someone feels unwell and needs direction.</p>
-          </div>
-          <div class="flex-1 bg-slate-100 h-56 w-full rounded-2xl overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=800" alt="Medical Team" class="w-full h-full object-cover opacity-90" />
-          </div>
-        </div>
+      <!-- Status / auth hint -->
+      <div id="rx-auth-banner" class="hidden bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm flex gap-3">
+        <i data-lucide="lock" class="w-5 h-5 shrink-0 mt-0.5"></i>
         <div>
-          <h2 class="text-xl font-bold text-slate-800 mb-4">Technology Stack</h2>
-          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100"><div class="chip chip-blue mb-2">AI Triage</div><h3 class="font-bold text-slate-800 text-sm mb-1">Text + Vision Assistant</h3><p class="text-xs text-slate-500">Symptom chat with optional image input for a more helpful response.</p></div>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100"><div class="chip chip-amber mb-2">Voice Mode</div><h3 class="font-bold text-slate-800 text-sm mb-1">Speech UI</h3><p class="text-xs text-slate-500">Browser speech recognition and spoken responses for hands-free use.</p></div>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100"><div class="chip chip-green mb-2">Vitals</div><h3 class="font-bold text-slate-800 text-sm mb-1">Camera Pulse Estimate</h3><p class="text-xs text-slate-500">On-device pulse signal detection with BPM and confidence summary.</p></div>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100"><div class="chip chip-purple mb-2">Reports</div><h3 class="font-bold text-slate-800 text-sm mb-1">X-Ray + Lab Interpretation</h3><p class="text-xs text-slate-500">Upload medical images and documents to get plain-language explanations.</p></div>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100"><div class="chip chip-slate mb-2">Backend</div><h3 class="font-bold text-slate-800 text-sm mb-1">FastAPI + Bedrock</h3><p class="text-xs text-slate-500">Python FastAPI backend for model inference and provider search integrations.</p></div>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100"><div class="chip chip-red mb-2">Privacy</div><h3 class="font-bold text-slate-800 text-sm mb-1">Demo-Safe Design</h3><p class="text-xs text-slate-500">Pulse video is processed on-device. Use as guidance only — not a diagnosis.</p></div>
-          </div>
+          <p class="font-semibold mb-1">Sign in required to save</p>
+          <p class="text-amber-700 text-xs">You can extract prescriptions as a guest, but you must sign in to save meds or send to Alexa.</p>
         </div>
       </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- Tabs -->
+        <div class="p-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button id="rx-tab-upload" onclick="app.rxSetMode('upload')" class="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+              <i data-lucide="upload" class="w-4 h-4 text-slate-500"></i> Upload
+            </button>
+            <button id="rx-tab-manual" onclick="app.rxSetMode('manual')" class="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+              <i data-lucide="edit-3" class="w-4 h-4 text-slate-500"></i> Manual
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-slate-400 font-medium">Language</label>
+            <select id="rx-lang-select" onchange="app.setGlobalLanguage(this.value)"
+                    class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+              <option value="en-US">English</option>
+              <option value="es-ES">Spanish</option>
+              <option value="de-DE">German</option>
+              <option value="fr-FR">French</option>
+              <option value="it-IT">Italian</option>
+              <option value="pt-BR">Portuguese</option>
+              <option value="hi-IN">Hindi</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-5 grid lg:grid-cols-2 gap-6">
+          <!-- Upload mode -->
+          <div id="rx-pane-upload" class="space-y-4">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <i data-lucide="file-scan" class="w-5 h-5 text-sky-600"></i> Upload Prescription
+                </h2>
+                <span class="chip chip-slate text-[10px]">Image or PDF</span>
+              </div>
+
+              <div onclick="document.getElementById('rx-input').click()"
+                   id="rx-dropzone" tabindex="0" role="button"
+                   onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('rx-input').click();}"
+                   class="border-2 border-dashed border-slate-200 hover:border-sky-400 hover:bg-slate-50 rounded-xl h-[320px] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative">
+                <div id="rx-placeholder" class="text-center p-6">
+                  <div class="bg-sky-50 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="upload" class="w-7 h-7 text-sky-500"></i>
+                  </div>
+                  <p class="font-semibold text-slate-600 text-sm">Drag & drop or click to upload</p>
+                  <p class="text-xs text-slate-400 mt-1">Prescription photo, scan, or PDF</p>
+                </div>
+
+                <img id="rx-preview-img" class="hidden h-full w-full object-contain bg-slate-900" alt="Prescription preview"/>
+                <div id="rx-preview-pdf" class="hidden absolute inset-0 bg-slate-900 flex items-center justify-center text-center p-6">
+                  <div class="space-y-2">
+                    <i data-lucide="file" class="w-12 h-12 text-white/70 mx-auto"></i>
+                    <div class="text-white font-semibold">PDF selected</div>
+                    <div class="text-white/60 text-xs">We’ll extract the first page for analysis.</div>
+                  </div>
+                </div>
+
+                <input type="file" id="rx-input" class="hidden" accept="image/*,application/pdf" onchange="app.handleRxUpload(this)">
+              </div>
+
+              <button onclick="app.extractPrescription()" id="btn-extract-rx" disabled
+                      class="w-full mt-3 bg-sky-600 text-white py-2.5 rounded-xl font-bold hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md text-sm flex items-center justify-center gap-2">
+                <i data-lucide="sparkles" class="w-4 h-4"></i> Extract Prescription
+              </button>
+
+              <div class="mt-3 text-[11px] text-slate-400">
+                Tip: You can edit extracted meds and schedules before saving or sending to Alexa.
+              </div>
+            </div>
+
+            <!-- Extracted results -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <i data-lucide="list-checks" class="w-4 h-4 text-slate-600"></i> Extracted Medications
+                </h3>
+                <span id="rx-extract-badge" class="chip chip-slate">Waiting</span>
+              </div>
+
+              <div id="rx-extracted-list" class="space-y-2">
+                <div class="text-sm text-slate-400 text-center py-8">
+                  Upload a prescription and click <strong>Extract</strong>.
+                </div>
+              </div>
+
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button onclick="app.savePrescriptions()" id="btn-rx-save" class="bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 flex items-center gap-1">
+                  <i data-lucide="save" class="w-3.5 h-3.5"></i> Save to My Prescriptions
+                </button>
+                <button onclick="app.openAlexaSendModal()" id="btn-rx-send-alexa" class="bg-blue-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-blue-700 flex items-center gap-1">
+                  <i data-lucide="alarm-clock" class="w-3.5 h-3.5"></i> Send to Alexa
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manual mode -->
+          <div id="rx-pane-manual" class="space-y-4 hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+              <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-3">
+                <i data-lucide="edit-3" class="w-5 h-5 text-sky-600"></i> Add Medication Manually
+              </h2>
+
+              <div class="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Medication</label>
+                  <input id="rx-manual-name" type="text" placeholder="e.g., Metformin"
+                         class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400">
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Dose</label>
+                  <input id="rx-manual-dose" type="text" placeholder="e.g., 500 mg"
+                         class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400">
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Time(s)</label>
+                  <input id="rx-manual-times" type="text" placeholder="e.g., 09:00, 21:00"
+                         class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400">
+                  <p class="text-[11px] text-slate-400 mt-1">Use 24-hour time. Separate multiple times with commas.</p>
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Repeat</label>
+                  <select id="rx-manual-repeat" class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400">
+                    <option value="DAILY">Daily</option>
+                    <option value="WEEKDAYS">Weekdays (Mon–Fri)</option>
+                    <option value="CUSTOM_DAYS">Custom days</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-2">
+                  <div id="rx-manual-days" class="hidden mt-1">
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Days</label>
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" class="rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-day="MO" onclick="app.toggleRxDay(this)">Mon</button>
+                      <button type="button" class="rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-day="TU" onclick="app.toggleRxDay(this)">Tue</button>
+                      <button type="button" class="rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-day="WE" onclick="app.toggleRxDay(this)">Wed</button>
+                      <button type="button" class="rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-day="TH" onclick="app.toggleRxDay(this)">Thu</button>
+                      <button type="button" class="rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-day="FR" onclick="app.toggleRxDay(this)">Fri</button>
+                      <button type="button" class="rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-day="SA" onclick="app.toggleRxDay(this)">Sat</button>
+                      <button type="button" class="rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-day="SU" onclick="app.toggleRxDay(this)">Sun</button>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-2">Choose which days Alexa should remind you.</p>
+                  </div>
+                </div>
+
+                <div class="sm:col-span-2">
+                  <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Instructions / Notes</label>
+                  <textarea id="rx-manual-notes" rows="3" placeholder="e.g., Take with food"
+                            class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"></textarea>
+                </div>
+              </div>
+
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button onclick="app.addManualPrescription()" class="bg-sky-600 text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-sky-700 flex items-center gap-2">
+                  <i data-lucide="plus" class="w-4 h-4"></i> Add Medication
+                </button>
+                <button onclick="app.clearManualPrescription()" class="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 flex items-center gap-2">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i> Clear
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <i data-lucide="clipboard-list" class="w-4 h-4 text-slate-600"></i> My Draft List
+                </h3>
+                <span class="chip chip-slate text-[10px]">Local</span>
+              </div>
+              <div id="rx-manual-list" class="space-y-2">
+                <div class="text-sm text-slate-400 text-center py-8">Add a medication above to build your list.</div>
+              </div>
+
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button onclick="app.savePrescriptions()" class="bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 flex items-center gap-1">
+                  <i data-lucide="save" class="w-3.5 h-3.5"></i> Save to My Prescriptions
+                </button>
+                <button onclick="app.openAlexaSendModal()" class="bg-blue-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-blue-700 flex items-center gap-1">
+                  <i data-lucide="alarm-clock" class="w-3.5 h-3.5"></i> Send to Alexa
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right column: guidance / preview -->
+          <div class="bg-slate-50/60 border border-slate-200 rounded-2xl p-5">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-3">
+              <i data-lucide="info" class="w-4 h-4 text-slate-500"></i> How Alexa reminders work
+            </h3>
+            <div class="space-y-3 text-sm text-slate-600 leading-relaxed">
+              <div class="bg-white border border-slate-200 rounded-xl p-4">
+                <div class="flex items-center gap-2 font-semibold text-slate-800 mb-1">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span> Step 1
+                </div>
+                Upload or enter medications, then choose the exact reminder schedule you want.
+              </div>
+              <div class="bg-white border border-slate-200 rounded-xl p-4">
+                <div class="flex items-center gap-2 font-semibold text-slate-800 mb-1">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span> Step 2
+                </div>
+                Tap <strong>Send to Alexa</strong>. You’ll see a message telling you what to say next.
+              </div>
+              <div class="bg-white border border-slate-200 rounded-xl p-4">
+                <div class="flex items-center gap-2 font-semibold text-slate-800 mb-1">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span> Step 3 (one time)
+                </div>
+                Open Alexa and say: <span class="font-mono text-xs bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg">Alexa, open PulseNova</span>
+              </div>
+              <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-800">
+                Alexa may ask you to allow reminders permission once. After that, it’s faster.
+              </div>
+            </div>
+
+            <div class="mt-4 text-xs text-slate-400">
+              Your choices are confirmed in Alexa before reminders are created.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Saved prescriptions list placeholder -->
+      <div id="rx-saved-panel" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="folder" class="w-4 h-4 text-slate-500"></i> Saved Prescriptions
+          </h2>
+          <button onclick="app.loadPrescriptions()" class="text-xs bg-white border border-slate-200 text-slate-600 px-2.5 py-1 rounded-lg hover:bg-slate-50 flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
+          </button>
+        </div>
+        <div id="rx-saved-list" class="space-y-2">
+          <p class="text-sm text-slate-400 text-center py-6">No saved prescriptions yet.</p>
+        </div>
+      </div>
+
     </div>
+  </section>
+
+  <!-- CARE (unchanged) -->
+  <section id="page-care" class="page-section hidden p-4 animate-fade-in">
+    <!-- keep your original care section -->
+    <!-- ... -->
+  </section>
+
+  <!-- ABOUT (unchanged) -->
+  <section id="page-about" class="page-section hidden p-4 animate-fade-in">
+    <!-- keep your original about section -->
+    <!-- ... -->
   </section>
 
 </main>
 
+<!-- Toast -->
 <div id="toast">
   <div class="bg-slate-900 text-white text-sm px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
     <i id="toast-ico" data-lucide="info" class="w-4 h-4"></i>
@@ -544,6 +576,99 @@
   </div>
 </div>
 
+<!-- History Overlay (NEW - mobile friendly) -->
+<div id="history-overlay" class="hidden fixed inset-0 z-[60]">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="app.closeHistoryOverlay()"></div>
+  <div class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl border-t border-slate-200 shadow-2xl max-h-[85vh] overflow-hidden">
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
+        <div class="font-bold text-slate-800">Chat History</div>
+        <span id="history-auth-chip" class="chip chip-slate text-[10px]">Guest</span>
+      </div>
+      <button onclick="app.closeHistoryOverlay()" class="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i> Close
+      </button>
+    </div>
+
+    <div class="p-4 flex items-center gap-2">
+      <button onclick="app.startNewTriageChat(); app.closeHistoryOverlay();" class="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700">
+        <i data-lucide="plus" class="w-4 h-4"></i> New Chat
+      </button>
+      <button onclick="app.navigate('triage'); app.closeHistoryOverlay();" class="px-4 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+        Open Triage
+      </button>
+    </div>
+
+    <div class="px-4 pb-5 overflow-y-auto max-h-[calc(85vh-120px)]">
+      <div id="history-guest-msg" class="hidden bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm flex gap-3 mb-4">
+        <i data-lucide="lock" class="w-5 h-5 shrink-0 mt-0.5"></i>
+        <div>
+          <p class="font-semibold mb-1">Sign in to view history</p>
+          <p class="text-amber-700 text-xs">We only save chat history for logged-in users.</p>
+        </div>
+      </div>
+
+      <div class="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">Recent Sessions</div>
+      <div id="history-list-mobile" class="space-y-1.5">
+        <p class="text-xs text-slate-400 text-center py-4">No recent chats.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alexa Send Modal (NEW) -->
+<div id="alexa-send-modal" class="hidden fixed inset-0 z-[70]">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="app.closeAlexaSendModal()"></div>
+  <div class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl border-t border-slate-200 shadow-2xl max-h-[90vh] overflow-hidden">
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alarm-clock" class="w-4 h-4 text-blue-600"></i>
+        <div class="font-bold text-slate-800">Send to Alexa</div>
+        <span class="chip chip-blue text-[10px]">Confirm in Alexa</span>
+      </div>
+      <button onclick="app.closeAlexaSendModal()" class="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i> Close
+      </button>
+    </div>
+
+    <div class="p-4 space-y-3">
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+        <div class="text-sm font-bold text-slate-800 mb-1">Choose reminders to send</div>
+        <div class="text-xs text-slate-500">Edit times and repeat rules below. Alexa will ask you to confirm before creating reminders.</div>
+      </div>
+
+      <!-- App.js should populate this with selectable items -->
+      <div id="alexa-reminder-config" class="space-y-2">
+        <div class="text-sm text-slate-400 text-center py-8">
+          Add prescriptions first (manual or upload), then open this.
+        </div>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800">
+        <div class="flex items-start gap-2">
+          <i data-lucide="info" class="w-4 h-4 mt-0.5"></i>
+          <div class="text-xs leading-relaxed">
+            After sending, open Alexa and say:
+            <span class="font-mono bg-amber-100 border border-amber-200 px-2 py-1 rounded-lg">Alexa, open PulseNova</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pb-3">
+        <button onclick="app.sendToAlexa()" id="btn-send-to-alexa"
+                class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+          <i data-lucide="send" class="w-4 h-4"></i> Send Request
+        </button>
+        <button onclick="app.copyAlexaPhrase()" class="bg-white border border-slate-200 text-slate-700 py-3 px-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+          <i data-lucide="copy" class="w-4 h-4"></i> Copy Phrase
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Voice overlay (unchanged from your original) -->
 <div id="voice-overlay" class="voice-overlay flex-col">
   <div class="voice-overlay-bg"></div>
   <div class="relative flex items-center justify-between p-5 flex-shrink-0">
