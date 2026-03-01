@@ -19,8 +19,9 @@ from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, create_engine
 from database import init_db, get_db, User, TriageSession, VitalReading, MedicalDocument
+from .models import Base
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -93,6 +94,23 @@ _embed_store: Dict[str, Dict[str, Any]] = {}
 # Sessions: session_id -> {tokens, profile, created_at}
 _sessions: Dict[str, Dict[str, Any]] = {}
 
+# Database initialization function
+def init_db():
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if DATABASE_URL:
+        engine = create_engine(DATABASE_URL)
+        Base.metadata.create_all(engine)
+        print("Database tables initialized successfully.")
+    else:
+        print("DATABASE_URL not found. Skipping table initialization.")
+
+
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+    logger.info("Database tables initialized successfully.")
+
 # =============================================================================
 # FASTAPI
 # =============================================================================
@@ -115,10 +133,7 @@ app.add_middleware(
 # Serve /static/app.js and /static/styles.css from project root
 app.mount("/static", StaticFiles(directory=".", html=False), name="static")
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
-    logger.info("Database tables initialized successfully.")
+
 
 # =============================================================================
 # PYDANTIC MODELS
