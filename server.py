@@ -105,13 +105,6 @@ def init_db():
     else:
         print("DATABASE_URL not found. Skipping table initialization.")
 
-
-
-@app.on_event("startup")
-def on_startup():
-    init_db()
-    logger.info("Database tables initialized successfully.")
-
 # =============================================================================
 # FASTAPI
 # =============================================================================
@@ -135,7 +128,10 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=".", html=False), name="static")
 
 
-
+@app.on_event("startup")
+def on_startup():
+    init_db()
+    logger.info("Database tables initialized successfully.")
 # =============================================================================
 # PYDANTIC MODELS
 # =============================================================================
