@@ -734,14 +734,22 @@ async def set_prefs(req: FastAPIRequest, db: Session = Depends(get_db)):
 # TRIAGE / VISION / VOICE
 # =============================================================================
 @app.post("/api/triage", response_model=TextResponse)
-def triage(req: TriageRequest):
+def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depends(get_db)):
+    # 1. Validation check
     if not req.message and not req.image_base64:
         raise HTTPException(status_code=400, detail="Provide a message or an image.")
 
+    # 2. Get User ID from session (so history is tied to the right person)
+    session_id = req_fastapi.cookies.get(SESSION_COOKIE)
+    s = _sessions.get(session_id)
+    # Fallback to 'anonymous' if not logged in, but your app should require login
+    user_id = s["profile"].get("sub") if s else "anonymous"
+
+    # 3. Prepare Bedrock request
     system_list = [{"text": _triage_system_prompt(req.language)}]
     messages = _sanitize_history_for_nova(req.history)
-
     user_content = []
+    
     if req.message:
         user_content.append({"text": req.message})
 
@@ -759,7 +767,30 @@ def triage(req: TriageRequest):
         "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature), "topP": 0.9},
     }
 
-    return TextResponse(text=_nova_invoke(MODEL_ID_TEXT, request_body))
+    # 4. Get AI Response
+    ai_text = _nova_invoke(MODEL_ID_TEXT, request_body)
+
+    # 5. SAVE TO POSTGRESQL [CRITICAL ADDITION]
+    try:
+        # Convert history objects to dictionaries for JSON storage
+        history_list = [h.dict() for h in req.history]
+        # Add the current turn
+        history_list.append({"role": "user", "text": req.message or "[Image Uploaded]"})
+        history_list.append({"role": "assistant", "text": ai_text})
+
+        new_session = TriageSession(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            title=(req.message[:47] + "...") if req.message else "Image Analysis",
+            messages=history_list
+        )
+        db.add(new_session)
+        db.commit()
+    except Exception as e:
+        logger.error(f"Failed to save triage history: {e}")
+        # We don't raise an error here because the AI response still worked
+
+    return TextResponse(text=ai_text)
 
 @app.post("/api/first-aid-guide", response_model=FirstAidResponse)
 def first_aid_guide(req: FirstAidRequest):
@@ -796,9 +827,10 @@ def first_aid_guide(req: FirstAidRequest):
     return FirstAidResponse(steps=results)
 
 @app.post("/api/vision", response_model=TextResponse)
-def vision(req: VisionRequest):
+def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depends(get_db)):
     system_list = [{"text": _triage_system_prompt(req.language)}]
 
+    # 1. Handle File Conversions (PDF to PNG or direct Image)
     if req.pdf_base64 and not req.image_base64:
         image_b64_for_model = _pdf_first_page_to_png_b64(_b64_to_bytes(req.pdf_base64, MAX_PDF_BYTES))
         image_fmt = "png"
@@ -808,6 +840,7 @@ def vision(req: VisionRequest):
         image_fmt = _guess_image_format(_b64_to_bytes(req.image_base64, MAX_IMAGE_BYTES))
         image_b64_for_model = _strip_data_url(req.image_base64)
 
+    # 2. Build Bedrock Request
     messages = [
         {
             "role": "user",
@@ -823,7 +856,29 @@ def vision(req: VisionRequest):
         "messages": messages,
         "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature)},
     }
-    return TextResponse(text=_nova_invoke(MODEL_ID_VISION, request_body))
+    
+    # 3. Get AI Analysis
+    ai_analysis = _nova_invoke(MODEL_ID_VISION, request_body)
+
+    # 4. SAVE TO POSTGRESQL [CRITICAL ADDITION]
+    try:
+        # Get User ID from session cookie
+        session_id = req_fastapi.cookies.get(SESSION_COOKIE)
+        s = _sessions.get(session_id)
+        user_id = s["profile"].get("sub") if s else "anonymous"
+
+        # Create record in MriRecord table
+        new_record = MriRecord(
+            user_id=user_id,
+            file_name="Analysis_" + str(int(time.time())),
+            result=ai_analysis
+        )
+        db.add(new_record)
+        db.commit()
+    except Exception as e:
+        logger.error(f"Failed to save vision/MRI record: {e}")
+
+    return TextResponse(text=ai_analysis)
 
 @app.post("/api/voice-turn", response_model=VoiceTurnResponse)
 def voice_turn(req: VoiceTurnRequest):
