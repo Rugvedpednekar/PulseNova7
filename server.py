@@ -21,8 +21,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from database import init_db, get_db, User, TriageSession, VitalReading, MedicalDocument
-from models import Base
+from database import init_db, get_db, User, TriageSession, VitalReading, MedicalDocument, Base 
+
 
 from dotenv import load_dotenv
 load_dotenv()
