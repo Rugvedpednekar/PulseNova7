@@ -236,6 +236,12 @@ class PulseNovaApp {
 
   /* -------------------- NAV -------------------- */
   navigate(pageId) {
+    // NEW: Intercept 'dashboard' clicks and route to the dedicated accounts page
+    if (pageId === 'dashboard') {
+      window.location.href = '/account';
+      return;
+    }
+
     if (pageId !== 'vitals' && this.vitals.isMonitoring) this.stopVitals(false);
     document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
     const page = document.getElementById(`page-${pageId}`);
@@ -252,7 +258,6 @@ class PulseNovaApp {
   }
 
   toggleMobileMenu() { document.getElementById('mobile-menu')?.classList.toggle('hidden'); }
-
   /* -------------------- LOGOUT -------------------- */
   // FIX: logout() method was missing from the class entirely.
   // The dashboard "Sign out" button called app.logout() which threw
