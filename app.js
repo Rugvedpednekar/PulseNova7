@@ -2197,7 +2197,7 @@ List 4 questions the patient should ask about these results.
   closeAlexaSendModal() {
     document.getElementById('alexa-send-modal')?.classList.add('hidden');
   }
-
+  
   async sendToAlexa() {
     const allMeds  = [...this.rxExtracted, ...this.rxManualDraft];
     const selected = allMeds.filter((_, idx) => {
@@ -2209,12 +2209,23 @@ List 4 questions the patient should ask about these results.
     const btn = document.getElementById('btn-send-to-alexa');
     if (btn) { btn.disabled = true; btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sending…`; }
 
-    // Build a human-readable Alexa phrase
+    // --- NEW: Actually send the data to your server ---
+    try {
+      await fetch('/api/alexa/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meds: selected })
+      });
+    } catch (e) {
+      console.error('Failed to queue reminders', e);
+    }
+    // --------------------------------------------------
+
+    // Keep the phrase builder active so the "Copy Phrase" button still works!
     const lines = selected.map(med => {
       const timeStr = (med.times || []).join(' and ') || 'daily';
       return `${med.name}${med.dose ? ' ' + med.dose : ''} at ${timeStr}`;
     }).join(', and ');
-
     this._alexaPhrase = `Alexa, ask PulseNova to remind me to take ${lines}`;
 
     await new Promise(r => setTimeout(r, 700));
@@ -2223,7 +2234,7 @@ List 4 questions the patient should ask about these results.
     if (window.lucide) lucide.createIcons();
 
     this.closeAlexaSendModal();
-    this.toast('Queued. Open Alexa to confirm.', 'alarm-clock');
+    this.toast('Sent! Open Alexa to confirm.', 'check');
     setTimeout(() => this.toast('Say: "Alexa, open PulseNova"', 'mic'), 2600);
   }
 
@@ -2233,8 +2244,6 @@ List 4 questions the patient should ask about these results.
       .then(()  => this.toast('Copied to clipboard', 'copy'))
       .catch(()  => this.toast('Copy failed — try manually', 'alert-triangle'));
   }
-}
-
 // =============================================================================
 // BOOTSTRAP
 // FIX: Full flow is now:
