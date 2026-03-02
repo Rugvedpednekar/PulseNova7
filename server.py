@@ -1255,126 +1255,222 @@ def _cognito_userinfo(access_token: str) -> Dict[str, Any]:
 
 
 # =============================================================================
-# ALEXA (Native Webhook Handler)
+# ALEXA (Native Webhook Handler) 
 # =============================================================================
 def _alexa_response(
     text: str,
-    end_session: bool  = False,
+    end_session: bool = False,
     link_account: bool = False,
-    attributes: dict   = None,
+    attributes: Optional[dict] = None,
 ):
+    """
+    Alexa response envelope.
+    - If link_account=True, Alexa shows the LinkAccount card and ends the session.
+    - Otherwise, we keep the session open by default for a conversational flow.
+    """
     response_body = {
         "version": "1.0",
         "sessionAttributes": attributes or {},
         "response": {
-            "outputSpeech":    {"type": "PlainText", "text": text},
-            "shouldEndSession": end_session,
+            "outputSpeech": {"type": "PlainText", "text": text},
+            "shouldEndSession": bool(end_session),
         },
     }
     if link_account:
-        response_body["response"]["card"]               = {"type": "LinkAccount"}
-        response_body["response"]["shouldEndSession"]   = True
+        response_body["response"]["card"] = {"type": "LinkAccount"}
+        response_body["response"]["shouldEndSession"] = True
     return JSONResponse(response_body)
+
+
+def _alexa_get_access_token(body: dict) -> Optional[str]:
+    """
+    IMPORTANT:
+    Use ONLY the Account Linking token:
+      body.session.user.accessToken
+
+    DO NOT use context.System.apiAccessToken:
+    that's an Alexa API token and cannot be validated against Cognito.
+    """
+    return body.get("session", {}).get("user", {}).get("accessToken")
+
+
+def _alexa_user_from_token(access_token: str) -> Dict[str, Any]:
+    """
+    Validate the Alexa-linked token by calling Cognito /oauth2/userInfo.
+
+    This avoids 'aud claim missing' problems because Cognito access tokens
+    often don't include aud (they use client_id).
+    """
+    info = _cognito_userinfo(access_token)  # raises HTTPException(401) if invalid/expired
+    # userInfo typically includes: sub, email, username, etc.
+    if not info or not info.get("sub"):
+        raise HTTPException(status_code=401, detail="userInfo did not include sub.")
+    return info
 
 
 @app.post("/alexa/triage-turn")
 async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
+    """
+    Conversational Alexa flow:
+    - User says: "Alexa, open PulseNova"
+    - Skill responds and keeps session open
+    - User continues until they say stop/cancel/exit/close
+    - We store short history in sessionAttributes to preserve context
+    """
     try:
         body = await req.json()
 
-        access_token = (
-            body.get("session", {}).get("user", {}).get("accessToken") or 
-            body.get("context", {}).get("System", {}).get("apiAccessToken")
-        )
-        
-        session_attrs = body.get("session", {}).get("attributes") or {}
-        history       = session_attrs.get("history", [])
-
-        if not access_token:
-            return _alexa_response(
-                "Please link your account in the Alexa app to continue.",
-                link_account=True,
-            )
-
-        try:
-            claims   = _verify_cognito_jwt(access_token)
-            user_sub = claims.get("sub")
-        except Exception:
-            return _alexa_response(
-                "Your session expired. Please relink your account.",
-                link_account=True,
-            )
-
-        req_data = body.get("request", {})
+        req_data = body.get("request", {}) or {}
         req_type = req_data.get("type")
 
-        if req_type == "LaunchRequest":
+        # Session attributes (persist during the Alexa session)
+        session_attrs = body.get("session", {}).get("attributes") or {}
+        history = session_attrs.get("history", [])
+        if not isinstance(history, list):
+            history = []
+
+        # Handle built-in stop/cancel early
+        if req_type == "IntentRequest":
+            intent = (req_data.get("intent") or {})
+            intent_name = intent.get("name")
+
+            if intent_name in ("AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.NavigateHomeIntent"):
+                return _alexa_response(
+                    "Okay. Take care. Goodbye.",
+                    end_session=True,
+                    attributes={"history": []},
+                )
+
+            if intent_name == "AMAZON.HelpIntent":
+                return _alexa_response(
+                    "You can tell me your symptoms, for example: 'I have a headache.' "
+                    "Then answer my follow-up questions. Say 'stop' anytime to exit.",
+                    end_session=False,
+                    attributes={"history": history[-10:]},
+                )
+
+        # Require Account Linking token for all requests (Launch + Intent)
+        access_token = _alexa_get_access_token(body)
+        if not access_token:
+            # Clear, accurate message (not "expired")
             return _alexa_response(
-                "Welcome to Pulse Nova. You can describe your symptoms, or ask me to read your last lab report.",
-                attributes={"history": []},
+                "Please link your PulseNova account in the Alexa app to continue.",
+                link_account=True,
             )
 
-        if req_type == "IntentRequest":
-            intent_name = req_data.get("intent", {}).get("name")
-            slots       = req_data.get("intent", {}).get("slots", {})
-
-            if intent_name in ["TriageIntent", "CatchAllIntent"]:
-                user_text = (
-                    slots.get("symptoms", {}).get("value")
-                    or slots.get("catchall", {}).get("value")
+        # Validate token + identify user using Cognito userInfo
+        try:
+            user_info = _alexa_user_from_token(access_token)
+            user_sub = user_info.get("sub")
+        except HTTPException as e:
+            # Only ask relink if Cognito says token is invalid/expired
+            if e.status_code == 401:
+                return _alexa_response(
+                    "Your PulseNova login needs to be refreshed. Please relink your account in the Alexa app.",
+                    link_account=True,
                 )
+            raise
+
+        # LaunchRequest: greet and keep session open
+        if req_type == "LaunchRequest":
+            return _alexa_response(
+                "Welcome to PulseNova. Tell me what symptoms you're having.",
+                end_session=False,
+                attributes={"history": []},  # start fresh each new session
+            )
+
+        # IntentRequest: main conversation
+        if req_type == "IntentRequest":
+            intent = (req_data.get("intent") or {})
+            intent_name = intent.get("name")
+            slots = intent.get("slots") or {}
+
+            # Prefer your TriageIntent slot (symptoms) with AMAZON.SearchQuery
+            user_text = None
+            if slots.get("symptoms", {}).get("value"):
+                user_text = slots["symptoms"]["value"]
+
+            # Safety net: if the model routes a turn to FallbackIntent,
+            # still keep conversation going by using the raw utterance (if available).
+            if intent_name == "AMAZON.FallbackIntent":
+                # Often Alexa doesn't provide the exact text here. Keep it graceful.
+                return _alexa_response(
+                    "Sorry, I didn't catch that. Please repeat what you said.",
+                    end_session=False,
+                    attributes={"history": history[-10:]},
+                )
+
+            # You may have other intents; if they don't provide user text, prompt again.
+            if intent_name not in ("TriageIntent", "CatchAllIntent"):
+                # Optional: route unknown intents back into conversation
                 if not user_text:
                     return _alexa_response(
-                        "I didn't quite catch that. Could you repeat?",
+                        "Tell me your symptoms, or say 'stop' to exit.",
                         end_session=False,
-                        attributes={"history": history},
+                        attributes={"history": history[-10:]},
                     )
 
-                history.append({"role": "user", "content": [{"text": user_text}]})
-
-                system_prompt = (
-                    "You are PulseNova on Alexa. Keep responses short and conversational. "
-                    "Ask ONE clarifying question at a time."
-                )
-                bedrock_req = {
-                    "schemaVersion":   "messages-v1",
-                    "system":          [{"text": system_prompt}],
-                    "messages":        history[-10:],
-                    "inferenceConfig": {"maxTokens": 200, "temperature": 0.3},
-                }
-
-                try:
-                    reply = _nova_invoke(MODEL_ID_TEXT, bedrock_req).strip()
-                except Exception as e:
-                    logger.error(f"Bedrock Alexa Error: {e}")
-                    return _alexa_response(
-                        "I'm having trouble connecting to my medical database right now. Please try again later.",
-                        end_session=True,
-                    )
-
-                history.append({"role": "assistant", "content": [{"text": reply}]})
+            if not user_text:
                 return _alexa_response(
-                    reply,
+                    "I didn't quite catch that. Could you repeat?",
                     end_session=False,
-                    attributes={"history": history},
+                    attributes={"history": history[-10:]},
                 )
 
-            elif intent_name == "GetMedicalDataIntent":
+            # Maintain short conversation history (messages-v1 format)
+            # Convert prior saved turns into Nova schema if needed
+            # We'll store in Alexa history as messages-v1 items
+            if history and isinstance(history[0], dict) and "role" in history[0] and "content" in history[0]:
+                nova_history = history
+            else:
+                # If history is in older format, reset safely
+                nova_history = []
+
+            nova_history.append({"role": "user", "content": [{"text": user_text}]})
+
+            system_prompt = (
+                "You are PulseNova on Alexa. Keep responses short and conversational for voice. "
+                "Ask ONE clarifying question at a time. "
+                "If symptoms sound life-threatening, advise calling emergency services immediately."
+            )
+
+            bedrock_req = {
+                "schemaVersion": "messages-v1",
+                "system": [{"text": system_prompt}],
+                "messages": nova_history[-10:],  # keep it short for latency
+                "inferenceConfig": {"maxTokens": 200, "temperature": 0.3},
+            }
+
+            try:
+                reply = _nova_invoke(MODEL_ID_TEXT, bedrock_req).strip()
+            except Exception as e:
+                logger.error(f"Bedrock Alexa Error: {e}")
                 return _alexa_response(
-                    "I couldn't find any recent lab reports.",
-                    end_session=True,
+                    "I'm having trouble reaching the medical model right now. Please try again in a moment.",
+                    end_session=False,
+                    attributes={"history": nova_history[-10:]},
                 )
 
-        logger.warning(f"Unhandled Intent: {req_data.get('intent', {}).get('name')}")
+            nova_history.append({"role": "assistant", "content": [{"text": reply}]})
+
+            # Keep session open so the user can continue speaking
+            return _alexa_response(
+                reply,
+                end_session=False,
+                attributes={"history": nova_history[-10:]},
+            )
+
+        # Any other request type
         return _alexa_response(
-            "I'm not sure how to help with that yet.",
+            "Tell me your symptoms, or say 'stop' to exit.",
             end_session=False,
-            attributes={"history": history},
+            attributes={"history": history[-10:]},
         )
 
     except Exception as e:
         logger.error(f"Fatal Alexa Webhook Error: {e}")
         return _alexa_response(
-            "Sorry, Pulse Nova encountered an internal error. Please check the server logs.",
-            end_session=True,
+            "Sorry, PulseNova encountered an internal error. Please try again.",
+            end_session=False,
+            attributes={"history": []},
         )
