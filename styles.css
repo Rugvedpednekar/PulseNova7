@@ -263,7 +263,7 @@ body.min-h-screen{ min-height:100dvh; }
    ========================================================= */
 
 /* Make app-content a proper flex child when body is flex */
-#app-content{ min-height:0; overflow:hidden; }
+#app-content{ min-height:0; overflow:visible; }
 
 /* If you changed wrapper to <div class="triage-shell"> */
 .triage-shell{
