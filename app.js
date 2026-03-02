@@ -2,46 +2,64 @@
 // AUTH NAV
 // =============================================================================
 async function pulseNovaInitAuthNav() {
-    try {
-      const res = await fetch('/me');
-      const data = await res.json();
-      const authed = !!data?.authenticated;
-      
-      // Store the auth state globally so the rest of the app knows
-      this.isAuthenticated = authed; 
-
-      // 1. Update Top Nav Bar & Mobile Menu
-      const signin = document.getElementById('nav-signin');
-      const acct   = document.getElementById('nav-account');
-      const mobileSignin = document.getElementById('mobile-nav-signin');
-      const mobileAcct = document.getElementById('mobile-nav-account');
-      
-      if (signin) signin.style.display = authed ? 'none' : 'inline-flex';
-      if (acct)   acct.style.display   = authed ? 'inline-flex' : 'none';
-      if (mobileSignin) mobileSignin.style.display = authed ? 'none' : 'flex';
-      if (mobileAcct) mobileAcct.style.display = authed ? 'flex' : 'none';
-
-      // 2. Update Homepage Hero Buttons
-      const btnSignin = document.getElementById('btn-hero-signin');
-      const btnGuest = document.getElementById('btn-hero-guest');
-      const btnTriageAuth = document.getElementById('btn-hero-triage-auth');
-      const btnDashboard = document.getElementById('btn-hero-dashboard');
-
-      if (authed) {
-          if (btnSignin) btnSignin.classList.add('hidden');
-          if (btnGuest) btnGuest.classList.add('hidden');
-          if (btnTriageAuth) { btnTriageAuth.classList.remove('hidden'); btnTriageAuth.classList.add('flex'); }
-          if (btnDashboard) { btnDashboard.classList.remove('hidden'); btnDashboard.classList.add('flex'); }
-      } else {
-          if (btnSignin) { btnSignin.classList.remove('hidden'); btnSignin.classList.add('flex'); }
-          if (btnGuest) { btnGuest.classList.remove('hidden'); btnGuest.classList.add('flex'); }
-          if (btnTriageAuth) { btnTriageAuth.classList.add('hidden'); btnTriageAuth.classList.remove('flex'); }
-          if (btnDashboard) { btnDashboard.classList.add('hidden'); btnDashboard.classList.remove('flex'); }
-      }
-    } catch (e) {
-      console.error("Auth check failed:", e);
+  try {
+    const res = await fetch('/me');
+    const data = await res.json();
+    const authed = !!data?.authenticated;
+    
+    // FIXED: Store the auth state explicitly on the 'app' object
+    if (window.app) {
+        window.app.isAuthenticated = authed; 
     }
+
+    // 1. Update Top Nav Bar & Mobile Menu
+    const signin = document.getElementById('nav-signin');
+    const acct   = document.getElementById('nav-account');
+    const mobileSignin = document.getElementById('mobile-nav-signin');
+    const mobileAcct = document.getElementById('mobile-nav-account');
+    
+    if (signin) signin.style.display = authed ? 'none' : 'inline-flex';
+    if (acct)   acct.style.display   = authed ? 'inline-flex' : 'none';
+    if (mobileSignin) mobileSignin.style.display = authed ? 'none' : 'flex';
+    if (mobileAcct) mobileAcct.style.display = authed ? 'flex' : 'none';
+
+    // 2. Update Homepage Hero Buttons
+    const btnSignin = document.getElementById('btn-hero-signin');
+    const btnGuest = document.getElementById('btn-hero-guest');
+    const btnTriageAuth = document.getElementById('btn-hero-triage-auth');
+    const btnDashboard = document.getElementById('btn-hero-dashboard');
+
+    if (authed) {
+        if (btnSignin) btnSignin.classList.add('hidden');
+        if (btnGuest) btnGuest.classList.add('hidden');
+        if (btnTriageAuth) { btnTriageAuth.classList.remove('hidden'); btnTriageAuth.classList.add('flex'); }
+        if (btnDashboard) { btnDashboard.classList.remove('hidden'); btnDashboard.classList.add('flex'); }
+
+        // NEW: Populate the inline Dashboard UI with your Profile Data!
+        const dashName = document.getElementById('dash-name');
+        const dashEmail = document.getElementById('dash-email');
+        const dashStatus = document.getElementById('dash-status');
+        const dashLoginBtn = document.getElementById('dash-login-btn');
+        const dashLogoutBtn = document.getElementById('dash-logout-btn');
+        const dashGuestBanner = document.getElementById('dash-guest-banner');
+
+        if (dashName) dashName.textContent = data.profile?.name || data.profile?.sub || "User";
+        if (dashEmail) dashEmail.textContent = data.profile?.email || "";
+        if (dashStatus) { dashStatus.textContent = "Signed In"; dashStatus.className = "chip chip-green"; }
+        if (dashLoginBtn) dashLoginBtn.classList.add('hidden');
+        if (dashLogoutBtn) dashLogoutBtn.classList.remove('hidden');
+        if (dashGuestBanner) dashGuestBanner.classList.add('hidden');
+
+    } else {
+        if (btnSignin) { btnSignin.classList.remove('hidden'); btnSignin.classList.add('flex'); }
+        if (btnGuest) { btnGuest.classList.remove('hidden'); btnGuest.classList.add('flex'); }
+        if (btnTriageAuth) { btnTriageAuth.classList.add('hidden'); btnTriageAuth.classList.remove('flex'); }
+        if (btnDashboard) { btnDashboard.classList.add('hidden'); btnDashboard.classList.remove('flex'); }
+    }
+  } catch (e) {
+    console.error("Auth check failed:", e);
   }
+}
 
 // =============================================================================
 // IOS TTS UNLOCK (global, runs once on first user gesture)
@@ -1620,13 +1638,11 @@ const app = new PulseNovaApp();
 window.app = app;
 app.navigate('home');
 
-// We await the auth check, and if successful, we load the database history
 pulseNovaInitAuthNav().then(() => {
-  if (app.isAuthenticated) {
+  if (app.isAuthenticated && typeof app.loadUserHistory === 'function') {
     app.loadUserHistory();
   }
 });
 
 if (window.lucide) lucide.createIcons();
 
-if (window.lucide) lucide.createIcons();
