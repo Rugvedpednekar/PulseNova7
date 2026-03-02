@@ -1282,7 +1282,11 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
     try:
         body = await req.json()
 
-        access_token  = body.get("session", {}).get("user", {}).get("accessToken")
+        access_token = (
+            body.get("session", {}).get("user", {}).get("accessToken") or 
+            body.get("context", {}).get("System", {}).get("apiAccessToken")
+        )
+        
         session_attrs = body.get("session", {}).get("attributes") or {}
         history       = session_attrs.get("history", [])
 
