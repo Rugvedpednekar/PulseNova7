@@ -112,4 +112,103 @@ body { font-family: 'Sora', system-ui, sans-serif; }
   #xray-result, #lab-result {
     position: absolute; inset: 0; width: 100%; height: auto; background: white !important; padding: 24px !important;
   }
+
+}
+
+/* =========================================================
+   MOBILE / RESPONSIVE FIX PACK (paste at bottom)
+   Fixes: 100vh bugs, triage chat scroll, iOS zoom, mobile menu
+   ========================================================= */
+
+/* Your navbar is h-16 = 64px */
+:root { --navH: 64px; }
+
+/* Use dynamic viewport height on mobile when possible */
+body.min-h-screen {
+  min-height: 100dvh;
+}
+@supports not (height: 100dvh) {
+  body.min-h-screen { min-height: 100vh; }
+}
+
+/* ---------- TRIAGE: proper height + scroll ---------- */
+/* Replace your calc(100vh - 57px) issues even if HTML still has it */
+#page-triage {
+  height: calc(100dvh - var(--navH));
+}
+@supports not (height: 100dvh) {
+  #page-triage { height: calc(100vh - var(--navH)); }
+}
+
+/* The triage inner shell should be able to shrink so chat can scroll */
+#page-triage > div,
+#page-triage .max-w-6xl {
+  height: 100%;
+  min-height: 0;
+}
+
+/* The chat column must allow the messages area to become a scroll container */
+#page-triage .flex-1 {
+  min-height: 0;
+}
+
+/* Better scrolling behavior + less rubber-band */
+#chat-messages {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Prevent iOS Safari auto-zoom when focusing inputs (must be >=16px) */
+@media (max-width: 640px) {
+  #chat-input,
+  #care-search,
+  #provider-filter,
+  #rx-manual-name,
+  #rx-manual-dose,
+  #rx-manual-times,
+  #pref-retention,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe-area padding so send bar doesn't sit on the iPhone home indicator */
+@supports (padding: max(0px)) {
+  #page-triage .border-t {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ---------- MOBILE MENU: make it behave like a drawer ---------- */
+#mobile-menu{
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: var(--navH) !important;
+  max-height: calc(100dvh - var(--navH)) !important;
+  overflow-y: auto !important;
+}
+@supports not (height: 100dvh) {
+  #mobile-menu { max-height: calc(100vh - var(--navH)) !important; }
+}
+
+/* ---------- HOME: tighten hero a bit for small screens ---------- */
+@media (max-width: 640px) {
+  #page-home h1{
+    font-size: 2.75rem;       /* smaller than text-5xl */
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  #page-home .py-24{
+    padding-top: 4.5rem;
+    padding-bottom: 4.5rem;
+  }
+  #page-home p.text-lg{
+    font-size: 1rem;
+  }
+}
+
+/* Optional: reduce grain intensity on mobile (performance + readability) */
+@media (max-width: 640px) {
+  .grain::after { opacity: 0.22; }
 }
