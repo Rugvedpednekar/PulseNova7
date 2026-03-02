@@ -155,6 +155,8 @@ class VisionRequest(BaseModel):
     pdf_base64:   Optional[str] = Field(default=None)
     prompt:       str           = Field(...)
     language:     Optional[str] = Field(default="en-US")
+    doc_type:     str           = Field(default="xray")  # <--- Added
+    save_to_db:   bool          = Field(default=True)    # <--- Added
     temperature:  float         = 0.2
     max_tokens:   int           = 900
 
@@ -1003,14 +1005,14 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
         )
         image_fmt      = "png"
         raw_payload_b64 = req.pdf_base64
-        doc_type        = "lab"
+        doc_type        = req.doc_type
     else:
         if not req.image_base64:
             raise HTTPException(status_code=400, detail="Provide image_base64 or pdf_base64.")
         image_fmt           = _guess_image_format(_b64_to_bytes(req.image_base64, MAX_IMAGE_BYTES))
         image_b64_for_model = _strip_data_url(req.image_base64)
         raw_payload_b64     = req.image_base64
-        doc_type            = "xray"
+        doc_type            = req.doc_type
 
     messages = [
         {
