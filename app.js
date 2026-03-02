@@ -889,17 +889,45 @@ class PulseNovaApp {
   }
 
   /* -------------------- DROPZONES -------------------- */
-  initDropzones() {
+ initDropzones() {
     this.setupDropzone('xray-dropzone', 'xray-input', f => this.handleDroppedFile(f, 'xray'));
     this.setupDropzone('lab-dropzone',  'lab-input',  f => this.handleDroppedFile(f, 'lab'));
+    // ADDED: Initialize the prescription dropzone
+    this.setupDropzone('rx-dropzone',   'rx-input',   f => this.handleDroppedFile(f, 'rx'));
   }
+
   setupDropzone(dropId, inputId, onFile) {
     const zone = document.getElementById(dropId); if (!zone) return;
-    ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); }));
-    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-active', 'drag-active-purple'); }));
-    zone.addEventListener('drop', e => { const f = e.dataTransfer?.files?.[0]; if (f) onFile(f); });
+    
+    ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, e => { 
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); 
+    }));
+    
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { 
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      zone.classList.remove('drag-active', 'drag-active-purple'); 
+    }));
+    
+    zone.addEventListener('drop', e => { 
+      const f = e.dataTransfer?.files?.[0]; 
+      if (f) onFile(f); 
+    });
   }
-  handleDroppedFile(file, type) { if (type === 'xray') this.handleXrayUpload({ files: [file] }); else this.handleLabUpload({ files: [file] }); }
+
+  handleDroppedFile(file, type) { 
+    if (type === 'xray') {
+      this.handleXrayUpload({ files: [file] }); 
+    } else if (type === 'lab') {
+      this.handleLabUpload({ files: [file] }); 
+    } else if (type === 'rx') {
+      // ADDED: Route prescription drops to the existing handleRxUpload function
+      this.handleRxUpload({ files: [file] }); 
+    }
+  }
+
   handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
   handleLabUpload(input)  { this.handleFileUpload(input, 'lab');  }
 
@@ -927,7 +955,6 @@ class PulseNovaApp {
     };
     reader.readAsDataURL(file);
   }
-
   /* -------------------- DATABASE SYNC -------------------- */
   async loadUserHistory() {
     // FIX: Guard uses the correctly-initialised this.isAuthenticated (false by
