@@ -741,7 +741,8 @@ def auth_callback(
     # FIX: Redirect to "/" (the new index.html with the embedded dashboard)
     # instead of "/account" (the old separate accounts.html page).
     # This ensures the correct app.js is loaded and loadUserHistory() runs.
-    resp = RedirectResponse(url="/", status_code=302)
+    # FIX: Redirect to the dedicated accounts page after login
+    resp = RedirectResponse(url="/account", status_code=302)
 
     secure_cookie = os.getenv("SECURE_COOKIES", "0") == "1"
     resp.set_cookie(
