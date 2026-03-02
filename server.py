@@ -243,21 +243,21 @@ class AlexaTurnResponse(BaseModel):
 #      Without these, /api/history returned unserializable ORM objects.
 # =============================================================================
 class TriageSessionOut(BaseModel):
-    id:         str
-    title:      str
-    messages:   Any
-    created_at: Any
-
+    id:         Optional[str] = None
+    title:      Optional[str] = None
+    messages:   Optional[Any] = None
+    created_at: Optional[Any] = None
+    
     class Config:
         from_attributes = True
 
 
 class MedicalDocumentOut(BaseModel):
-    id:          str
-    doc_type:    str
-    image_b64:   str
-    report_html: str
-    created_at:  Any
+    id:          Optional[str] = None
+    doc_type:    Optional[str] = None
+    image_b64:   Optional[str] = None
+    report_html: Optional[str] = None
+    created_at:  Optional[Any] = None
 
     class Config:
         from_attributes = True
@@ -1075,7 +1075,8 @@ def get_all_history(req: FastAPIRequest, db: Session = Depends(get_db)):
     if not s:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    u_sub = (s.get("profile") or {}).get("sub")
+    profile = s.get("profile") or {}
+    u_sub   = profile.get("sub") or profile.get("username")
     if not u_sub:
         raise HTTPException(status_code=401, detail="Missing user identifier in session.")
 
