@@ -243,29 +243,29 @@ class AlexaTurnResponse(BaseModel):
 #      Without these, /api/history returned unserializable ORM objects.
 # =============================================================================
 class TriageSessionOut(BaseModel):
-    id:         Optional[str] = None
-    title:      Optional[str] = None
-    messages:   Optional[Any] = None
-    created_at: Optional[Any] = None
-    
+    id: Optional[str] = None
+    title: Optional[str] = None
+    messages: Any = None
+    created_at: Any = None
+
     class Config:
         from_attributes = True
 
 
 class MedicalDocumentOut(BaseModel):
-    id:          Optional[str] = None
-    doc_type:    Optional[str] = None
-    image_b64:   Optional[str] = None
+    id: Optional[str] = None
+    doc_type: Optional[str] = None
+    image_b64: Optional[str] = None
     report_html: Optional[str] = None
-    created_at:  Optional[Any] = None
+    created_at: Any = None
 
     class Config:
         from_attributes = True
 
 
 class HistoryResponse(BaseModel):
-    triage:    List[TriageSessionOut]
-    documents: List[MedicalDocumentOut]
+    triage: List[TriageSessionOut] = []
+    documents: List[MedicalDocumentOut] = []
 
 
 # =============================================================================
@@ -1071,20 +1071,17 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
 @app.get("/api/history", response_model=HistoryResponse)
 def get_all_history(req: FastAPIRequest, db: Session = Depends(get_db)):
     session_id = req.cookies.get(SESSION_COOKIE)
-    s          = _get_session(session_id)
+    s = _get_session(session_id)
     if not s:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    # Safely check both 'sub' and 'username'
     profile = s.get("profile") or {}
-    u_sub   = profile.get("sub") or profile.get("username")
+    u_sub = profile.get("sub") or profile.get("username")
+    
     if not u_sub:
         raise HTTPException(status_code=401, detail="Missing user identifier in session.")
 
-    # FIX: Added response_model=HistoryResponse above so FastAPI uses the
-    # Pydantic schemas (TriageSessionOut, MedicalDocumentOut) to serialize
-    # the SQLAlchemy ORM objects into JSON automatically.
-    # Previously, raw ORM objects were returned and FastAPI couldn't serialize
-    # them, causing the endpoint to return broken/empty data.
     chats = db.query(TriageSession).filter(TriageSession.user_sub == u_sub).all()
     docs  = db.query(MedicalDocument).filter(MedicalDocument.user_sub == u_sub).all()
 
