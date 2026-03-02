@@ -205,6 +205,7 @@ class PulseNovaApp {
     this.renderChat();
     this.renderProviders();
     this.setVitalsContext('resting');
+    this.initRx();
     // FIX: Do NOT call resetVitalsSummary() in the constructor.
     // The summary card starts hidden in the HTML and should only
     // become visible once the user actually starts a reading.
@@ -1804,6 +1805,401 @@ List 4 questions the patient should ask about these results.
       html = html.replace(/(<li[\s\S]*?<\/li>)/g, '<ul class="my-2 space-y-0.5">$1</ul>').replace(/<\/ul><br><ul[^>]*>/g, '');
     }
     return html;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* RX INIT                                                              */
+  /* ------------------------------------------------------------------ */
+  initRx() {
+    this.rxMode         = 'upload';   // 'upload' | 'manual'
+    this.rxImage        = null;       // base64 string of uploaded file
+    this.rxIsPdf        = false;
+    this.rxExtracted    = [];         // meds found by AI from image/PDF
+    this.rxManualDraft  = [];         // meds added by manual form
+    this.rxSaved        = JSON.parse(localStorage.getItem('pulsenova_rx') || '[]');
+    this.rxSelectedDays = new Set();
+    this._alexaPhrase   = '';
+
+    // Wire up repeat select → show/hide custom days picker
+    const repeatSel = document.getElementById('rx-manual-repeat');
+    if (repeatSel) {
+      repeatSel.addEventListener('change', () => {
+        const daysWrap = document.getElementById('rx-manual-days');
+        if (daysWrap) daysWrap.classList.toggle('hidden', repeatSel.value !== 'CUSTOM_DAYS');
+      });
+    }
+
+    this.rxSetMode('upload');
+    this._renderRxSaved();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* TAB SWITCHING                                                        */
+  /* ------------------------------------------------------------------ */
+  rxSetMode(mode) {
+    this.rxMode = mode;
+
+    const uploadPane = document.getElementById('rx-pane-upload');
+    const manualPane = document.getElementById('rx-pane-manual');
+    const uploadTab  = document.getElementById('rx-tab-upload');
+    const manualTab  = document.getElementById('rx-tab-manual');
+
+    if (uploadPane) uploadPane.classList.toggle('hidden', mode !== 'upload');
+    if (manualPane) manualPane.classList.toggle('hidden', mode !== 'manual');
+
+    const active   = 'px-3 py-2 rounded-xl text-xs font-bold border flex items-center gap-2 transition-colors bg-sky-50 border-sky-300 text-sky-700';
+    const inactive = 'px-3 py-2 rounded-xl text-xs font-bold border flex items-center gap-2 transition-colors bg-white border-slate-200 text-slate-700 hover:bg-slate-50';
+
+    if (uploadTab) uploadTab.className = mode === 'upload' ? active : inactive;
+    if (manualTab) manualTab.className = mode === 'manual' ? active : inactive;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* FILE UPLOAD                                                          */
+  /* ------------------------------------------------------------------ */
+  handleRxUpload(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.rxIsPdf = file.type === 'application/pdf';
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      this.rxImage = reader.result.split(',')[1];
+
+      const previewImg  = document.getElementById('rx-preview-img');
+      const previewPdf  = document.getElementById('rx-preview-pdf');
+      const placeholder = document.getElementById('rx-placeholder');
+
+      if (placeholder) placeholder.classList.add('hidden');
+
+      if (this.rxIsPdf) {
+        if (previewImg) previewImg.classList.add('hidden');
+        if (previewPdf) previewPdf.classList.remove('hidden');
+      } else {
+        if (previewPdf) previewPdf.classList.add('hidden');
+        if (previewImg) { previewImg.src = reader.result; previewImg.classList.remove('hidden'); }
+      }
+
+      const btn = document.getElementById('btn-extract-rx');
+      if (btn) btn.disabled = false;
+      this.toast('Prescription uploaded', 'file-scan');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* EXTRACT FROM IMAGE / PDF VIA AI                                     */
+  /* ------------------------------------------------------------------ */
+  async extractPrescription() {
+    if (!this.rxImage) return;
+
+    const btn   = document.getElementById('btn-extract-rx');
+    const badge = document.getElementById('rx-extract-badge');
+
+    if (btn)   { btn.disabled = true; btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Extracting…`; }
+    if (badge) { badge.textContent = 'Processing'; badge.className = 'chip chip-blue'; }
+
+    const prompt = `You are a clinical pharmacist assistant. Extract ALL medications visible in this prescription.
+        CRITICAL: Output ONLY a raw valid JSON array. No markdown fences, no preamble, no explanation.
+        Each item must have exactly these keys:
+          "name"   — medication name (string)
+          "dose"   — dosage and unit e.g. "500 mg" (string, empty string if unknown)
+          "times"  — array of 24-hour time strings e.g. ["08:00","20:00"] (empty array if unknown)
+          "repeat" — one of exactly: "DAILY", "WEEKDAYS", "CUSTOM_DAYS"
+          "days"   — array of day codes when repeat is CUSTOM_DAYS e.g. ["MO","WE","FR"], else []
+          "notes"  — special instructions e.g. "Take with food" (string, empty string if none)
+        If no medications are found, return [].`;
+
+    try {
+      const payload = this.rxIsPdf
+        ? { pdf_base64: this.rxImage, prompt, language: this.selectedLanguage, max_tokens: 1500 }
+        : { image_base64: this.rxImage, prompt, language: this.selectedLanguage, max_tokens: 1500 };
+
+      const res = await fetch('/api/vision', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const raw  = (data.text || '').replace(/```json|```/g, '').trim();
+      this.rxExtracted = JSON.parse(raw);
+    } catch (e) {
+      console.error('Rx extraction failed:', e);
+      this.rxExtracted = [];
+      this.toast('Could not extract medications. Try a clearer image.', 'alert-triangle');
+    }
+
+    this._renderRxExtracted();
+
+    if (btn)   { btn.disabled = false; btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i> Extract Prescription`; }
+    if (badge) {
+      badge.textContent = this.rxExtracted.length ? `${this.rxExtracted.length} found` : 'None found';
+      badge.className   = this.rxExtracted.length ? 'chip chip-green' : 'chip chip-amber';
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  _renderRxExtracted() {
+    const list = document.getElementById('rx-extracted-list');
+    if (!list) return;
+
+    if (!this.rxExtracted.length) {
+      list.innerHTML = `<div class="text-sm text-slate-400 text-center py-8">No medications found. Try a clearer image.</div>`;
+      return;
+    }
+
+    list.innerHTML = '';
+    this.rxExtracted.forEach((med, idx) => {
+      const card = document.createElement('div');
+      card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1';
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med.name)}</div>
+            <div class="text-xs text-slate-500">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
+          </div>
+          <button onclick="app.rxRemoveExtracted(${idx})" class="text-slate-300 hover:text-red-400 transition-colors shrink-0">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+        ${med.notes ? `<div class="text-xs text-slate-400 italic">${this.escapeHtml(med.notes)}</div>` : ''}
+        <div class="text-[10px] text-slate-400">Repeat: ${this.escapeHtml(med.repeat)}${med.days?.length ? ' · ' + med.days.join(', ') : ''}</div>`;
+      list.appendChild(card);
+    });
+    if (window.lucide) lucide.createIcons();
+  }
+
+  rxRemoveExtracted(idx) {
+    this.rxExtracted.splice(idx, 1);
+    this._renderRxExtracted();
+    const badge = document.getElementById('rx-extract-badge');
+    if (badge) {
+      badge.textContent = this.rxExtracted.length ? `${this.rxExtracted.length} found` : 'None found';
+      badge.className   = this.rxExtracted.length ? 'chip chip-green' : 'chip chip-amber';
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* MANUAL ENTRY                                                         */
+  /* ------------------------------------------------------------------ */
+  toggleRxDay(btn) {
+    const day = btn.dataset.day;
+    if (this.rxSelectedDays.has(day)) {
+      this.rxSelectedDays.delete(day);
+      btn.className = 'rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50';
+    } else {
+      this.rxSelectedDays.add(day);
+      btn.className = 'rx-day-btn px-3 py-2 rounded-xl border border-sky-400 bg-sky-50 text-xs font-semibold text-sky-700';
+    }
+  }
+
+  addManualPrescription() {
+    const name   = document.getElementById('rx-manual-name')?.value.trim();
+    const dose   = document.getElementById('rx-manual-dose')?.value.trim()  || '';
+    const times  = document.getElementById('rx-manual-times')?.value.trim() || '';
+    const repeat = document.getElementById('rx-manual-repeat')?.value       || 'DAILY';
+    const notes  = document.getElementById('rx-manual-notes')?.value.trim() || '';
+
+    if (!name) { this.toast('Medication name is required.', 'alert-triangle'); return; }
+
+    this.rxManualDraft.push({
+      name,
+      dose,
+      times:  times ? times.split(',').map(t => t.trim()).filter(Boolean) : [],
+      repeat,
+      days:   repeat === 'CUSTOM_DAYS' ? Array.from(this.rxSelectedDays) : [],
+      notes,
+    });
+
+    this._renderRxManualList();
+    this.clearManualPrescription();
+    this.toast(`${name} added to list`, 'check');
+  }
+
+  clearManualPrescription() {
+    ['rx-manual-name', 'rx-manual-dose', 'rx-manual-times', 'rx-manual-notes'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const repeatSel = document.getElementById('rx-manual-repeat');
+    if (repeatSel) repeatSel.value = 'DAILY';
+    document.getElementById('rx-manual-days')?.classList.add('hidden');
+    this.rxSelectedDays.clear();
+    document.querySelectorAll('.rx-day-btn').forEach(btn => {
+      btn.className = 'rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50';
+    });
+  }
+
+  _renderRxManualList() {
+    const list = document.getElementById('rx-manual-list');
+    if (!list) return;
+
+    if (!this.rxManualDraft.length) {
+      list.innerHTML = `<div class="text-sm text-slate-400 text-center py-8">Add a medication above to build your list.</div>`;
+      return;
+    }
+
+    list.innerHTML = '';
+    this.rxManualDraft.forEach((med, idx) => {
+      const card = document.createElement('div');
+      card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start justify-between gap-2';
+      card.innerHTML = `
+        <div class="min-w-0">
+          <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med.name)}</div>
+          <div class="text-xs text-slate-500">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
+          ${med.notes ? `<div class="text-xs text-slate-400 italic mt-0.5">${this.escapeHtml(med.notes)}</div>` : ''}
+          <div class="text-[10px] text-slate-400 mt-0.5">Repeat: ${this.escapeHtml(med.repeat)}${med.days?.length ? ' · ' + med.days.join(', ') : ''}</div>
+        </div>
+        <button onclick="app.rxRemoveManual(${idx})" class="text-slate-300 hover:text-red-400 transition-colors shrink-0">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>`;
+      list.appendChild(card);
+    });
+    if (window.lucide) lucide.createIcons();
+  }
+
+  rxRemoveManual(idx) {
+    this.rxManualDraft.splice(idx, 1);
+    this._renderRxManualList();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* SAVE TO LOCAL STORAGE                                                */
+  /* ------------------------------------------------------------------ */
+  savePrescriptions() {
+    const toSave = [...this.rxExtracted, ...this.rxManualDraft];
+    if (!toSave.length) { this.toast('No medications to save.', 'alert-triangle'); return; }
+
+    const now = new Date().toLocaleDateString();
+    let added = 0;
+    toSave.forEach(med => {
+      const exists = this.rxSaved.some(s => s.name === med.name && s.dose === med.dose);
+      if (!exists) { this.rxSaved.push({ ...med, savedAt: now }); added++; }
+    });
+
+    localStorage.setItem('pulsenova_rx', JSON.stringify(this.rxSaved));
+    this._renderRxSaved();
+    this.toast(added ? `${added} medication(s) saved` : 'Already saved — no duplicates added', added ? 'check' : 'info');
+  }
+
+  loadPrescriptions() {
+    this.rxSaved = JSON.parse(localStorage.getItem('pulsenova_rx') || '[]');
+    this._renderRxSaved();
+    this.toast('Prescriptions refreshed', 'refresh-cw');
+  }
+
+  _renderRxSaved() {
+    const list = document.getElementById('rx-saved-list');
+    if (!list) return;
+
+    if (!this.rxSaved.length) {
+      list.innerHTML = `<p class="text-sm text-slate-400 text-center py-6">No saved prescriptions yet.</p>`;
+      return;
+    }
+
+    list.innerHTML = '';
+    this.rxSaved.forEach((med, idx) => {
+      const card = document.createElement('div');
+      card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start justify-between gap-2';
+      card.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med.name)}</div>
+          <div class="text-xs text-slate-500">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
+          ${med.notes ? `<div class="text-xs text-slate-400 italic mt-0.5">${this.escapeHtml(med.notes)}</div>` : ''}
+          <div class="text-[10px] text-slate-400 mt-0.5">
+            Repeat: ${this.escapeHtml(med.repeat)}${med.days?.length ? ' · ' + med.days.join(', ') : ''}
+            ${med.savedAt ? ` · Saved ${med.savedAt}` : ''}
+          </div>
+        </div>
+        <button onclick="app.rxDeleteSaved(${idx})" class="text-slate-300 hover:text-red-400 transition-colors shrink-0 p-1">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>`;
+      list.appendChild(card);
+    });
+    if (window.lucide) lucide.createIcons();
+  }
+
+  rxDeleteSaved(idx) {
+    this.rxSaved.splice(idx, 1);
+    localStorage.setItem('pulsenova_rx', JSON.stringify(this.rxSaved));
+    this._renderRxSaved();
+    this.toast('Removed', 'trash');
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* ALEXA MODAL                                                          */
+  /* ------------------------------------------------------------------ */
+  openAlexaSendModal() {
+    const allMeds  = [...this.rxExtracted, ...this.rxManualDraft];
+    const configEl = document.getElementById('alexa-reminder-config');
+
+    if (configEl) {
+      if (!allMeds.length) {
+        configEl.innerHTML = `<div class="text-sm text-slate-400 text-center py-8">Add prescriptions first, then open this.</div>`;
+      } else {
+        configEl.innerHTML = '';
+        allMeds.forEach((med, idx) => {
+          const row = document.createElement('div');
+          row.className = 'bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3';
+          row.innerHTML = `
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <input type="checkbox" id="alexa-med-${idx}" checked class="w-4 h-4 accent-blue-600 shrink-0">
+              <label for="alexa-med-${idx}" class="min-w-0 cursor-pointer">
+                <div class="font-semibold text-slate-800 text-sm truncate">${this.escapeHtml(med.name)}</div>
+                <div class="text-xs text-slate-400">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
+              </label>
+            </div>
+            <span class="chip chip-slate text-[10px] shrink-0">${this.escapeHtml(med.repeat)}</span>`;
+          configEl.appendChild(row);
+        });
+      }
+    }
+
+    document.getElementById('alexa-send-modal')?.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  closeAlexaSendModal() {
+    document.getElementById('alexa-send-modal')?.classList.add('hidden');
+  }
+
+  async sendToAlexa() {
+    const allMeds  = [...this.rxExtracted, ...this.rxManualDraft];
+    const selected = allMeds.filter((_, idx) => {
+      return document.getElementById(`alexa-med-${idx}`)?.checked;
+    });
+
+    if (!selected.length) { this.toast('Select at least one medication.', 'alert-triangle'); return; }
+
+    const btn = document.getElementById('btn-send-to-alexa');
+    if (btn) { btn.disabled = true; btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sending…`; }
+
+    // Build a human-readable Alexa phrase
+    const lines = selected.map(med => {
+      const timeStr = (med.times || []).join(' and ') || 'daily';
+      return `${med.name}${med.dose ? ' ' + med.dose : ''} at ${timeStr}`;
+    }).join(', and ');
+
+    this._alexaPhrase = `Alexa, ask PulseNova to remind me to take ${lines}`;
+
+    await new Promise(r => setTimeout(r, 700));
+
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Send Request`; }
+    if (window.lucide) lucide.createIcons();
+
+    this.closeAlexaSendModal();
+    this.toast('Queued. Open Alexa to confirm.', 'alarm-clock');
+    setTimeout(() => this.toast('Say: "Alexa, open PulseNova"', 'mic'), 2600);
+  }
+
+  copyAlexaPhrase() {
+    const phrase = this._alexaPhrase || 'Alexa, open PulseNova';
+    navigator.clipboard?.writeText(phrase)
+      .then(()  => this.toast('Copied to clipboard', 'copy'))
+      .catch(()  => this.toast('Copy failed — try manually', 'alert-triangle'));
   }
 }
 
