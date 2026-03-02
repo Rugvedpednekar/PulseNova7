@@ -1,8 +1,7 @@
-# PulseNova   
+# PulseNova
 **AI-Powered Medical Assistant built with Amazon Nova (Amazon Bedrock)**
 
-PulseNova is a multimodal healthcare assistant designed to give users **clarity for their health concerns**. It combines **AI symptom triage, voice interaction, pulse monitoring, medical image analysis, lab report translation, and nearby care discovery** in one seamless web experience.
-
+PulseNova is a multimodal healthcare assistant designed to give users **clarity for their health concerns**. It combines **AI symptom triage, voice interaction, pulse monitoring, medical image analysis, lab report translation, prescription management, and nearby care discovery** in one seamless web experience.
 
 ---
 
@@ -14,6 +13,15 @@ PulseNova is a multimodal healthcare assistant designed to give users **clarity 
 - Provides structured responses with practical next steps
 - Designed for **first-line guidance**, not diagnosis
 
+✅ **NEW: Patient Context Awareness (Profile + Allergies)**
+- If a user is logged in, triage considers:
+  - Age, height/weight
+  - Allergies (e.g., peanut)
+  - Medical history (as provided)
+- **Allergy rule**
+  - If user asks if they can eat/take something that matches an allergy → explicitly warn **not to consume**
+  - If the user reports allergic reaction symptoms → escalate to **urgent/emergency guidance**
+
 ### 2) Voice Mode (Hands-Free AI Assistant)
 - Full-screen voice conversation overlay
 - Voice state machine:
@@ -23,6 +31,7 @@ PulseNova is a multimodal healthcare assistant designed to give users **clarity 
   - `speaking`
 - Speech-to-text + text-to-speech
 - **Barge-in support** (interrupt AI while it is speaking)
+- Multilingual UX selection (Nova Sonic 2 supported language set)
 
 ### 3) Vitals (Pulse Monitor)
 - Estimates pulse using the device camera (PPG-style approach)
@@ -35,13 +44,28 @@ PulseNova is a multimodal healthcare assistant designed to give users **clarity 
 - Upload X-ray / MRI / scan images
 - AI-generated summary and findings
 - Structured output with next steps and disclaimer
+- Saved to history for logged-in users (if consent enabled)
 
 ### 5) Lab Report Translator (Amazon Nova Vision)
 - Upload lab report images
 - Converts complex results into plain English
 - Highlights key findings, visible flags, and suggested next steps
+- Saved to history for logged-in users (if consent enabled)
 
-### 6) Find Care Nearby
+### 6) Prescriptions (NEW)
+- Add medications **manually** (name, dose, times, repeat rule, notes)
+- Upload **prescription image or PDF** (extract meds + schedule)
+- Review/edit extracted items before saving
+- Saved prescriptions panel
+
+✅ **NEW: Alexa Reminder Flow (Confirm in Alexa)**
+- From the website, user can prepare medication reminders
+- User confirms creation inside Alexa:
+  - One-time step: “Alexa, open PulseNova”
+  - Skill reads pending reminder request and asks for confirmation
+  - Alexa may request reminder permissions once
+
+### 7) Find Care Nearby
 - Search by ZIP / city / address
 - “Near Me” using geolocation
 - Provider types:
@@ -54,25 +78,42 @@ PulseNova is a multimodal healthcare assistant designed to give users **clarity 
   - Pediatrician
 - Distance sorting + map/directions links
 
+### 8) Dashboard + History (NEW)
+- Embedded **Dashboard** inside the web app:
+  - Profile info (from `/me`)
+  - Consent toggle for storing history
+  - Data retention settings
+- Chat History overlay (mobile-friendly)
+
 ---
 
 ## 🧠 Amazon Nova Integration
 
 PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 
-- **Text intelligence** → symptom triage chat
+- **Text intelligence** → symptom triage chat + Alexa triage
 - **Vision intelligence** → scan analysis + lab report interpretation
+- **(Optional)** Nova Sonic 2 can be used for voice pipelines depending on your backend setup
 
 ### API Endpoints used by the frontend
 - `POST /api/triage` → text + optional image triage
-- `POST /api/vision` → image analysis (X-ray / labs)
+- `POST /api/vision` → image/PDF analysis (X-ray / labs)
+- `POST /api/voice-turn` → voice transcript → assistant reply (multilingual support)
+- `GET /api/history` → triage sessions + saved medical documents (logged-in users)
+- `GET /me` → auth + profile + prefs
+- `POST /prefs` → save consent + profile fields (age, height, weight, allergies, history)
+
+### Alexa Endpoint
+- `POST /alexa/triage-turn` → Alexa skill webhook (LaunchRequest + IntentRequest → Nova response)
 
 > Amazon Nova is the core intelligence layer that powers PulseNova’s multimodal healthcare workflows.
 
 ---
 
-## Architecture :
+## 🏗️ Architecture
 <img width="2862" height="1601" alt="pulsenova_architecture_github" src="https://github.com/user-attachments/assets/067798df-0b8b-4c46-a75c-5f8708cdd01f" />
+
+---
 
 ## 🏗️ Tech Stack
 
@@ -92,22 +133,35 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 - `Geolocation API`
 
 ### Backend
-- **FastAPI (Python)** *(backend API integration layer)*
+- **FastAPI (Python)** (API + auth integration layer)
+- **SQLAlchemy** (persistence layer)
+- **PostgreSQL** (Railway)
 - Amazon Bedrock runtime calls (Nova models)
 
 ### External Services
 - **Amazon Bedrock (Amazon Nova)**
+- **Amazon Cognito Hosted UI** (login)
 - **Google Maps JavaScript API**
 - **Google Places API**
+- **Alexa Skills Kit** (voice assistant integration)
+
+---
+
+## 🔐 Authentication + Data
+- Login via **Cognito Hosted UI**
+- Logged-in users can store:
+  - Chat history (triage)
+  - Medical documents (X-ray/labs)
+  - Profile (age/height/weight/allergies/medical history)
+  - Prescription list (if implemented in DB layer)
+- Guests can still use triage/vision features but won’t get saved history
 
 ---
 
 ## 📸 Screenshots
 
-
 ### Home
 <img width="1906" height="900" alt="image" src="https://github.com/user-attachments/assets/4bca5874-c83d-43fa-80a1-956b203b5f13" />
-
 
 ### Voice Mode
 <img width="1884" height="895" alt="image" src="https://github.com/user-attachments/assets/846c8227-27a9-4774-8703-05fb0aa9c8af" />
@@ -121,13 +175,16 @@ PulseNova uses **Amazon Nova via Amazon Bedrock** for both:
 ### Lab Translator
 <img width="1878" height="862" alt="image" src="https://github.com/user-attachments/assets/0479803c-c96d-4ce6-b28a-b0b5a0cf0894" />
 
-
 ### Find Care
 <img width="1885" height="904" alt="image" src="https://github.com/user-attachments/assets/aadd4dd8-5095-4252-8405-26e3191714b1" />
 
+---
+
+## 🌍 Live Demo
+- https://pulsenova7-production.up.railway.app/
 
 ---
 
-
-## Link :
--https://pulsenova7-production.up.railway.app/
+## ⚠️ Disclaimer
+PulseNova is for **informational purposes only** and does **not** provide medical diagnosis.  
+If you think you are experiencing an emergency, call your local emergency number immediately.
