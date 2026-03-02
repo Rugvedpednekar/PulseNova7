@@ -3,66 +3,86 @@
 // =============================================================================
 async function pulseNovaInitAuthNav() {
   try {
-    const res = await fetch('/me');
+    const res  = await fetch('/me');
     const data = await res.json();
     const authed = !!data?.authenticated;
-    
-    // FIXED: Store the auth state explicitly on the 'app' object
+
+    // FIX: Set isAuthenticated directly on the app instance BEFORE any
+    // downstream code reads it. Previously this was only set on window.app
+    // inside a conditional, causing a race where loadUserHistory() would
+    // see undefined and silently bail out.
     if (window.app) {
-        window.app.isAuthenticated = authed; 
+      window.app.isAuthenticated = authed;
+      // Also cache the profile so logout / dashboard can read it
+      window.app._authProfile = data?.profile || null;
+      window.app._authPrefs   = data?.prefs   || null;
     }
 
-    // 1. Update Top Nav Bar & Mobile Menu
-    const signin = document.getElementById('nav-signin');
-    const acct   = document.getElementById('nav-account');
+    // 1. Top nav bar & mobile menu
+    const signin       = document.getElementById('nav-signin');
+    const acct         = document.getElementById('nav-account');
     const mobileSignin = document.getElementById('mobile-nav-signin');
-    const mobileAcct = document.getElementById('mobile-nav-account');
-    
-    if (signin) signin.style.display = authed ? 'none' : 'inline-flex';
-    if (acct)   acct.style.display   = authed ? 'inline-flex' : 'none';
-    if (mobileSignin) mobileSignin.style.display = authed ? 'none' : 'flex';
-    if (mobileAcct) mobileAcct.style.display = authed ? 'flex' : 'none';
+    const mobileAcct   = document.getElementById('mobile-nav-account');
 
-    // 2. Update Homepage Hero Buttons
-    const btnSignin = document.getElementById('btn-hero-signin');
-    const btnGuest = document.getElementById('btn-hero-guest');
-    const btnTriageAuth = document.getElementById('btn-hero-triage-auth');
-    const btnDashboard = document.getElementById('btn-hero-dashboard');
+    if (signin)       signin.style.display       = authed ? 'none'        : 'inline-flex';
+    if (acct)         acct.style.display         = authed ? 'inline-flex' : 'none';
+    if (mobileSignin) mobileSignin.style.display = authed ? 'none'        : 'flex';
+    if (mobileAcct)   mobileAcct.style.display   = authed ? 'flex'        : 'none';
+
+    // 2. Homepage hero buttons
+    const btnSignin      = document.getElementById('btn-hero-signin');
+    const btnGuest       = document.getElementById('btn-hero-guest');
+    const btnTriageAuth  = document.getElementById('btn-hero-triage-auth');
+    const btnDashboard   = document.getElementById('btn-hero-dashboard');
 
     if (authed) {
-        if (btnSignin) btnSignin.classList.add('hidden');
-        if (btnGuest) btnGuest.classList.add('hidden');
-        if (btnTriageAuth) { btnTriageAuth.classList.remove('hidden'); btnTriageAuth.classList.add('flex'); }
-        if (btnDashboard) { btnDashboard.classList.remove('hidden'); btnDashboard.classList.add('flex'); }
+      if (btnSignin)     btnSignin.classList.add('hidden');
+      if (btnGuest)      btnGuest.classList.add('hidden');
+      if (btnTriageAuth) { btnTriageAuth.classList.remove('hidden'); btnTriageAuth.classList.add('flex'); }
+      if (btnDashboard)  { btnDashboard.classList.remove('hidden');  btnDashboard.classList.add('flex');  }
 
-        // NEW: Populate the inline Dashboard UI with your Profile Data!
-        const dashName = document.getElementById('dash-name');
-        const dashEmail = document.getElementById('dash-email');
-        const dashStatus = document.getElementById('dash-status');
-        const dashLoginBtn = document.getElementById('dash-login-btn');
-        const dashLogoutBtn = document.getElementById('dash-logout-btn');
-        const dashGuestBanner = document.getElementById('dash-guest-banner');
+      // 3. Populate inline dashboard
+      const dashName       = document.getElementById('dash-name');
+      const dashEmail      = document.getElementById('dash-email');
+      const dashStatus     = document.getElementById('dash-status');
+      const dashLoginBtn   = document.getElementById('dash-login-btn');
+      const dashLogoutBtn  = document.getElementById('dash-logout-btn');
+      const dashGuestBanner = document.getElementById('dash-guest-banner');
+      const histAuthChip   = document.getElementById('history-auth-chip');
+      const prefStore      = document.getElementById('pref-store-history');
+      const prefRetention  = document.getElementById('pref-retention');
 
-        if (dashName) dashName.textContent = data.profile?.name || data.profile?.sub || "User";
-        if (dashEmail) dashEmail.textContent = data.profile?.email || "";
-        if (dashStatus) { dashStatus.textContent = "Signed In"; dashStatus.className = "chip chip-green"; }
-        if (dashLoginBtn) dashLoginBtn.classList.add('hidden');
-        if (dashLogoutBtn) dashLogoutBtn.classList.remove('hidden');
-        if (dashGuestBanner) dashGuestBanner.classList.add('hidden');
+      if (dashName)        dashName.textContent  = data.profile?.name  || data.profile?.sub || 'User';
+      if (dashEmail)       dashEmail.textContent = data.profile?.email || '';
+      if (dashStatus)      { dashStatus.textContent = 'Signed In'; dashStatus.className = 'chip chip-green'; }
+      if (dashLoginBtn)    dashLoginBtn.classList.add('hidden');
+      if (dashLogoutBtn)   dashLogoutBtn.classList.remove('hidden');
+      if (dashGuestBanner) dashGuestBanner.classList.add('hidden');
+      if (histAuthChip)    { histAuthChip.textContent = 'Signed In'; histAuthChip.className = 'chip chip-green text-[10px]'; }
+
+      // Pre-fill preference toggles from server prefs
+      if (prefStore     && data.prefs) prefStore.checked    = !!data.prefs.consent_store_history;
+      if (prefRetention && data.prefs) prefRetention.value  = data.prefs.data_retention_days ?? 30;
 
     } else {
-        if (btnSignin) { btnSignin.classList.remove('hidden'); btnSignin.classList.add('flex'); }
-        if (btnGuest) { btnGuest.classList.remove('hidden'); btnGuest.classList.add('flex'); }
-        if (btnTriageAuth) { btnTriageAuth.classList.add('hidden'); btnTriageAuth.classList.remove('flex'); }
-        if (btnDashboard) { btnDashboard.classList.add('hidden'); btnDashboard.classList.remove('flex'); }
+      if (btnSignin)     { btnSignin.classList.remove('hidden');     btnSignin.classList.add('flex'); }
+      if (btnGuest)      { btnGuest.classList.remove('hidden');      btnGuest.classList.add('flex');  }
+      if (btnTriageAuth) { btnTriageAuth.classList.add('hidden');    btnTriageAuth.classList.remove('flex'); }
+      if (btnDashboard)  { btnDashboard.classList.add('hidden');     btnDashboard.classList.remove('flex');  }
+
+      // Show guest banner & history notice
+      const dashGuestBanner = document.getElementById('dash-guest-banner');
+      const histGuestMsg    = document.getElementById('history-guest-msg');
+      if (dashGuestBanner) dashGuestBanner.classList.remove('hidden');
+      if (histGuestMsg)    histGuestMsg.classList.remove('hidden');
     }
   } catch (e) {
-    console.error("Auth check failed:", e);
+    console.error('Auth check failed:', e);
   }
 }
 
 // =============================================================================
-// IOS TTS UNLOCK (global, runs once on first user gesture)
+// IOS TTS UNLOCK
 // =============================================================================
 let _iosTTSUnlocked = false;
 function _unlockIOSTTSGlobal() {
@@ -74,7 +94,7 @@ function _unlockIOSTTSGlobal() {
     window.speechSynthesis?.speak(u);
     window.speechSynthesis?.cancel();
     window.speechSynthesis?.getVoices();
-  } catch(_) {}
+  } catch (_) {}
 }
 document.addEventListener('touchstart', _unlockIOSTTSGlobal, { once: true, passive: true });
 document.addEventListener('click',      _unlockIOSTTSGlobal, { once: true });
@@ -97,48 +117,57 @@ class PulseNovaApp {
       'es-US': "Hola. Soy PulseNova. Por favor, describa sus síntomas en detalle, o envíeme una foto si es relevante.",
       'it-IT': "Ciao. Sono PulseNova. Per favore, descrivi i tuoi sintomi in dettaglio, o inviami una foto se pertinente.",
       'pt-BR': "Olá. Eu sou o PulseNova. Por favor, descreva seus sintomas em detalhes, ou me envie uma foto se for relevante.",
-      'hi-IN': "नमस्ते। मैं पल्स-नोवा हूँ। कृपया अपने लक्षणों का विस्तार से वर्णन करें, या यदि प्रासंगिक हो तो मुझे एक फोटो भेजें।"
+      'hi-IN': "नमस्ते। मैं पल्स-नोवा हूँ। कृपया अपने लक्षणों का विस्तार से वर्णन करें, या यदि प्रासंगिक हो तो मुझे एक फोटो भेजें।",
     };
 
-    // Persist user prefs
-    this.selectedLanguage = localStorage.getItem('pulseNova_lang') || 'en-US';
+    this.selectedLanguage = localStorage.getItem('pulseNova_lang')      || 'en-US';
     this.xrayLanguage     = localStorage.getItem('pulseNova_xray_lang') || this.selectedLanguage;
     this.labLanguage      = localStorage.getItem('pulseNova_lab_lang')  || this.selectedLanguage;
-    this.speakOutput      = localStorage.getItem('pulseNova_speak') === '1';
+    this.speakOutput      = localStorage.getItem('pulseNova_speak')     === '1';
 
     this.messages  = [{ role: 'assistant', text: this.greetings[this.selectedLanguage] || this.greetings['en-US'] }];
     this.chatImage = null;
     this.chatBusy  = false;
     this.xrayImage = null;
     this.labImage  = null;
-    this.xrayHistory = [];
-    this.labHistory  = [];
+    this.xrayHistory   = [];
+    this.labHistory    = [];
     this.triageHistory = [];
-    this.currentChatId = Date.now();
+
+    // FIX: currentChatId is used as the stable identifier sent to the server
+    // so the server can upsert the same session row instead of creating
+    // duplicates on every message.
+    this.currentChatId = this._newChatId();
+
+    // FIX: isAuthenticated starts as false (not undefined).
+    // pulseNovaInitAuthNav() sets the real value after /me resolves.
+    this.isAuthenticated = false;
+    this._authProfile    = null;
+    this._authPrefs      = null;
 
     this.supportedLanguages = [
-      { code: 'en-US', label: 'English (US)' },
-      { code: 'en-GB', label: 'English (UK)' },
-      { code: 'en-AU', label: 'English (Australia)' },
-      { code: 'en-IN', label: 'English (India)' },
-      { code: 'fr-FR', label: 'Français (France)' },
-      { code: 'de-DE', label: 'Deutsch (Germany)' },
-      { code: 'es-US', label: 'Español (US)' },
-      { code: 'it-IT', label: 'Italiano (Italy)' },
-      { code: 'pt-BR', label: 'Português (Brazil)' },
-      { code: 'hi-IN', label: 'हिन्दी (India)' }
+      { code: 'en-US', label: 'English (US)'        },
+      { code: 'en-GB', label: 'English (UK)'         },
+      { code: 'en-AU', label: 'English (Australia)'  },
+      { code: 'en-IN', label: 'English (India)'      },
+      { code: 'fr-FR', label: 'Français (France)'    },
+      { code: 'de-DE', label: 'Deutsch (Germany)'    },
+      { code: 'es-US', label: 'Español (US)'         },
+      { code: 'it-IT', label: 'Italiano (Italy)'     },
+      { code: 'pt-BR', label: 'Português (Brazil)'   },
+      { code: 'hi-IN', label: 'हिन्दी (India)'       },
     ];
 
     // Voice
-    this.voiceState        = 'idle';
-    this.voiceOverlayOpen  = false;
-    this.voiceLoopActive   = false;
-    this.recognition       = null;
-    this.currentUtterance  = null;
-    this.voiceBarsAnimId   = null;
+    this.voiceState         = 'idle';
+    this.voiceOverlayOpen   = false;
+    this.voiceLoopActive    = false;
+    this.recognition        = null;
+    this.currentUtterance   = null;
+    this.voiceBarsAnimId    = null;
     this._pendingTranscript = '';
-    this._iosResumeTimer   = null;
-    this.showEnglishPanel  = true;
+    this._iosResumeTimer    = null;
+    this.showEnglishPanel   = true;
 
     // Vitals
     this.vitals = {
@@ -149,7 +178,7 @@ class PulseNovaApp {
       isMonitoring: false, timeoutId: null,
       torchTrack: null, torchOn: false,
       signalQuality: 0, context: 'resting',
-      lastStableBpm: null, summaryReady: false
+      lastStableBpm: null, summaryReady: false,
     };
     this.vitals.processCanvas.width  = 20;
     this.vitals.processCanvas.height = 20;
@@ -176,7 +205,18 @@ class PulseNovaApp {
     this.renderChat();
     this.renderProviders();
     this.setVitalsContext('resting');
-    this.resetVitalsSummary();
+    // FIX: Do NOT call resetVitalsSummary() in the constructor.
+    // The summary card starts hidden in the HTML and should only
+    // become visible once the user actually starts a reading.
+    // Calling it here was causing the card to flash visible on page load.
+  }
+
+  // ---------------------------------------------------------------------------
+  // HELPERS
+  // ---------------------------------------------------------------------------
+  _newChatId() {
+    // Generates a stable string ID suitable for both local use and the DB
+    return `chat_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   }
 
   /* -------------------- TOAST -------------------- */
@@ -205,16 +245,56 @@ class PulseNovaApp {
     });
     document.getElementById('mobile-menu')?.classList.add('hidden');
 
-    if (pageId !== 'triage') { this.closeVoiceMode(); try { window.speechSynthesis.cancel(); } catch(_) {} }
+    if (pageId !== 'triage')  { this.closeVoiceMode(); try { window.speechSynthesis.cancel(); } catch (_) {} }
     if (pageId === 'triage')  setTimeout(() => document.getElementById('chat-input')?.focus(), 100);
     if (pageId === 'xray' || pageId === 'labs') setTimeout(() => this._initVisionLangSelects(), 50);
   }
 
   toggleMobileMenu() { document.getElementById('mobile-menu')?.classList.toggle('hidden'); }
 
+  /* -------------------- LOGOUT -------------------- */
+  // FIX: logout() method was missing from the class entirely.
+  // The dashboard "Sign out" button called app.logout() which threw
+  // TypeError: app.logout is not a function and silently did nothing.
+  async logout() {
+    try {
+      await fetch('/auth/logout', { method: 'POST' });
+    } catch (_) {}
+    this.isAuthenticated = false;
+    this._authProfile    = null;
+    this._authPrefs      = null;
+    window.location.href = '/';
+  }
+
+  /* -------------------- SAVE PREFS -------------------- */
+  async savePrefs() {
+    const consent   = document.getElementById('pref-store-history')?.checked ?? false;
+    const retention = parseInt(document.getElementById('pref-retention')?.value || '30', 10);
+    try {
+      const res = await fetch('/prefs', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          consent_store_history: consent,
+          data_retention_days:   retention,
+        }),
+      });
+      if (res.ok) this.toast('Preferences saved', 'check');
+      else        this.toast('Failed to save preferences', 'alert-triangle');
+    } catch (_) {
+      this.toast('Network error saving preferences', 'alert-triangle');
+    }
+  }
+
+  /* -------------------- REFRESH DASHBOARD -------------------- */
+  async refreshDashboard() {
+    await pulseNovaInitAuthNav();
+    if (this.isAuthenticated) await this.loadUserHistory();
+    this.toast('Dashboard refreshed', 'refresh-cw');
+  }
+
   /* -------------------- LANGUAGE -------------------- */
   initLanguageControls() {
-    // Desktop triage header selector
     const triageHeader = document.querySelector('#page-triage .border-b');
     if (triageHeader && !document.getElementById('triage-lang-select')) {
       const right = triageHeader.querySelector('.flex.items-center.gap-3');
@@ -229,7 +309,6 @@ class PulseNovaApp {
       }
     }
 
-    // Mobile menu language selector
     const mobileMenu = document.getElementById('mobile-menu');
     if (mobileMenu && !document.getElementById('mobile-lang-select')) {
       const wrap = document.createElement('div');
@@ -241,11 +320,10 @@ class PulseNovaApp {
       sel.addEventListener('change', e => { this.setLanguage(e.target.value); this.toggleMobileMenu(); });
     }
 
-    // Voice overlay language selector
     const subtitle = document.getElementById('voice-subtitle');
     if (subtitle && !document.getElementById('voice-lang-wrap')) {
       const wrap = document.createElement('div');
-      wrap.id = 'voice-lang-wrap';
+      wrap.id        = 'voice-lang-wrap';
       wrap.className = 'mt-3';
       wrap.innerHTML = `<label class="text-xs text-slate-400 mr-2">Language</label><select id="voice-lang-select" class="text-xs border border-white/10 bg-white/5 text-white rounded-lg px-2 py-1 outline-none">${this.supportedLanguages.map(l => `<option value="${l.code}">${l.label}</option>`).join('')}</select>`;
       subtitle.insertAdjacentElement('afterend', wrap);
@@ -255,11 +333,13 @@ class PulseNovaApp {
     }
   }
 
+  setGlobalLanguage(code) { this.setLanguage(code); }
+
   setLanguage(code) {
     this.selectedLanguage = code;
     localStorage.setItem('pulseNova_lang', code);
     if (this.recognition) this.recognition.lang = code;
-    ['triage-lang-select', 'voice-lang-select', 'mobile-lang-select'].forEach(id => {
+    ['triage-lang-select', 'voice-lang-select', 'mobile-lang-select', 'global-lang-select', 'mobile-lang-select'].forEach(id => {
       const el = document.getElementById(id);
       if (el && el.value !== code) el.value = code;
     });
@@ -289,7 +369,7 @@ class PulseNovaApp {
     localStorage.setItem('pulseNova_speak', this.speakOutput ? '1' : '0');
     this.syncSpeechToggleIcon();
     this.toast(this.speakOutput ? 'Spoken replies: ON' : 'Spoken replies: OFF', this.speakOutput ? 'volume-2' : 'volume-x');
-    if (!this.speakOutput) { try { window.speechSynthesis.cancel(); } catch(_) {} }
+    if (!this.speakOutput) { try { window.speechSynthesis.cancel(); } catch (_) {} }
   }
 
   syncSpeechToggleIcon() {
@@ -297,18 +377,18 @@ class PulseNovaApp {
     if (!btn) return;
     btn.innerHTML = this.speakOutput
       ? `<i data-lucide="volume-2" class="w-4 h-4"></i>`
-      : `<i data-lucide="volume-x" class="w-4 h-4"></i>`;
+      : `<i data-lucide="volume-x"  class="w-4 h-4"></i>`;
     if (window.lucide) lucide.createIcons();
   }
 
   speakText(text) {
     if (!this.speakOutput) return;
-    try { window.speechSynthesis.cancel(); } catch(_) {}
-    const cleaned = (text || '').replace(/\*+/g,'').replace(/#{1,3}\s*/g,'').replace(/\[TRIGGER_[^\]]+\]/g,'').trim();
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+    const cleaned = (text || '').replace(/\*+/g, '').replace(/#{1,3}\s*/g, '').replace(/\[TRIGGER_[^\]]+\]/g, '').trim();
     if (!cleaned) return;
     const utter = new SpeechSynthesisUtterance(cleaned.slice(0, 1200));
     utter.lang = this.selectedLanguage || 'en-US';
-    try { window.speechSynthesis.speak(utter); } catch(_) {}
+    try { window.speechSynthesis.speak(utter); } catch (_) {}
   }
 
   /* -------------------- VOICE UI -------------------- */
@@ -319,55 +399,55 @@ class PulseNovaApp {
 
   _showTranslationPanel({ detectedLabel, orig, en }) {
     const panel = document.getElementById('voice-translation-panel');
-    const d = document.getElementById('voice-lang-detected');
-    const o = document.getElementById('voice-orig');
-    const e = document.getElementById('voice-en');
-    const wrap = document.getElementById('voice-en-wrap');
+    const d     = document.getElementById('voice-lang-detected');
+    const o     = document.getElementById('voice-orig');
+    const e     = document.getElementById('voice-en');
+    const wrap  = document.getElementById('voice-en-wrap');
     if (panel) panel.classList.remove('hidden');
-    if (d) d.textContent = detectedLabel || '--';
-    if (o) o.textContent = orig || '';
-    if (e) e.textContent = en || '';
-    if (wrap) wrap.classList.toggle('hidden', !this.showEnglishPanel);
+    if (d)     d.textContent = detectedLabel || '--';
+    if (o)     o.textContent = orig          || '';
+    if (e)     e.textContent = en            || '';
+    if (wrap)  wrap.classList.toggle('hidden', !this.showEnglishPanel);
   }
 
   setVoiceState(state) {
     this.voiceState = state;
-    const orb     = document.getElementById('voice-orb');
-    const title   = document.getElementById('voice-title');
+    const orb      = document.getElementById('voice-orb');
+    const title    = document.getElementById('voice-title');
     const subtitle = document.getElementById('voice-subtitle');
-    const dot     = document.getElementById('voice-indicator-dot');
-    const btn     = document.getElementById('voice-main-btn');
-    const bars    = document.getElementById('voice-bars');
-    const preview = document.getElementById('voice-transcript-preview');
+    const dot      = document.getElementById('voice-indicator-dot');
+    const btn      = document.getElementById('voice-main-btn');
+    const bars     = document.getElementById('voice-bars');
+    const preview  = document.getElementById('voice-transcript-preview');
 
     if (orb)  { orb.className = 'voice-orb'; orb.classList.add(`state-${state}`); }
-    if (bars) { bars.className = 'voice-bars'; if (state==='speaking') bars.classList.add('speaking'); if (state==='thinking') bars.classList.add('thinking'); }
+    if (bars) { bars.className = 'voice-bars'; if (state === 'speaking') bars.classList.add('speaking'); if (state === 'thinking') bars.classList.add('thinking'); }
 
     switch (state) {
       case 'idle':
-        if (title)   title.textContent = 'Voice Mode';
+        if (title)   title.textContent   = 'Voice Mode';
         if (subtitle) subtitle.innerHTML = 'Tap <strong class="text-white">Start Listening</strong> to begin.';
-        if (dot)     dot.className = 'w-2 h-2 rounded-full bg-slate-600 inline-block transition-colors duration-300';
+        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-slate-600 inline-block transition-colors duration-300';
         if (btn)     { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span id="voice-btn-label">Start Listening</span>'; btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all text-sm'; }
         if (preview) preview.textContent = '';
         this.voiceLoopActive = false; this.stopBarAnimation(); this.resetBars(); break;
       case 'listening':
-        if (title)   title.textContent = 'Listening…';
+        if (title)   title.textContent   = 'Listening…';
         if (subtitle) subtitle.innerHTML = "Speak naturally. I'm listening.";
-        if (dot)     dot.className = 'w-2 h-2 rounded-full bg-blue-400 inline-block transition-colors duration-300 status-pulse';
+        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-blue-400 inline-block transition-colors duration-300 status-pulse';
         if (btn)     { btn.innerHTML = '<i data-lucide="mic-off" class="w-4 h-4"></i><span>Stop</span>'; btn.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
         if (preview) preview.textContent = '';
         this.startBarAnimation('listening'); break;
       case 'thinking':
-        if (title)   title.textContent = 'Thinking…';
+        if (title)   title.textContent   = 'Thinking…';
         if (subtitle) subtitle.innerHTML = 'PulseNova is processing your message.';
-        if (dot)     dot.className = 'w-2 h-2 rounded-full bg-purple-400 inline-block';
+        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-purple-400 inline-block';
         if (btn)     { btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Processing…</span>'; btn.className = 'w-full bg-slate-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 opacity-70 cursor-not-allowed text-sm'; }
         this.stopBarAnimation(); break;
       case 'speaking':
-        if (title)   title.textContent = 'Speaking…';
+        if (title)   title.textContent   = 'Speaking…';
         if (subtitle) subtitle.innerHTML = 'Speak to interrupt.';
-        if (dot)     dot.className = 'w-2 h-2 rounded-full bg-emerald-400 inline-block status-pulse';
+        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-emerald-400 inline-block status-pulse';
         if (btn)     { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span>Interrupt</span>'; btn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
         this.startBarAnimation('speaking'); break;
     }
@@ -377,17 +457,18 @@ class PulseNovaApp {
 
   startBarAnimation(mode) {
     this.stopBarAnimation();
-    const ids = ['vb1','vb2','vb3','vb4','vb5','vb6','vb7'];
-    let frame = 0;
+    const ids   = ['vb1', 'vb2', 'vb3', 'vb4', 'vb5', 'vb6', 'vb7'];
+    let   frame = 0;
     const animate = () => {
       frame++;
       ids.forEach((id, i) => {
         const el = document.getElementById(id);
         if (!el) return;
         const h = mode === 'listening'
-          ? 6 + Math.abs(Math.sin(frame * 0.12 + i * 0.9)) * 30
+          ? 6 + Math.abs(Math.sin(frame * 0.12 + i * 0.9))  * 30
           : mode === 'speaking'
-            ? 6 + Math.abs(Math.sin(frame * 0.18 + i * 1.2)) * 34 : 6;
+            ? 6 + Math.abs(Math.sin(frame * 0.18 + i * 1.2)) * 34
+            : 6;
         el.style.height = h + 'px';
       });
       this.voiceBarsAnimId = requestAnimationFrame(animate);
@@ -395,19 +476,19 @@ class PulseNovaApp {
     this.voiceBarsAnimId = requestAnimationFrame(animate);
   }
   stopBarAnimation() { if (this.voiceBarsAnimId) { cancelAnimationFrame(this.voiceBarsAnimId); this.voiceBarsAnimId = null; } }
-  resetBars() { ['vb1','vb2','vb3','vb4','vb5','vb6','vb7'].forEach(id => { const el = document.getElementById(id); if (el) el.style.height = '6px'; }); }
+  resetBars()        { ['vb1','vb2','vb3','vb4','vb5','vb6','vb7'].forEach(id => { const el = document.getElementById(id); if (el) el.style.height = '6px'; }); }
 
   /* -------------------- SPEECH -------------------- */
   initSpeech() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
-    this.recognition = new SR();
+    this.recognition               = new SR();
     this.recognition.continuous     = false;
     this.recognition.interimResults = true;
     this.recognition.lang           = this.selectedLanguage;
 
-    this.recognition.onstart = () => {
-      try { window.speechSynthesis.cancel(); } catch(_) {}
+    this.recognition.onstart  = () => {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
       this.currentUtterance = null;
       this.setVoiceState('listening');
     };
@@ -421,20 +502,20 @@ class PulseNovaApp {
       if (p) p.textContent = `"${final || interim}"`;
       if (final.trim()) this._pendingTranscript = final.trim();
     };
-    this.recognition.onend = () => {
+    this.recognition.onend    = () => {
       if (!this.voiceOverlayOpen) return;
-      const transcript = this._pendingTranscript || '';
+      const transcript        = this._pendingTranscript || '';
       this._pendingTranscript = '';
       if (transcript && this.voiceLoopActive) this._voiceSendAndReply(transcript);
       else if (this.voiceLoopActive) {
         this.setVoiceState('listening');
-        setTimeout(() => { if (this.voiceState === 'listening' && this.voiceLoopActive) { try { this.recognition.start(); } catch(e){} } }, 300);
+        setTimeout(() => { if (this.voiceState === 'listening' && this.voiceLoopActive) { try { this.recognition.start(); } catch (_) {} } }, 300);
       } else this.setVoiceState('idle');
     };
-    this.recognition.onerror = (e) => {
+    this.recognition.onerror  = (e) => {
       if (e.error === 'aborted') return;
       if (this.voiceLoopActive && this.voiceOverlayOpen) {
-        setTimeout(() => { if (this.voiceLoopActive && this.voiceOverlayOpen) { this.setVoiceState('listening'); try { this.recognition.start(); } catch(_){} } }, 600);
+        setTimeout(() => { if (this.voiceLoopActive && this.voiceOverlayOpen) { this.setVoiceState('listening'); try { this.recognition.start(); } catch (_) {} } }, 600);
       } else this.setVoiceState('idle');
     };
   }
@@ -453,11 +534,11 @@ class PulseNovaApp {
   }
 
   closeVoiceMode() {
-    this.voiceLoopActive  = false;
-    this.voiceOverlayOpen = false;
+    this.voiceLoopActive    = false;
+    this.voiceOverlayOpen   = false;
     this._pendingTranscript = '';
-    if (this.recognition) { try { this.recognition.abort(); } catch(_){} }
-    try { window.speechSynthesis.cancel(); } catch(_) {}
+    if (this.recognition) { try { this.recognition.abort(); } catch (_) {} }
+    try { window.speechSynthesis.cancel(); } catch (_) {}
     this.currentUtterance = null;
     if (this._iosResumeTimer) { clearInterval(this._iosResumeTimer); this._iosResumeTimer = null; }
     this.stopBarAnimation(); this.resetBars();
@@ -465,17 +546,17 @@ class PulseNovaApp {
   }
 
   voicePrimaryAction() {
-    if (this.voiceState === 'idle')      { this.voiceLoopActive = true; this._startListening(); }
-    else if (this.voiceState === 'listening') { this.voiceLoopActive = false; try { this.recognition.stop(); } catch(_){} this.setVoiceState('idle'); }
-    else if (this.voiceState === 'speaking')  { try { window.speechSynthesis.cancel(); } catch(_){} this.setVoiceState('listening'); setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 200); }
+    if      (this.voiceState === 'idle')      { this.voiceLoopActive = true; this._startListening(); }
+    else if (this.voiceState === 'listening') { this.voiceLoopActive = false; try { this.recognition.stop(); } catch (_) {} this.setVoiceState('idle'); }
+    else if (this.voiceState === 'speaking')  { try { window.speechSynthesis.cancel(); } catch (_) {} this.setVoiceState('listening'); setTimeout(() => { try { this.recognition.start(); } catch (_) {} }, 200); }
   }
 
   _startListening() {
-    if (!this.recognition) { alert("Speech recognition not supported. Try Chrome."); return; }
-    this.recognition.lang = this.selectedLanguage;
-    this.setVoiceState('listening');
+    if (!this.recognition) { alert('Speech recognition not supported. Try Chrome.'); return; }
+    this.recognition.lang   = this.selectedLanguage;
     this._pendingTranscript = '';
-    try { this.recognition.start(); } catch(e) { setTimeout(() => { try { this.recognition.start(); } catch(_){} }, 500); }
+    this.setVoiceState('listening');
+    try { this.recognition.start(); } catch (_) { setTimeout(() => { try { this.recognition.start(); } catch (__) {} }, 500); }
   }
 
   /* -------------------- VOICE FLOW -------------------- */
@@ -489,27 +570,30 @@ class PulseNovaApp {
     this.renderChat();
 
     const history = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
-    const vt = await this.callVoiceTurn(history, text);
+    const vt      = await this.callVoiceTurn(history, text);
 
-    let assistantText = (vt && vt.reply_local) ? vt.reply_local : "I didn't get a response.";
-    let triggerFirstAid = false, triggerCareFinder = false;
+    // FIX: was referencing undefined `cleanResponse` — use `assistantText` consistently
+    let assistantText      = (vt && vt.reply_local) ? vt.reply_local : "I didn't get a response.";
+    let triggerFirstAid    = false;
+    let triggerCareFinder  = false;
 
-    if (assistantText.includes('[TRIGGER_FIRST_AID]'))   { triggerFirstAid   = true; assistantText = assistantText.replace('[TRIGGER_FIRST_AID]', '').trim(); }
+    if (assistantText.includes('[TRIGGER_FIRST_AID]'))   { triggerFirstAid   = true; assistantText = assistantText.replace('[TRIGGER_FIRST_AID]',   '').trim(); }
     if (assistantText.includes('[TRIGGER_CARE_FINDER]')) { triggerCareFinder = true; assistantText = assistantText.replace('[TRIGGER_CARE_FINDER]', '').trim(); }
 
     this.messages.push({ role: 'assistant', text: assistantText });
     if (triggerCareFinder) this.messages.push({ role: 'assistant', type: 'care_finder' });
     this.renderChat();
 
-    this._saveCurrentTriageChat(); 
-    
-    this.speakText(cleanResponse);
+    // FIX: was `this.speakText(cleanResponse)` — cleanResponse didn't exist here
+    this.speakText(assistantText);
+
+    await this._saveCurrentTriageChat();
 
     if (vt) {
       this._showTranslationPanel({
         detectedLabel: `${vt.source_language_name || vt.source_language || '--'} (${vt.source_language || '--'})`,
         orig: vt.transcript_original || text,
-        en:   vt.transcript_en || ''
+        en:   vt.transcript_en       || '',
       });
     }
 
@@ -527,28 +611,36 @@ class PulseNovaApp {
 
   async callVoiceTurn(history, transcript) {
     try {
-      let cleanHistory = (history || []).map(t => ({ role: t.role, text: (t.text||'').trim() })).filter(t => t.text);
+      let cleanHistory = (history || []).map(t => ({ role: t.role, text: (t.text || '').trim() })).filter(t => t.text);
       while (cleanHistory.length && cleanHistory[0].role !== 'user') cleanHistory.shift();
       const res = await fetch('/api/voice-turn', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: transcript||'', detected_lang: this.selectedLanguage, history: cleanHistory, include_english_reply: true, max_tokens: 350, temperature: 0.3 })
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          transcript:             transcript || '',
+          detected_lang:          this.selectedLanguage,
+          history:                cleanHistory,
+          include_english_reply:  true,
+          max_tokens:             350,
+          temperature:            0.3,
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
-    } catch(e) { console.error(e); return null; }
+    } catch (e) { console.error(e); return null; }
   }
 
   _voiceSpeak(text) {
-    try { window.speechSynthesis.cancel(); } catch(_) {}
+    try { window.speechSynthesis.cancel(); } catch (_) {}
     this.setVoiceState('speaking');
-    const cleaned = (text||'').replace(/\*+/g,'').replace(/#{1,3}\s*/g,'').trim().slice(0,1500);
+    const cleaned = (text || '').replace(/\*+/g, '').replace(/#{1,3}\s*/g, '').trim().slice(0, 1500);
     const utter   = new SpeechSynthesisUtterance(cleaned);
     utter.rate = 1.0; utter.pitch = 1.0; utter.volume = 1.0;
     utter.lang = this.selectedLanguage || 'en-US';
 
     const voices   = window.speechSynthesis.getVoices() || [];
     const exact    = voices.find(v => v.lang === utter.lang);
-    const fallback = voices.find(v => v.lang.startsWith((utter.lang||'en').split('-')[0])) || voices.find(v => v.lang.startsWith('en'));
+    const fallback = voices.find(v => v.lang.startsWith((utter.lang || 'en').split('-')[0])) || voices.find(v => v.lang.startsWith('en'));
     if (exact || fallback) utter.voice = exact || fallback;
 
     const onDone = () => {
@@ -618,7 +710,7 @@ class PulseNovaApp {
       }
 
       if (msg.type === 'first_aid' && msg.steps) {
-        const gc = document.createElement('div');
+        const gc     = document.createElement('div');
         gc.className = 'w-full mt-2 space-y-3';
         const header = document.createElement('div');
         header.className = 'flex items-center gap-2 mb-3 text-blue-700';
@@ -627,8 +719,10 @@ class PulseNovaApp {
         msg.steps.forEach((step, idx) => {
           const sc = document.createElement('div');
           sc.className = 'bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col';
-          const imgHtml = step.image_base64 ? `<div class="bg-slate-100 flex items-center justify-center p-4 border-b border-slate-100"><img src="data:image/png;base64,${step.image_base64}" alt="Step ${idx+1}" class="max-h-48 object-contain rounded-lg shadow-sm"></div>` : '';
-          sc.innerHTML = `${imgHtml}<div class="p-3"><div class="flex items-start gap-2"><span class="bg-blue-100 text-blue-700 min-w-[20px] h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5">${idx+1}</span><p class="text-sm text-slate-700 leading-relaxed flex-1">${this.formatText(step.step_text)}</p></div></div>`;
+          const imgHtml = step.image_base64
+            ? `<div class="bg-slate-100 flex items-center justify-center p-4 border-b border-slate-100"><img src="data:image/png;base64,${step.image_base64}" alt="Step ${idx + 1}" class="max-h-48 object-contain rounded-lg shadow-sm"></div>`
+            : '';
+          sc.innerHTML = `${imgHtml}<div class="p-3"><div class="flex items-start gap-2"><span class="bg-blue-100 text-blue-700 min-w-[20px] h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5">${idx + 1}</span><p class="text-sm text-slate-700 leading-relaxed flex-1">${this.formatText(step.step_text)}</p></div></div>`;
           gc.appendChild(sc);
         });
         wrapper.appendChild(gc);
@@ -652,7 +746,7 @@ class PulseNovaApp {
     this.chatBusy = true;
     const btn = document.getElementById('btn-send');
     if (btn) { btn.disabled = true; btn.classList.add('opacity-60'); }
-    try { window.speechSynthesis.cancel(); } catch(_) {}
+    try { window.speechSynthesis.cancel(); } catch (_) {}
 
     this.messages.push({ role: 'user', text, image });
     this.renderChat();
@@ -660,13 +754,14 @@ class PulseNovaApp {
     this.clearChatImage();
     this.showLoading();
 
-    const history = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
-    const rawResponse = await this.callNovaTriage(history, text, image);
+    const history      = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
+    const rawResponse  = await this.callNovaTriage(history, text, image);
 
-    let cleanResponse = rawResponse || "I didn't get a response.";
-    let triggerFirstAid = false, triggerCareFinder = false;
+    let cleanResponse     = rawResponse || "I didn't get a response.";
+    let triggerFirstAid   = false;
+    let triggerCareFinder = false;
 
-    if (cleanResponse.includes('[TRIGGER_FIRST_AID]'))   { triggerFirstAid   = true; cleanResponse = cleanResponse.replace('[TRIGGER_FIRST_AID]', '').trim(); }
+    if (cleanResponse.includes('[TRIGGER_FIRST_AID]'))   { triggerFirstAid   = true; cleanResponse = cleanResponse.replace('[TRIGGER_FIRST_AID]',   '').trim(); }
     if (cleanResponse.includes('[TRIGGER_CARE_FINDER]')) { triggerCareFinder = true; cleanResponse = cleanResponse.replace('[TRIGGER_CARE_FINDER]', '').trim(); }
 
     this.removeLoading();
@@ -675,8 +770,11 @@ class PulseNovaApp {
     this.renderChat();
     this.speakText(cleanResponse);
 
+    // Save after every assistant reply
+    await this._saveCurrentTriageChat();
+
     if (triggerFirstAid) {
-      this.showLoading("Generating visual guide...");
+      this.showLoading('Generating visual guide...');
       const guideData = await this.callFirstAidGuide(text);
       this.removeLoading();
       if (guideData?.steps) {
@@ -695,7 +793,8 @@ class PulseNovaApp {
     const container = document.getElementById('chat-messages');
     if (!container) return;
     const div = document.createElement('div');
-    div.id = 'chat-loading'; div.className = 'flex justify-start';
+    div.id        = 'chat-loading';
+    div.className = 'flex justify-start';
     div.innerHTML = customText
       ? `<div class="bg-blue-50 border border-blue-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-2 items-center"><div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div><span class="text-xs text-blue-700 font-semibold">${this.escapeHtml(customText)}</span></div>`
       : `<div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-1 items-center h-9"><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div><div class="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div></div>`;
@@ -721,13 +820,13 @@ class PulseNovaApp {
     const img  = document.getElementById('chat-image-preview');
     const box  = document.getElementById('chat-image-preview-container');
     const file = document.getElementById('chat-file-input');
-    if (img)  img.src = '';
+    if (img)  img.src  = '';
     if (box)  box.classList.add('hidden');
     if (file) file.value = '';
   }
 
   resetChat() {
-    try { window.speechSynthesis.cancel(); } catch(_) {}
+    try { window.speechSynthesis.cancel(); } catch (_) {}
     this.messages = [{ role: 'assistant', text: this.greetings[this.selectedLanguage] || this.greetings['en-US'] }];
     this.renderChat();
     this.focusChatInput();
@@ -736,37 +835,51 @@ class PulseNovaApp {
 
   async callNovaTriage(history, userMessage, base64Image) {
     try {
-      let cleanHistory = (history||[]).map(t => ({ role: t.role, text: (t.text||'').trim() })).filter(t => t.text);
+      let cleanHistory = (history || []).map(t => ({ role: t.role, text: (t.text || '').trim() })).filter(t => t.text);
       while (cleanHistory.length && cleanHistory[0].role !== 'user') cleanHistory.shift();
       const res = await fetch('/api/triage', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage||'', history: cleanHistory, image_base64: base64Image||null, language: this.selectedLanguage })
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          message:      userMessage    || '',
+          history:      cleanHistory,
+          image_base64: base64Image    || null,
+          language:     this.selectedLanguage,
+          // FIX: Pass the stable chat_id so the server can upsert instead of
+          // inserting a duplicate row on every single message.
+          chat_id:      this.currentChatId,
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).text || "I didn't get a response.";
-    } catch(e) { console.error(e); return "I'm having trouble connecting. If this is an emergency, please call local emergency services."; }
+    } catch (e) {
+      console.error(e);
+      return "I'm having trouble connecting. If this is an emergency, please call local emergency services.";
+    }
   }
 
   async callFirstAidGuide(description) {
     try {
       const res = await fetch('/api/first-aid-guide', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ injury_description: description, language: this.selectedLanguage })
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ injury_description: description, language: this.selectedLanguage }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error('Failed');
       return await res.json();
-    } catch(e) { console.error(e); return null; }
+    } catch (e) { console.error(e); return null; }
   }
 
   async callNovaVision(base64Data, prompt) {
     try {
       const res = await fetch('/api/vision', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: base64Data, prompt, language: this.selectedLanguage, max_tokens: 2000 })
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ image_base64: base64Data, prompt, language: this.selectedLanguage, max_tokens: 2000 }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).text || "I didn't get a response.";
-    } catch(e) { console.error(e); return "Analysis failed. Please try a clearer image."; }
+    } catch (e) { console.error(e); return 'Analysis failed. Please try a clearer image.'; }
   }
 
   /* -------------------- DROPZONES -------------------- */
@@ -776,17 +889,17 @@ class PulseNovaApp {
   }
   setupDropzone(dropId, inputId, onFile) {
     const zone = document.getElementById(dropId); if (!zone) return;
-    ['dragenter','dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); }));
-    ['dragleave','drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-active','drag-active-purple'); }));
+    ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); }));
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-active', 'drag-active-purple'); }));
     zone.addEventListener('drop', e => { const f = e.dataTransfer?.files?.[0]; if (f) onFile(f); });
   }
   handleDroppedFile(file, type) { if (type === 'xray') this.handleXrayUpload({ files: [file] }); else this.handleLabUpload({ files: [file] }); }
   handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
-  handleLabUpload(input)  { this.handleFileUpload(input, 'lab'); }
+  handleLabUpload(input)  { this.handleFileUpload(input, 'lab');  }
 
   handleFileUpload(input, type) {
     const file = input.files?.[0]; if (!file) return;
-    if (!file.type.startsWith('image/')) { alert("Please upload an image file."); return; }
+    if (!file.type.startsWith('image/')) { alert('Please upload an image file.'); return; }
     const reader = new FileReader();
     reader.onloadend = () => {
       const fullData = reader.result, base64 = fullData.split(',')[1];
@@ -809,105 +922,151 @@ class PulseNovaApp {
     reader.readAsDataURL(file);
   }
 
-  
-    
-   
   /* -------------------- DATABASE SYNC -------------------- */
   async loadUserHistory() {
+    // FIX: Guard uses the correctly-initialised this.isAuthenticated (false by
+    // default) instead of relying on an undefined value set externally.
     if (!this.isAuthenticated) return;
 
     try {
       const response = await fetch('/api/history');
-      if (!response.ok) return; 
+      // FIX: Previously a non-ok response was silently swallowed.
+      // Now we log it so it's visible in the browser console.
+      if (!response.ok) {
+        console.warn('loadUserHistory: /api/history returned', response.status);
+        return;
+      }
 
       const data = await response.json();
 
-      // 1. Sync Triage Chats from PostgreSQL
       if (data.triage && data.triage.length > 0) {
-        // Map database records into your local triageHistory format
-        this.triageHistory = data.triage.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(chat => ({
-          id: chat.id,
-          title: chat.title,
-          messages: chat.messages,
-          time: new Date(chat.created_at).toLocaleDateString()
-        }));
-        // Update the UI sidebar
+        this.triageHistory = data.triage
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .map(chat => ({
+            id:       chat.id,
+            title:    chat.title,
+            messages: chat.messages,
+            time:     new Date(chat.created_at).toLocaleDateString(),
+          }));
         this._renderTriageHistory();
+        this._syncHistoryOverlay();
       }
 
-      // 2. Sync Medical Documents from PostgreSQL
       if (data.documents && data.documents.length > 0) {
         this.xrayHistory = [];
-        this.labHistory = [];
-        
-        data.documents.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).forEach(doc => {
-          const entry = {
-            id: doc.id,
-            thumb: doc.image_b64,
-            reportHtml: doc.report_html,
-            time: new Date(doc.created_at).toLocaleDateString()
-          };
-          if (doc.doc_type === 'xray') this.xrayHistory.push(entry);
-          if (doc.doc_type === 'lab') this.labHistory.push(entry);
-        });
-
-        // Update the UI history panels
+        this.labHistory  = [];
+        data.documents
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .forEach(doc => {
+            const entry = {
+              id:         doc.id,
+              thumb:      doc.image_b64,
+              reportHtml: doc.report_html,
+              time:       new Date(doc.created_at).toLocaleDateString(),
+            };
+            if (doc.doc_type === 'xray') this.xrayHistory.push(entry);
+            if (doc.doc_type === 'lab')  this.labHistory.push(entry);
+          });
         this._renderXrayHistory();
         this._renderLabHistory();
       }
     } catch (error) {
-      console.error("Failed to fetch history from database:", error);
+      console.error('Failed to fetch history from database:', error);
     }
   }
-    /* -------------------- SESSION HISTORY -------------------- */
+
+  /* -------------------- HISTORY OVERLAY -------------------- */
+  // FIX: openHistoryOverlay() and closeHistoryOverlay() were called from the
+  // HTML (nav History button, mobile menu) but never defined on the class,
+  // causing TypeError: app.openHistoryOverlay is not a function.
+
+  openHistoryOverlay() {
+    this._syncHistoryOverlay();
+    document.getElementById('history-overlay')?.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  closeHistoryOverlay() {
+    document.getElementById('history-overlay')?.classList.add('hidden');
+  }
+
+  // Keeps the mobile history overlay list in sync with triageHistory
+  _syncHistoryOverlay() {
+    const list  = document.getElementById('history-list-mobile');
+    const empty = document.querySelector('#history-list-mobile + p, #history-list-mobile p');
+    if (!list) return;
+
+    // Remove all dynamic items (keep static empty-state paragraph if present)
+    Array.from(list.children).forEach(child => {
+      if (!child.id?.includes('empty')) child.remove();
+    });
+
+    if (this.triageHistory.length === 0) return;
+
+    this.triageHistory.forEach(chat => {
+      const btn       = document.createElement('div');
+      const isActive  = chat.id === this.currentChatId;
+      btn.className   = `group flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors cursor-pointer border ${isActive ? 'bg-blue-50 border-blue-200 text-blue-800 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-600 border-transparent hover:border-slate-200'}`;
+      btn.innerHTML   = `
+        <div class="flex flex-col min-w-0 flex-1" onclick="app.loadTriageChat('${chat.id}'); app.closeHistoryOverlay();">
+          <span class="text-sm font-medium truncate">${this.escapeHtml(chat.title)}</span>
+          <span class="text-[10px] ${isActive ? 'text-blue-500' : 'text-slate-400'} mt-0.5">${chat.time}</span>
+        </div>
+        <button onclick="app.deleteTriageChat('${chat.id}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity ml-2 shrink-0 p-1">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>`;
+      list.appendChild(btn);
+    });
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /* -------------------- SESSION HISTORY -------------------- */
   startNewTriageChat() {
-    this._saveCurrentTriageChat(); // Save current before wiping
-    this.currentChatId = Date.now(); // Generate new ID
-    this.resetChat(); // Clear screen
+    this._saveCurrentTriageChat();
+    this.currentChatId = this._newChatId();
+    this.resetChat();
   }
 
   async _saveCurrentTriageChat() {
     if (this.messages.length <= 1) return;
 
     const firstUserMsg = this.messages.find(m => m.role === 'user');
-    let title = firstUserMsg ? firstUserMsg.text.slice(0, 32) + (firstUserMsg.text.length > 32 ? '...' : '') : 'Triage Session';
+    const title        = firstUserMsg
+      ? firstUserMsg.text.slice(0, 32) + (firstUserMsg.text.length > 32 ? '...' : '')
+      : 'Triage Session';
 
     const chatData = {
-      id: this.currentChatId,
-      title: title,
+      id:       this.currentChatId,
+      title,
       messages: [...this.messages],
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time:     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    // 1. Save locally for the UI session
+    // 1. Local UI update
     const existingIdx = this.triageHistory.findIndex(h => h.id === this.currentChatId);
-    if (existingIdx > -1) {
-      this.triageHistory[existingIdx] = chatData;
-    } else {
-      this.triageHistory.unshift(chatData);
-    }
+    if (existingIdx > -1) this.triageHistory[existingIdx] = chatData;
+    else                  this.triageHistory.unshift(chatData);
     this._renderTriageHistory();
 
-    // 2. If Authenticated, sync silently to the PostgreSQL database!
+    // 2. Persist to PostgreSQL (only if authenticated)
     if (this.isAuthenticated) {
       try {
         await fetch('/api/history/triage', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(chatData)
+          body:    JSON.stringify(chatData),
         });
       } catch (err) {
-        console.error("Failed to sync chat to database", err);
+        console.error('Failed to sync chat to database', err);
       }
     }
   }
 
   _renderTriageHistory() {
-    const list = document.getElementById('triage-history-list');
+    const list  = document.getElementById('triage-history-list');
     const empty = document.getElementById('triage-empty-state');
     if (!list) return;
 
-    // Clear existing buttons (except the empty state message)
     Array.from(list.children).forEach(child => { if (child.id !== 'triage-empty-state') child.remove(); });
 
     if (this.triageHistory.length === 0) {
@@ -916,53 +1075,47 @@ class PulseNovaApp {
     }
     if (empty) empty.classList.add('hidden');
 
-    this.triageHistory.forEach((chat) => {
-      const btn = document.createElement('div');
+    this.triageHistory.forEach(chat => {
+      const btn      = document.createElement('div');
       const isActive = chat.id === this.currentChatId;
-      
-      // Styling for active vs inactive chats
-      btn.className = `group flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors cursor-pointer border ${isActive ? 'bg-blue-50 border-blue-200 text-blue-800 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-600 border-transparent hover:border-slate-200'}`;
-
-      btn.innerHTML = `
-        <div class="flex flex-col min-w-0 flex-1" onclick="app.loadTriageChat(${chat.id})">
+      btn.className  = `group flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors cursor-pointer border ${isActive ? 'bg-blue-50 border-blue-200 text-blue-800 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-600 border-transparent hover:border-slate-200'}`;
+      btn.innerHTML  = `
+        <div class="flex flex-col min-w-0 flex-1" onclick="app.loadTriageChat('${chat.id}')">
           <span class="text-sm font-medium truncate">${this.escapeHtml(chat.title)}</span>
           <span class="text-[10px] ${isActive ? 'text-blue-500' : 'text-slate-400'} mt-0.5">${chat.time}</span>
         </div>
-        <button onclick="app.deleteTriageChat(${chat.id}, event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity ml-2 shrink-0 p-1">
+        <button onclick="app.deleteTriageChat('${chat.id}', event)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity ml-2 shrink-0 p-1">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-        </button>
-      `;
+        </button>`;
       list.appendChild(btn);
     });
     if (window.lucide) lucide.createIcons();
   }
 
   loadTriageChat(id) {
-    this._saveCurrentTriageChat(); // Save current before leaving
+    this._saveCurrentTriageChat();
     const chat = this.triageHistory.find(h => h.id === id);
     if (chat) {
       this.currentChatId = chat.id;
-      this.messages = [...chat.messages];
+      this.messages      = [...chat.messages];
       this.renderChat();
       this._renderTriageHistory();
     }
   }
 
   deleteTriageChat(id, event) {
-    if (event) event.stopPropagation(); // Stop click from loading the chat
+    if (event) event.stopPropagation();
     this.triageHistory = this.triageHistory.filter(h => h.id !== id);
-    
-    // If we deleted the chat we are currently looking at, clear the screen
     if (this.currentChatId === id) {
-      this.currentChatId = Date.now();
+      this.currentChatId = this._newChatId();
       this.resetChat();
     } else {
       this._renderTriageHistory();
     }
     this.toast('Chat deleted', 'trash');
   }
-  
-  
+
+  /* -------------------- SCAN / LAB HISTORY -------------------- */
   _saveXrayHistory(imageB64, reportHtml) {
     const entry = { id: Date.now(), thumb: imageB64, reportHtml, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     this.xrayHistory.unshift(entry);
@@ -977,9 +1130,9 @@ class PulseNovaApp {
     panel.classList.remove('hidden');
     list.innerHTML = '';
     this.xrayHistory.forEach((entry, idx) => {
-      const card = document.createElement('button');
+      const card     = document.createElement('button');
       card.className = 'w-full flex items-center gap-3 p-2 rounded-xl border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-all text-left group';
-      card.onclick = () => this._restoreXrayEntry(entry);
+      card.onclick   = () => this._restoreXrayEntry(entry);
       card.innerHTML = `<img src="data:image/png;base64,${entry.thumb}" class="w-12 h-12 rounded-lg object-cover bg-slate-900 shrink-0 border border-slate-200"><div class="flex-1 min-w-0"><p class="text-xs font-semibold text-slate-700 group-hover:text-blue-700">Scan ${this.xrayHistory.length - idx}</p><p class="text-[10px] text-slate-400 mt-0.5">${entry.time}</p></div><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 shrink-0"></i>`;
       list.appendChild(card);
     });
@@ -1009,9 +1162,9 @@ class PulseNovaApp {
     panel.classList.remove('hidden');
     list.innerHTML = '';
     this.labHistory.forEach((entry, idx) => {
-      const card = document.createElement('button');
+      const card     = document.createElement('button');
       card.className = 'w-full flex items-center gap-3 p-2 rounded-xl border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition-all text-left group';
-      card.onclick = () => this._restoreLabEntry(entry);
+      card.onclick   = () => this._restoreLabEntry(entry);
       card.innerHTML = `<img src="data:image/png;base64,${entry.thumb}" class="w-12 h-12 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"><div class="flex-1 min-w-0"><p class="text-xs font-semibold text-slate-700 group-hover:text-purple-700">Report ${this.labHistory.length - idx}</p><p class="text-[10px] text-slate-400 mt-0.5">${entry.time}</p></div><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-300 group-hover:text-purple-500 shrink-0"></i>`;
       list.appendChild(card);
     });
@@ -1042,13 +1195,13 @@ class PulseNovaApp {
   async analyzeXray() {
     if (!this.xrayImage) return;
     this._initVisionLangSelects();
-    const btn = document.getElementById('btn-analyze-xray');
-    btn.disabled = true;
-    btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Analyzing…`;
+    const btn      = document.getElementById('btn-analyze-xray');
+    btn.disabled   = true;
+    btn.innerHTML  = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Analyzing…`;
     const langCode = this.xrayLanguage || this.selectedLanguage;
     const langObj  = this.supportedLanguages.find(l => l.code === langCode);
     const langName = langObj ? langObj.label.split(' (')[0] : 'English';
-    const prompt = `You are an expert radiologist assistant. Analyze this X-Ray, MRI, or CT scan image in thorough detail.
+    const prompt   = `You are an expert radiologist assistant. Analyze this X-Ray, MRI, or CT scan image in thorough detail.
 CRITICAL: Write this ENTIRE report — every heading, label, and sentence — exclusively in ${langName}. Do NOT use English for any part.
 
 Use exactly this structure:
@@ -1079,11 +1232,11 @@ List 3–4 questions the patient should ask their specialist.
 
 ---
 *⚕️ IMPORTANT: This is an AI-assisted observation only and is NOT a medical diagnosis. Always consult a qualified medical professional for evaluation and treatment.*`;
-    const text = await this.callNovaVision(this.xrayImage, prompt);
+    const text       = await this.callNovaVision(this.xrayImage, prompt);
     const reportHtml = this.formatMarkdown(text);
     document.getElementById('xray-result').innerHTML = reportHtml;
     this._saveXrayHistory(this.xrayImage, reportHtml);
-    btn.disabled = false;
+    btn.disabled  = false;
     btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Analyze Scan`;
     if (window.lucide) lucide.createIcons();
   }
@@ -1091,13 +1244,13 @@ List 3–4 questions the patient should ask their specialist.
   async analyzeLabs() {
     if (!this.labImage) return;
     this._initVisionLangSelects();
-    const btn = document.getElementById('btn-analyze-lab');
-    btn.disabled = true;
-    btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Translating…`;
+    const btn      = document.getElementById('btn-analyze-lab');
+    btn.disabled   = true;
+    btn.innerHTML  = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Translating…`;
     const langCode = this.labLanguage || this.selectedLanguage;
     const langObj  = this.supportedLanguages.find(l => l.code === langCode);
     const langName = langObj ? langObj.label.split(' (')[0] : 'English';
-    const prompt = `You are an expert medical lab analyst. Carefully read this lab report image and produce a comprehensive patient-friendly interpretation.
+    const prompt   = `You are an expert medical lab analyst. Carefully read this lab report image and produce a comprehensive patient-friendly interpretation.
 CRITICAL: Write this ENTIRE report — every heading, label, and sentence — exclusively in ${langName}. Do NOT use English for any part.
 
 Use exactly this structure:
@@ -1125,11 +1278,11 @@ List 4 questions the patient should ask about these results.
 
 ---
 *⚕️ IMPORTANT: This is an AI-assisted interpretation only and is NOT a medical diagnosis. Lab results must always be reviewed by a qualified healthcare provider.*`;
-    const text = await this.callNovaVision(this.labImage, prompt);
+    const text       = await this.callNovaVision(this.labImage, prompt);
     const reportHtml = this.formatMarkdown(text);
     document.getElementById('lab-result').innerHTML = reportHtml;
     this._saveLabHistory(this.labImage, reportHtml);
-    btn.disabled = false;
+    btn.disabled  = false;
     btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4"></i> Translate Report`;
     if (window.lucide) lucide.createIcons();
   }
@@ -1138,7 +1291,7 @@ List 4 questions the patient should ask about these results.
   setVitalsContext(ctx) {
     this.vitals.context = ctx;
     document.querySelectorAll('.vitals-context-btn').forEach(btn => {
-      const active = btn.dataset.context === ctx;
+      const active  = btn.dataset.context === ctx;
       btn.className = active
         ? 'vitals-context-btn bg-blue-50 border border-blue-200 text-blue-700 rounded-xl px-3 py-2 text-xs font-semibold'
         : 'vitals-context-btn bg-white border border-slate-200 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold';
@@ -1149,21 +1302,23 @@ List 4 questions the patient should ask about these results.
 
   resetVitalsSummary() {
     this.vitals.lastStableBpm = null; this.vitals.summaryReady = false;
+    // FIX: Only show the summary card when a reading is in progress or
+    // complete. Remove 'hidden' is intentional here (called from startVitals).
     document.getElementById('vitals-summary-card')?.classList.remove('hidden');
     this._setSummaryBadge('Waiting', 'chip-slate');
-    this._setText('sum-bpm', '--');
+    this._setText('sum-bpm',        '--');
     this._setText('sum-confidence', '--');
-    this._setText('sum-signal', 'Signal quality: --');
-    this._setText('sum-status', 'No reading yet');
-    this._setText('sum-summary', 'Take a reading to generate a pulse summary.');
-    this._setText('sum-guidance', 'Stay still, place your fingertip fully over the camera, and tap Start.');
-    this._setText('sum-warning', 'This is a camera-based estimate and not a diagnosis. If you have chest pain, trouble breathing, fainting, or severe symptoms, seek urgent care.');
+    this._setText('sum-signal',     'Signal quality: --');
+    this._setText('sum-status',     'No reading yet');
+    this._setText('sum-summary',    'Take a reading to generate a pulse summary.');
+    this._setText('sum-guidance',   'Stay still, place your fingertip fully over the camera, and tap Start.');
+    this._setText('sum-warning',    'This is a camera-based estimate and not a diagnosis. If you have chest pain, trouble breathing, fainting, or severe symptoms, seek urgent care.');
     this.setVitalsContext(this.vitals.context || 'resting');
   }
 
-  _setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+  _setText(id, text)          { const el = document.getElementById(id); if (el) el.textContent = text; }
   _setSummaryBadge(text, cls) { const badge = document.getElementById('vitals-summary-badge'); if (!badge) return; badge.className = `chip ${cls}`; badge.textContent = text; }
-  _qualityLabel(q)    { return q >= 60 ? 'Good' : q >= 25 ? 'Fair' : 'Poor'; }
+  _qualityLabel(q)            { return q >= 60 ? 'Good' : q >= 25 ? 'Fair' : 'Poor'; }
   _confidenceLabel({ signalQuality = 0, bpmHistory = [], stableBpmCount = 0 }) {
     const variance = bpmHistory.length > 1 ? Math.max(...bpmHistory) - Math.min(...bpmHistory) : 999;
     if (signalQuality >= 60 && bpmHistory.length >= 5 && variance <= 12 && stableBpmCount >= 1) return 'High';
@@ -1173,35 +1328,35 @@ List 4 questions the patient should ask about these results.
 
   _buildVitalsInterpretation(bpm) {
     const ctx = this.vitals.context;
-    let status = '', badge = ['chip-slate','Measured'], summary = '', guidance = '', warning = '';
+    let status = '', badge = ['chip-slate', 'Measured'], summary = '', guidance = '', warning = '';
     if (ctx === 'after_exercise') {
-      if (bpm < 60)       { status='Lower than expected after activity'; badge=['chip-amber','Check again']; summary='Your pulse estimate is on the lower side for a post-exercise reading.'; guidance='Sit and retake the reading in 1–2 minutes. Make sure your finger fully covers the camera lens.'; }
-      else if (bpm <= 140){ status='Expected after activity'; badge=['chip-green','Expected']; summary='This pulse reading can be normal shortly after exercise.'; guidance='Rest for a few minutes, hydrate, and retake the reading to see if it trends down.'; }
-      else                { status='High after activity'; badge=['chip-amber','Elevated']; summary='Your pulse is fairly high for a post-exercise reading.'; guidance='Stop activity, rest, and retake after 3–5 minutes. If it stays high or you feel unwell, seek care.'; }
+      if (bpm < 60)        { status = 'Lower than expected after activity'; badge = ['chip-amber', 'Check again'];  summary = 'Your pulse estimate is on the lower side for a post-exercise reading.'; guidance = 'Sit and retake the reading in 1–2 minutes. Make sure your finger fully covers the camera lens.'; }
+      else if (bpm <= 140) { status = 'Expected after activity';            badge = ['chip-green', 'Expected'];     summary = 'This pulse reading can be normal shortly after exercise.';                          guidance = 'Rest for a few minutes, hydrate, and retake the reading to see if it trends down.'; }
+      else                 { status = 'High after activity';                badge = ['chip-amber', 'Elevated'];     summary = 'Your pulse is fairly high for a post-exercise reading.';                            guidance = 'Stop activity, rest, and retake after 3–5 minutes. If it stays high or you feel unwell, seek care.'; }
     } else {
-      if (bpm < 60)       { status='Below typical resting range'; badge=['chip-amber','Below Range']; summary='A resting pulse under 60 can be normal for some people (especially athletes), but can also happen with fatigue or medications.'; guidance='If you feel fine, retake once while seated and relaxed. If you feel dizzy, weak, or faint, seek medical care.'; }
-      else if (bpm <= 100){ status='Within typical resting range'; badge=['chip-green','Normal Range']; summary='This reading is within a common resting heart-rate range for many adults.'; guidance='If symptoms continue, use Triage to describe how you feel and get next-step guidance.'; }
-      else if (bpm <= 120){ status='Mildly elevated'; badge=['chip-amber','Elevated']; summary='Your pulse is mildly elevated. This can happen with stress, anxiety, caffeine, dehydration, fever, or movement.'; guidance='Rest for 2–3 minutes, drink water, and retake. If you feel unwell, use Triage or seek urgent care.'; }
-      else                { status='High pulse reading'; badge=['chip-red','High']; summary='Your pulse reading is high and may need attention, especially if you are resting.'; guidance='Sit down and retake after 2–3 minutes. If it stays high or you have symptoms (chest pain, trouble breathing, fainting), seek urgent care.'; }
+      if (bpm < 60)        { status = 'Below typical resting range';  badge = ['chip-amber', 'Below Range']; summary = 'A resting pulse under 60 can be normal for some people (especially athletes), but can also happen with fatigue or medications.'; guidance = 'If you feel fine, retake once while seated and relaxed. If you feel dizzy, weak, or faint, seek medical care.'; }
+      else if (bpm <= 100) { status = 'Within typical resting range'; badge = ['chip-green', 'Normal Range']; summary = 'This reading is within a common resting heart-rate range for many adults.';                                                       guidance = 'If symptoms continue, use Triage to describe how you feel and get next-step guidance.'; }
+      else if (bpm <= 120) { status = 'Mildly elevated';              badge = ['chip-amber', 'Elevated'];     summary = 'Your pulse is mildly elevated. This can happen with stress, anxiety, caffeine, dehydration, fever, or movement.';             guidance = 'Rest for 2–3 minutes, drink water, and retake. If you feel unwell, use Triage or seek urgent care.'; }
+      else                 { status = 'High pulse reading';           badge = ['chip-red',   'High'];         summary = 'Your pulse reading is high and may need attention, especially if you are resting.';                                          guidance = 'Sit down and retake after 2–3 minutes. If it stays high or you have symptoms (chest pain, trouble breathing, fainting), seek urgent care.'; }
     }
     if (ctx === 'feeling_unwell') warning = 'Because you selected "Feeling unwell," take this reading seriously if you also have chest pain, shortness of breath, dizziness, or fainting. Consider urgent evaluation.';
-    else warning = 'This is a camera-based estimate and not a diagnosis. For severe symptoms, call emergency services or seek urgent care.';
+    else                          warning = 'This is a camera-based estimate and not a diagnosis. For severe symptoms, call emergency services or seek urgent care.';
     return { status, badge, summary, guidance, warning };
   }
 
   updateVitalsSummary(final = false) {
-    const bpm      = this.vitals.lastStableBpm || (this.vitals.bpmHistory.length ? Math.round(this.vitals.bpmHistory.reduce((a,b)=>a+b,0)/this.vitals.bpmHistory.length) : null);
-    const signalQ  = Math.round(this.vitals.signalQuality || 0);
+    const bpm       = this.vitals.lastStableBpm || (this.vitals.bpmHistory.length ? Math.round(this.vitals.bpmHistory.reduce((a, b) => a + b, 0) / this.vitals.bpmHistory.length) : null);
+    const signalQ   = Math.round(this.vitals.signalQuality || 0);
     const confidence = this._confidenceLabel(this.vitals);
     document.getElementById('vitals-summary-card')?.classList.remove('hidden');
-    this._setText('sum-bpm', bpm ? String(Math.round(bpm)) : '--');
+    this._setText('sum-bpm',        bpm ? String(Math.round(bpm)) : '--');
     this._setText('sum-confidence', confidence);
-    this._setText('sum-signal', `Signal quality: ${this._qualityLabel(signalQ)} (${signalQ}%)`);
+    this._setText('sum-signal',     `Signal quality: ${this._qualityLabel(signalQ)} (${signalQ}%)`);
     if (!bpm) {
       this._setSummaryBadge('Measuring', 'chip-blue');
-      this._setText('sum-status', 'Collecting pulse data');
+      this._setText('sum-status',  'Collecting pulse data');
       this._setText('sum-summary', 'PulseNova is still collecting a stable signal. Keep your finger still on the camera lens.');
-      this._setText('sum-guidance', 'Avoid moving your finger and keep steady pressure on the lens for a few more seconds.');
+      this._setText('sum-guidance','Avoid moving your finger and keep steady pressure on the lens for a few more seconds.');
       return;
     }
     const interp = this._buildVitalsInterpretation(Math.round(bpm));
@@ -1233,10 +1388,14 @@ List 4 questions the patient should ask about these results.
     this.vitals.canvas.height = this.vitals.canvas.offsetHeight || 160;
     const statusEl = document.getElementById('vitals-status');
     const qualWrap = document.getElementById('signal-quality-wrap');
+    // resetVitalsSummary() is now only called here (on explicit Start),
+    // not in the constructor, so the card doesn't flash on page load.
     this.resetVitalsSummary();
     try {
-      statusEl.innerText = "Requesting camera…";
-      this.vitals.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 320 }, height: { ideal: 240 } } });
+      statusEl.innerText = 'Requesting camera…';
+      this.vitals.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 320 }, height: { ideal: 240 } },
+      });
       this.vitals.video.srcObject = this.vitals.stream;
       await this.vitals.video.play();
       this.vitals.torchTrack = this.vitals.stream.getVideoTracks()[0];
@@ -1244,56 +1403,56 @@ List 4 questions the patient should ask about these results.
       document.getElementById('btn-start-vitals').classList.add('hidden');
       document.getElementById('btn-stop-vitals').classList.remove('hidden');
       if (qualWrap) qualWrap.classList.remove('hidden');
-      this.vitals.isMonitoring = true;
-      this.vitals.redValues = []; this.vitals.smoothed = []; this.vitals.bpmHistory = [];
-      this.vitals.stableBpmCount = 0; this.vitals.lastPeakTime = 0;
-      this.vitals.signalQuality = 0; this.vitals.lastStableBpm = null;
-      statusEl.innerText = "Cover lens with fingertip…";
+      this.vitals.isMonitoring  = true;
+      this.vitals.redValues     = []; this.vitals.smoothed = []; this.vitals.bpmHistory = [];
+      this.vitals.stableBpmCount = 0;  this.vitals.lastPeakTime = 0;
+      this.vitals.signalQuality  = 0;  this.vitals.lastStableBpm = null;
+      statusEl.innerText = 'Cover lens with fingertip…';
       this._setSummaryBadge('Measuring', 'chip-blue');
-      this._setText('sum-status', 'Position finger');
+      this._setText('sum-status',  'Position finger');
       this._setText('sum-summary', 'Place your fingertip over the camera lens and keep still while PulseNova detects your pulse.');
       this.vitals.timeoutId = setTimeout(() => {
         if (this.vitals.isMonitoring) {
-          statusEl.innerText = "No stable signal. Cover lens fully.";
+          statusEl.innerText = 'No stable signal. Cover lens fully.';
           this._setSummaryBadge('Retake', 'chip-amber');
-          this._setText('sum-status', 'No stable signal');
+          this._setText('sum-status',  'No stable signal');
           this._setText('sum-summary', 'PulseNova could not detect a stable pulse signal.');
-          this._setText('sum-guidance', 'Try brighter lighting, keep your finger steady, and cover the lens completely.');
+          this._setText('sum-guidance','Try brighter lighting, keep your finger steady, and cover the lens completely.');
           this.stopVitals(false);
         }
       }, 20000);
       this.processVitalsFrame();
       this.toast('Pulse reading started', 'activity');
-    } catch(err) {
+    } catch (err) {
       console.error(err);
-      statusEl.innerText = "Camera access denied.";
+      statusEl.innerText = 'Camera access denied.';
       this._setSummaryBadge('Blocked', 'chip-red');
-      this._setText('sum-status', 'Camera access required');
+      this._setText('sum-status',  'Camera access required');
       this._setText('sum-summary', 'PulseNova needs camera access to estimate your pulse.');
-      this._setText('sum-guidance', 'Allow camera permissions in your browser settings and try again.');
-      alert("Unable to access camera.");
+      this._setText('sum-guidance','Allow camera permissions in your browser settings and try again.');
+      alert('Unable to access camera.');
     }
   }
 
   async _setTorch(on) {
     const track = this.vitals.torchTrack; if (!track) return;
-    try { const caps = track.getCapabilities?.() || {}; if (caps.torch) { await track.applyConstraints({ advanced: [{ torch: on }] }); this.vitals.torchOn = on; } } catch(e) {}
+    try { const caps = track.getCapabilities?.() || {}; if (caps.torch) { await track.applyConstraints({ advanced: [{ torch: on }] }); this.vitals.torchOn = on; } } catch (_) {}
   }
 
   stopVitals(autoStop = false) {
     this.vitals.isMonitoring = false;
-    if (this.vitals.animId)   cancelAnimationFrame(this.vitals.animId);
+    if (this.vitals.animId)    cancelAnimationFrame(this.vitals.animId);
     if (this.vitals.timeoutId) clearTimeout(this.vitals.timeoutId);
-    this._setTorch(false).catch(()=>{});
+    this._setTorch(false).catch(() => {});
     if (this.vitals.stream) { this.vitals.stream.getTracks().forEach(t => t.stop()); this.vitals.stream = null; this.vitals.torchTrack = null; }
     document.getElementById('btn-stop-vitals').classList.add('hidden');
     document.getElementById('btn-start-vitals').classList.remove('hidden');
     document.getElementById('signal-quality-wrap')?.classList.add('hidden');
-    const statusEl = document.getElementById('vitals-status');
+    const statusEl     = document.getElementById('vitals-status');
     statusEl.className = '';
     statusEl.innerText = autoStop ? '✓ Reading captured' : 'Stopped';
     if (autoStop || this.vitals.lastStableBpm) this.updateVitalsSummary(true);
-    else this.updateVitalsSummary(false);
+    else                                       this.updateVitalsSummary(false);
     this.toast(autoStop ? 'Reading captured' : 'Reading stopped', autoStop ? 'check' : 'square');
   }
 
@@ -1304,16 +1463,17 @@ List 4 questions the patient should ask about these results.
     const imageData = this.vitals.processCtx.getImageData(0, 0, 20, 20).data;
     let redSum = 0, greenSum = 0;
     const pixels = imageData.length / 4;
-    for (let i = 0; i < imageData.length; i += 4) { redSum += imageData[i]; greenSum += imageData[i+1]; }
-    const avgRed = redSum/pixels, avgGreen = greenSum/pixels;
-    const quality = Math.min(100, Math.max(0, ((avgRed - avgGreen) / 80) * 100));
+    for (let i = 0; i < imageData.length; i += 4) { redSum += imageData[i]; greenSum += imageData[i + 1]; }
+    const avgRed   = redSum   / pixels;
+    const avgGreen = greenSum / pixels;
+    const quality  = Math.min(100, Math.max(0, ((avgRed - avgGreen) / 80) * 100));
     this.vitals.signalQuality = quality;
     this._updateSignalQuality(quality);
     this.vitals.redValues.push({ time: now, val: avgRed });
     if (this.vitals.redValues.length > 240) this.vitals.redValues.shift();
     if (this.vitals.redValues.length >= 5) {
-      const last5 = this.vitals.redValues.slice(-5).map(d => d.val);
-      const smoothVal = last5.reduce((a,b)=>a+b,0)/5;
+      const last5    = this.vitals.redValues.slice(-5).map(d => d.val);
+      const smoothVal = last5.reduce((a, b) => a + b, 0) / 5;
       this.vitals.smoothed.push({ time: now, val: smoothVal });
       if (this.vitals.smoothed.length > 240) this.vitals.smoothed.shift();
     }
@@ -1328,7 +1488,7 @@ List 4 questions the patient should ask about these results.
     const text = document.getElementById('signal-quality-text');
     if (!bar || !text) return;
     bar.style.width = quality + '%';
-    if (quality < 25)      { bar.className = 'h-full bg-red-400 rounded-full transition-all duration-500';    text.textContent = 'Poor — cover lens more'; }
+    if      (quality < 25) { bar.className = 'h-full bg-red-400 rounded-full transition-all duration-500';    text.textContent = 'Poor — cover lens more'; }
     else if (quality < 60) { bar.className = 'h-full bg-yellow-400 rounded-full transition-all duration-500'; text.textContent = 'Fair — hold still'; }
     else                   { bar.className = 'h-full bg-green-400 rounded-full transition-all duration-500';  text.textContent = 'Good signal'; }
   }
@@ -1337,11 +1497,11 @@ List 4 questions the patient should ask about these results.
     const data = this.vitals.smoothed;
     if (data.length < 40) return;
     const vals = data.slice(-60).map(d => d.val);
-    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
-    const std  = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const std  = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
     const threshold = mean + std * 0.6;
-    const len = data.length;
-    const cur = data[len-1].val, prev = data[len-2].val, prev2 = data[len-3].val;
+    const len  = data.length;
+    const cur  = data[len - 1].val, prev = data[len - 2].val, prev2 = data[len - 3].val;
     if (prev > cur && prev > prev2 && prev > threshold) {
       if (now - this.vitals.lastPeakTime > 350) {
         const timeDiff = now - this.vitals.lastPeakTime;
@@ -1351,7 +1511,7 @@ List 4 questions the patient should ask about these results.
             this.vitals.bpmHistory.push(instantBPM);
             if (this.vitals.bpmHistory.length > 8) this.vitals.bpmHistory.shift();
             if (this.vitals.bpmHistory.length >= 4) {
-              const avgBPM   = this.vitals.bpmHistory.reduce((a,b)=>a+b,0)/this.vitals.bpmHistory.length;
+              const avgBPM   = this.vitals.bpmHistory.reduce((a, b) => a + b, 0) / this.vitals.bpmHistory.length;
               const bpmRange = Math.max(...this.vitals.bpmHistory) - Math.min(...this.vitals.bpmHistory);
               document.getElementById('bpm-display').innerText = Math.round(avgBPM);
               document.getElementById('vitals-status').innerText = 'Detecting pulse…';
@@ -1378,54 +1538,57 @@ List 4 questions the patient should ask about these results.
   drawPPGGraph() {
     const ctx = this.vitals.ctx, w = this.vitals.canvas.width, h = this.vitals.canvas.height;
     const data = this.vitals.smoothed.length >= 5 ? this.vitals.smoothed : this.vitals.redValues;
-    ctx.clearRect(0,0,w,h);
+    ctx.clearRect(0, 0, w, h);
     if (data.length < 2) return;
     let min = Infinity, max = -Infinity;
     for (const d of data) { if (d.val < min) min = d.val; if (d.val > max) max = d.val; }
     const range = max - min || 1;
     ctx.beginPath(); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
     for (let i = 0; i < data.length; i++) {
-      const x = (i/(data.length-1))*w;
-      const y = h - ((data[i].val - min)/range)*(h*0.8) - (h*0.1);
-      i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((data[i].val - min) / range) * (h * 0.8) - (h * 0.1);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.stroke();
   }
 
   /* -------------------- CARE FINDER -------------------- */
   async ensureGoogleMaps() {
-    if (this.googleMapsReady) return;
+    if (this.googleMapsReady)   return;
     if (this.googleMapsLoading) return this.googleMapsLoading;
     this.googleMapsLoading = new Promise(async (resolve, reject) => {
       try {
         if (window.google?.maps?.places) { this.googleMapsReady = true; this.initGoogleServices(); resolve(); return; }
         const cfg    = await fetch('/config').then(r => r.json());
         const apiKey = cfg.google_maps_api_key;
-        if (!apiKey) throw new Error("GOOGLE_MAPS_API_KEY not set on server.");
-        window.__pulseNovaMapsInit = () => { this.googleMapsReady = true; try { this.initGoogleServices(); resolve(); } catch(e) { reject(e); } finally { delete window.__pulseNovaMapsInit; } };
+        if (!apiKey) throw new Error('GOOGLE_MAPS_API_KEY not set on server.');
+        window.__pulseNovaMapsInit = () => {
+          this.googleMapsReady = true;
+          try { this.initGoogleServices(); resolve(); } catch (e) { reject(e); } finally { delete window.__pulseNovaMapsInit; }
+        };
         if (document.getElementById('pulse-nova-gmaps')) return;
-        const script = document.createElement('script');
-        script.id  = 'pulse-nova-gmaps';
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry&callback=__pulseNovaMapsInit&loading=async`;
-        script.async = true; script.defer = true;
-        script.onerror = () => reject(new Error("Failed to load Google Maps SDK"));
+        const script   = document.createElement('script');
+        script.id      = 'pulse-nova-gmaps';
+        script.src     = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry&callback=__pulseNovaMapsInit&loading=async`;
+        script.async   = true; script.defer = true;
+        script.onerror = () => reject(new Error('Failed to load Google Maps SDK'));
         document.head.appendChild(script);
-      } catch(err) { reject(err); }
+      } catch (err) { reject(err); }
     });
     return this.googleMapsLoading;
   }
 
   initGoogleServices() {
     if (this.gmap) return;
-    const host = document.getElementById('care-map-host');
-    this.gmap = new google.maps.Map(host, { center: { lat: 41.7658, lng: -72.6734 }, zoom: 12, disableDefaultUI: true });
+    const host     = document.getElementById('care-map-host');
+    this.gmap      = new google.maps.Map(host, { center: { lat: 41.7658, lng: -72.6734 }, zoom: 12, disableDefaultUI: true });
     this.placesService = new google.maps.places.PlacesService(this.gmap);
     this.geocoder      = new google.maps.Geocoder();
   }
 
   setCareStatus(text, isError = false) {
     const el = document.getElementById('care-status'); if (!el) return;
-    el.textContent = text || "";
+    el.textContent = text || '';
     el.className   = `text-xs flex items-center ${isError ? 'text-red-500' : 'text-slate-400'}`;
   }
 
@@ -1441,33 +1604,37 @@ List 4 questions the patient should ask about these results.
 
   async searchCareByText() {
     const query = document.getElementById('care-search')?.value.trim() || '';
-    if (!query) { this.setCareStatus("Enter a city or ZIP code.", true); return; }
+    if (!query) { this.setCareStatus('Enter a city or ZIP code.', true); return; }
     try {
-      this.setCareStatus("Finding area…");
+      this.setCareStatus('Finding area…');
       await this.ensureGoogleMaps();
-      const geo = await new Promise((resolve, reject) => this.geocoder.geocode({ address: query }, (results, status) => status === "OK" && results?.length ? resolve(results[0]) : reject(new Error(`Geocoding failed: ${status}`))));
+      const geo = await new Promise((resolve, reject) =>
+        this.geocoder.geocode({ address: query }, (results, status) =>
+          status === 'OK' && results?.length ? resolve(results[0]) : reject(new Error(`Geocoding failed: ${status}`))
+        )
+      );
       const loc = geo.geometry.location;
-      this.care.userLat = loc.lat(); this.care.userLon = loc.lng();
+      this.care.userLat     = loc.lat(); this.care.userLon = loc.lng();
       this.care.centerLabel = geo.formatted_address || query;
       if (this.gmap) { this.gmap.setCenter({ lat: this.care.userLat, lng: this.care.userLon }); this.gmap.setZoom(12); }
       await this.fetchNearbyProviders(this.care.userLat, this.care.userLon);
-    } catch(err) { console.error(err); this.setCareStatus("Could not search this area.", true); }
+    } catch (err) { console.error(err); this.setCareStatus('Could not search this area.', true); }
   }
 
   async locateUser() {
-    const btn = document.getElementById('btn-locate'), orig = btn?.innerHTML;
+    const btn  = document.getElementById('btn-locate'), orig = btn?.innerHTML;
     if (btn) { btn.disabled = true; btn.innerHTML = 'Locating…'; }
-    this.setCareStatus("Requesting location…");
+    this.setCareStatus('Requesting location…');
     try {
       await this.ensureGoogleMaps();
       const pos = await new Promise((resolve, reject) => {
-        if (!navigator.geolocation) { reject(new Error("Geolocation not supported")); return; }
+        if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
         navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
       });
-      this.care.userLat = pos.coords.latitude; this.care.userLon = pos.coords.longitude;
-      this.care.centerLabel = "your location";
+      this.care.userLat     = pos.coords.latitude; this.care.userLon = pos.coords.longitude;
+      this.care.centerLabel = 'your location';
       await this.fetchNearbyProviders(this.care.userLat, this.care.userLon);
-    } catch(e) { console.error(e); this.setCareStatus("Couldn't get location. Try a ZIP/city.", true); this.toast("Enable location permission or search by city/ZIP", 'alert-triangle'); }
+    } catch (e) { console.error(e); this.setCareStatus("Couldn't get location. Try a ZIP/city.", true); this.toast('Enable location permission or search by city/ZIP', 'alert-triangle'); }
     finally { if (btn) { btn.disabled = false; btn.innerHTML = orig; } if (window.lucide) lucide.createIcons(); }
   }
 
@@ -1489,29 +1656,33 @@ List 4 questions the patient should ask about these results.
 
   getDistanceMiles(lat1, lon1, lat2, lon2) {
     if (window.google?.maps?.geometry?.spherical) {
-      return google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(lat1,lon1), new google.maps.LatLng(lat2,lon2)) / 1609.344;
+      return google.maps.geometry.spherical.computeDistanceBetween(
+        new google.maps.LatLng(lat1, lon1), new google.maps.LatLng(lat2, lon2)
+      ) / 1609.344;
     }
     const R = 6371000, toRad = x => x * Math.PI / 180;
-    const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
-    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) / 1609.344;
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) / 1609.344;
   }
 
   normalizePlace(place, inferredType) {
     const loc  = place.geometry?.location;
     const lat  = typeof loc?.lat === 'function' ? loc.lat() : loc?.lat;
     const lon  = typeof loc?.lng === 'function' ? loc.lng() : loc?.lng;
-    const name = (place.name||'').toLowerCase(), types = place.types||[];
+    const name = (place.name || '').toLowerCase(), types = place.types || [];
     let type   = inferredType || 'Clinic';
     if (types.includes('hospital'))  type = inferredType === 'Urgent Care' ? 'Urgent Care' : 'Hospital';
     if (types.includes('pharmacy'))  type = 'Pharmacy';
     if (types.includes('dentist'))   type = 'Dentist';
-    if (name.includes('urgent care'))                                         type = 'Urgent Care';
-    if (name.includes('pediatric'))                                           type = 'Pediatrician';
-    if (name.includes('primary care')||name.includes('family medicine'))      type = 'Primary Care';
-    if (type==='Hospital'&&(name.includes('emergency')||name.includes(' er '))) type = 'ER';
-    const distance = (this.care.userLat != null && lat != null) ? this.getDistanceMiles(this.care.userLat, this.care.userLon, lat, lon) : null;
-    return { id: place.place_id, name: place.name||"Unknown provider", type, address: place.vicinity||place.formatted_address||"Address unavailable", rating: place.rating||null, openNow: place.opening_hours?.open_now??null, distance, lat, lon, placeId: place.place_id };
+    if (name.includes('urgent care'))                                        type = 'Urgent Care';
+    if (name.includes('pediatric'))                                          type = 'Pediatrician';
+    if (name.includes('primary care') || name.includes('family medicine'))   type = 'Primary Care';
+    if (type === 'Hospital' && (name.includes('emergency') || name.includes(' er '))) type = 'ER';
+    const distance = (this.care.userLat != null && lat != null)
+      ? this.getDistanceMiles(this.care.userLat, this.care.userLon, lat, lon)
+      : null;
+    return { id: place.place_id, name: place.name || 'Unknown provider', type, address: place.vicinity || place.formatted_address || 'Address unavailable', rating: place.rating || null, openNow: place.opening_hours?.open_now ?? null, distance, lat, lon, placeId: place.place_id };
   }
 
   dedupeProviders(list) {
@@ -1525,7 +1696,7 @@ List 4 questions the patient should ask about these results.
   }
 
   async fetchNearbyProviders(lat, lon) {
-    this.setCareStatus("Searching nearby care…");
+    this.setCareStatus('Searching nearby care…');
     this.providers = []; this.renderProviders();
     try {
       const center = new google.maps.LatLng(lat, lon);
@@ -1534,38 +1705,41 @@ List 4 questions the patient should ask about these results.
       const [hospitals, pharmacies, dentists, urgentCare, primaryCare, pediatrics] = await Promise.all([
         this.nearbySearchPromise({ location: center, radius, type: 'hospital' }),
         this.nearbySearchPromise({ location: center, radius, type: 'pharmacy' }),
-        this.nearbySearchPromise({ location: center, radius, type: 'dentist' }),
-        this.textSearchPromise({ location: center, radius, query: 'urgent care' }),
-        this.textSearchPromise({ location: center, radius, query: 'primary care clinic' }),
-        this.textSearchPromise({ location: center, radius, query: 'pediatrician' })
+        this.nearbySearchPromise({ location: center, radius, type: 'dentist'  }),
+        this.textSearchPromise(  { location: center, radius, query: 'urgent care'          }),
+        this.textSearchPromise(  { location: center, radius, query: 'primary care clinic'  }),
+        this.textSearchPromise(  { location: center, radius, query: 'pediatrician'         }),
       ]);
       let merged = [
-        ...hospitals.map(p => this.normalizePlace(p, 'Hospital')),
-        ...pharmacies.map(p => this.normalizePlace(p, 'Pharmacy')),
-        ...dentists.map(p => this.normalizePlace(p, 'Dentist')),
-        ...urgentCare.map(p => this.normalizePlace(p, 'Urgent Care')),
+        ...hospitals.map(p  => this.normalizePlace(p, 'Hospital'     )),
+        ...pharmacies.map(p => this.normalizePlace(p, 'Pharmacy'     )),
+        ...dentists.map(p   => this.normalizePlace(p, 'Dentist'      )),
+        ...urgentCare.map(p => this.normalizePlace(p, 'Urgent Care'  )),
         ...primaryCare.map(p => this.normalizePlace(p, 'Primary Care')),
-        ...pediatrics.map(p => this.normalizePlace(p, 'Pediatrician'))
+        ...pediatrics.map(p => this.normalizePlace(p, 'Pediatrician' )),
       ];
       merged = this.dedupeProviders(merged);
-      merged.sort((a,b) => (a.distance??999) - (b.distance??999));
-      this.providers = merged.slice(0,30);
-      document.getElementById('care-filter') && (document.getElementById('care-filter').value = 'All');
-      document.getElementById('provider-filter') && (document.getElementById('provider-filter').value = '');
+      merged.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
+      this.providers = merged.slice(0, 30);
+      if (document.getElementById('care-filter'))    document.getElementById('care-filter').value    = 'All';
+      if (document.getElementById('provider-filter')) document.getElementById('provider-filter').value = '';
       this.renderProviders();
       const visible = this.getFilteredProviders().length;
       const label   = this.care.centerLabel ? ` near ${this.care.centerLabel}` : '';
-      this.setCareStatus(this.providers.length ? `Found ${this.providers.length} providers${label}. Showing ${visible}.` : `No providers found${label}.`);
+      this.setCareStatus(this.providers.length
+        ? `Found ${this.providers.length} providers${label}. Showing ${visible}.`
+        : `No providers found${label}.`
+      );
       this.toast(`${this.providers.length} providers found`, 'map-pin');
-    } catch(e) { console.error(e); this.setCareStatus("Care search failed. Check Maps API key.", true); }
+    } catch (e) { console.error(e); this.setCareStatus('Care search failed. Check Maps API key.', true); }
   }
 
   getFilteredProviders() {
     const typeFilter = document.getElementById('care-filter')?.value || 'All';
-    const textFilter = (document.getElementById('provider-filter')?.value||'').trim().toLowerCase();
+    const textFilter = (document.getElementById('provider-filter')?.value || '').trim().toLowerCase();
     let filtered = this.providers.slice();
     if (typeFilter !== 'All') filtered = filtered.filter(p => p.type === typeFilter);
-    if (textFilter)           filtered = filtered.filter(p => (p.name||'').toLowerCase().includes(textFilter) || (p.address||'').toLowerCase().includes(textFilter));
+    if (textFilter)           filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(textFilter) || (p.address || '').toLowerCase().includes(textFilter));
     return filtered;
   }
 
@@ -1578,9 +1752,11 @@ List 4 questions the patient should ask about these results.
       return;
     }
     filtered.forEach(p => {
-      const colorClass = p.type==='ER' ? 'bg-red-100 text-red-700' : p.type==='Urgent Care' ? 'bg-blue-100 text-blue-700' : p.type==='Hospital' ? 'bg-orange-100 text-orange-700' : p.type==='Pharmacy' ? 'bg-green-100 text-green-700' : p.type==='Dentist' ? 'bg-purple-100 text-purple-700' : p.type==='Primary Care' ? 'bg-cyan-100 text-cyan-700' : p.type==='Pediatrician' ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-700';
-      const distText = typeof p.distance === 'number' ? p.distance.toFixed(1) : '--';
-      const directionsUrl = (p.lat != null && p.lon != null) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+' '+p.address)}`;
+      const colorClass    = p.type === 'ER' ? 'bg-red-100 text-red-700' : p.type === 'Urgent Care' ? 'bg-blue-100 text-blue-700' : p.type === 'Hospital' ? 'bg-orange-100 text-orange-700' : p.type === 'Pharmacy' ? 'bg-green-100 text-green-700' : p.type === 'Dentist' ? 'bg-purple-100 text-purple-700' : p.type === 'Primary Care' ? 'bg-cyan-100 text-cyan-700' : p.type === 'Pediatrician' ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-700';
+      const distText      = typeof p.distance === 'number' ? p.distance.toFixed(1) : '--';
+      const directionsUrl = (p.lat != null && p.lon != null)
+        ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + p.address)}`;
       const openChip = p.openNow === true ? `<span class="chip chip-green">OPEN</span>` : p.openNow === false ? `<span class="chip chip-red">CLOSED</span>` : '';
       list.innerHTML += `
         <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex justify-between items-start gap-3">
@@ -1609,23 +1785,23 @@ List 4 questions the patient should ask about these results.
 
   /* -------------------- HELPERS -------------------- */
   escapeHtml(str) {
-    return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
-  formatText(text) { return this.escapeHtml(text||'').replace(/\n/g,'<br>'); }
+  formatText(text) { return this.escapeHtml(text || '').replace(/\n/g, '<br>'); }
   formatMarkdown(text) {
-    const safe = this.escapeHtml(text||'');
-    let html = safe
+    const safe = this.escapeHtml(text || '');
+    let html   = safe
       .replace(/^#### (.*)$/gm, '<h4 class="text-sm font-bold text-slate-700 mt-3 mb-1">$1</h4>')
       .replace(/^### (.*)$/gm,  '<h3 class="text-base font-bold text-blue-800 mt-5 mb-2 pb-1 border-b border-blue-100">$1</h3>')
       .replace(/^## (.*)$/gm,   '<h2 class="text-lg font-bold text-slate-900 mt-5 mb-2">$1</h2>')
       .replace(/\*\*(.*?)\*\*/g,'<span class="font-semibold text-slate-900">$1</span>')
       .replace(/^\-{3,}$/gm,    '<hr class="my-4 border-slate-200">')
-      .replace(/^\*⚕️(.*)\*$/gm,'<p class="text-xs text-slate-400 italic mt-4 pt-3 border-t border-slate-100">⚕️$1</p>')
-      .replace(/^\*DISCLAIMER:(.*)\*$/gm,'<p class="text-xs text-slate-400 italic mt-4 border-t pt-2">$1</p>')
+      .replace(/^\*⚕️(.*)\*$/gm, '<p class="text-xs text-slate-400 italic mt-4 pt-3 border-t border-slate-100">⚕️$1</p>')
+      .replace(/^\*DISCLAIMER:(.*)\*$/gm, '<p class="text-xs text-slate-400 italic mt-4 border-t pt-2">$1</p>')
       .replace(/^\- (.*)$/gm,   '<li class="ml-4 list-disc mb-1.5 text-sm leading-relaxed">$1</li>')
-      .replace(/\n/g,'<br>');
+      .replace(/\n/g, '<br>');
     if (html.includes('<li')) {
-      html = html.replace(/(<li[\s\S]*?<\/li>)/g,'<ul class="my-2 space-y-0.5">$1</ul>').replace(/<\/ul><br><ul[^>]*>/g,'');
+      html = html.replace(/(<li[\s\S]*?<\/li>)/g, '<ul class="my-2 space-y-0.5">$1</ul>').replace(/<\/ul><br><ul[^>]*>/g, '');
     }
     return html;
   }
@@ -1633,6 +1809,12 @@ List 4 questions the patient should ask about these results.
 
 // =============================================================================
 // BOOTSTRAP
+// FIX: Full flow is now:
+//  1. Instantiate app (isAuthenticated = false, safe default)
+//  2. Navigate to home
+//  3. Call pulseNovaInitAuthNav() which hits /me
+//  4. Inside .then(): isAuthenticated is now correctly set on the instance
+//  5. Only then call loadUserHistory() — guaranteed to run with the right value
 // =============================================================================
 const app = new PulseNovaApp();
 window.app = app;
@@ -1645,4 +1827,3 @@ pulseNovaInitAuthNav().then(() => {
 });
 
 if (window.lucide) lucide.createIcons();
-
