@@ -452,6 +452,47 @@ def _pdf_first_page_to_png_b64(pdf_bytes: bytes) -> str:
     except Exception:
         raise HTTPException(status_code=400, detail="Could not read PDF. Try a screenshot.")
 
+def _build_patient_context_from_user(user: Optional[User]) -> str:
+    """
+    Build a short, structured patient context block for the model.
+    Keep it compact so it doesn't dominate the prompt.
+    """
+    if not user:
+        return ""
+
+    parts = []
+    if getattr(user, "age", None): parts.append(f"Age: {user.age}")
+    if getattr(user, "gender", None): parts.append(f"Gender: {user.gender}")
+    # Height/Weight stored as strings in your DB
+    hw = []
+    if getattr(user, "height", None): hw.append(str(user.height))
+    if getattr(user, "weight", None): hw.append(str(user.weight))
+    if hw: parts.append(f"Height/Weight: {' / '.join(hw)}")
+    if getattr(user, "allergies", None): parts.append(f"Allergies: {user.allergies}")
+    if getattr(user, "medical_history", None): parts.append(f"Medical history: {user.medical_history}")
+
+    if not parts:
+        return ""
+
+    return "PATIENT CONTEXT (use this for safety and personalization):\n- " + "\n- ".join(parts)
+
+
+def _allergy_safety_rule_block() -> str:
+    """
+    A hard rule block to force consistent behavior around allergies.
+    """
+    return (
+        "ALLERGY SAFETY RULE (IMPORTANT):\n"
+        "- You must consider the patient's listed allergies in every response.\n"
+        "- If the user asks whether they can eat/take/use something that matches a listed allergy "
+        "(including plurals and common variations), you must clearly say NO and explain it is "
+        "because they have that allergy.\n"
+        "- If the user reports possible allergic reaction symptoms (hives, swelling, wheezing, "
+        "trouble breathing, fainting, vomiting after exposure), treat it as urgent/emergency and "
+        "tell them to seek emergency care immediately.\n"
+        "- Do not diagnose. Keep guidance practical and safe.\n"
+    )
+
 
 # =============================================================================
 # OAuth helpers (Cognito Hosted UI)
@@ -852,7 +893,24 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
     s          = _get_session(session_id)
     u_sub      = (s.get("profile") or {}).get("sub") if s else None
 
-    system_list = [{"text": _triage_system_prompt(req.language)}]
+    patient_ctx = ""
+    if u_sub:
+        user_row = db.query(User).filter(User.sub == u_sub).first()
+        patient_ctx = _build_patient_context_from_user(user_row)
+    
+    system_text = _triage_system_prompt(req.language)
+    
+    # Prepend context + allergy rules to the system prompt
+    if patient_ctx:
+        system_text = patient_ctx + "\n\n" + _allergy_safety_rule_block() + "\n\n" + system_text
+    else:
+        # Even without a saved profile, keep an allergy rule so the model asks
+        system_text = (
+            "If the user has allergies, ask them to share them before suggesting foods/medications.\n\n"
+            + system_text
+        )
+    
+    system_list = [{"text": system_text}]
     messages    = _sanitize_history_for_nova(req.history)
 
     user_content = []
@@ -1428,11 +1486,23 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
 
             nova_history.append({"role": "user", "content": [{"text": user_text}]})
 
+            user_row = db.query(User).filter(User.sub == user_sub).first()
+            patient_ctx = _build_patient_context_from_user(user_row)
+            
             system_prompt = (
                 "You are PulseNova on Alexa. Keep responses short and conversational for voice. "
                 "Ask ONE clarifying question at a time. "
-                "If symptoms sound life-threatening, advise calling emergency services immediately."
+                "If symptoms sound life-threatening, advise calling emergency services immediately.\n\n"
             )
+            
+            # Prepend patient context + allergy rule if available
+            if patient_ctx:
+                system_prompt = patient_ctx + "\n\n" + _allergy_safety_rule_block() + "\n\n" + system_prompt
+            else:
+                system_prompt = (
+                    "If the user has allergies, ask them to share them before suggesting foods/medications.\n\n"
+                    + system_prompt
+                )
 
             bedrock_req = {
                 "schemaVersion": "messages-v1",
