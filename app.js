@@ -1816,27 +1816,77 @@ List 4 questions the patient should ask about these results.
   /* RX INIT                                                              */
   /* ------------------------------------------------------------------ */
   initRx() {
-    this.rxMode         = 'upload';   // 'upload' | 'manual'
-    this.rxImage        = null;       // base64 string of uploaded file
-    this.rxIsPdf        = false;
-    this.rxExtracted    = [];         // meds found by AI from image/PDF
-    this.rxManualDraft  = [];         // meds added by manual form
-    this.rxSaved        = JSON.parse(localStorage.getItem('pulsenova_rx') || '[]');
-    this.rxSelectedDays = new Set();
-    this._alexaPhrase   = '';
+  this.rxMode        = 'list';
+  this.rxExtracted   = [];
+  this.rxManualDraft = [];
 
-    // Wire up repeat select → show/hide custom days picker
-    const repeatSel = document.getElementById('rx-manual-repeat');
-    if (repeatSel) {
-      repeatSel.addEventListener('change', () => {
-        const daysWrap = document.getElementById('rx-manual-days');
-        if (daysWrap) daysWrap.classList.toggle('hidden', repeatSel.value !== 'CUSTOM_DAYS');
-      });
+  // Load from localStorage first (instant, works offline)
+  try {
+    const stored = localStorage.getItem('pn_prescriptions');
+    if (stored) {
+      this.rxExtracted = JSON.parse(stored);
     }
-
-    this.rxSetMode('upload');
-    this._renderRxSaved();
+  } catch (e) {
+    console.warn('Could not load prescriptions from localStorage:', e);
   }
+
+  // If authenticated, also sync from DB (authoritative source)
+  if (this.user?.authenticated) {
+    this._loadPrescriptionsFromDB();
+  }
+
+  this.rxSetMode('list');
+},
+
+  async _loadPrescriptionsFromDB() {
+  try {
+    const res = await fetch('/api/prescriptions', {
+      credentials: 'include',
+    });
+    if (!res.ok) return; // Not authenticated or no prescriptions yet — silent fail
+    const meds = await res.json();
+    if (Array.isArray(meds) && meds.length > 0) {
+      // DB is authoritative — overwrite local copy
+      this.rxExtracted = meds;
+      // Keep localStorage in sync
+      localStorage.setItem('pn_prescriptions', JSON.stringify(meds));
+      this.rxSetMode('list');
+    }
+  } catch (e) {
+    console.warn('Could not load prescriptions from DB:', e);
+  }
+},
+
+  async _savePrescriptionsToDB(meds) {
+  // Always save to localStorage first
+  try {
+    localStorage.setItem('pn_prescriptions', JSON.stringify(meds));
+  } catch (e) {
+    console.warn('localStorage save failed:', e);
+  }
+
+  // If authenticated, also push to DB so Alexa can read them
+  if (!this.user?.authenticated) return;
+
+  try {
+    const res = await fetch('/api/prescriptions', {
+      method:      'POST',
+      credentials: 'include',
+      headers:     { 'Content-Type': 'application/json' },
+      body:        JSON.stringify({ prescriptions: meds }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.warn('DB prescription save failed:', err);
+    } else {
+      console.log(`Prescriptions synced to DB: ${meds.length} medication(s)`);
+    }
+  } catch (e) {
+    console.warn('Could not sync prescriptions to DB:', e);
+  }
+},
+
+
 
   /* ------------------------------------------------------------------ */
   /* TAB SWITCHING                                                        */
@@ -2171,43 +2221,67 @@ List 4 questions the patient should ask about these results.
     document.getElementById('alexa-send-modal')?.classList.add('hidden');
   }
 
-  async sendToAlexa() {
+async sendToAlexa() {
     const allMeds  = [...this.rxExtracted, ...this.rxManualDraft];
     const selected = allMeds.filter((_, idx) => {
       return document.getElementById(`alexa-med-${idx}`)?.checked;
     });
-
     if (!selected.length) { this.toast('Select at least one medication.', 'alert-triangle'); return; }
 
     const btn = document.getElementById('btn-send-to-alexa');
-    if (btn) { btn.disabled = true; btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sending…`; }
+    if (btn) { btn.disabled = true; btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Syncing…`; }
 
-    // Build a human-readable Alexa phrase
+    // Save to localStorage immediately (works offline)
+    try {
+      localStorage.setItem('pn_prescriptions', JSON.stringify(selected));
+    } catch (e) {
+      console.warn('localStorage save failed:', e);
+    }
+
+    // If authenticated, push to DB so Alexa can read them
+    if (this.user?.authenticated) {
+      try {
+        const res = await fetch('/api/prescriptions', {
+          method:      'POST',
+          credentials: 'include',
+          headers:     { 'Content-Type': 'application/json' },
+          body:        JSON.stringify({ prescriptions: selected }),
+        });
+        if (!res.ok) console.warn('DB prescription sync failed:', await res.json().catch(() => ({})));
+      } catch (e) {
+        console.warn('Could not sync prescriptions to DB:', e);
+      }
+    }
+
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Send to Alexa`; }
+    if (window.lucide) lucide.createIcons();
+
+    this.closeAlexaSendModal();
+
+    // Build the phrase for display / copy
     const lines = selected.map(med => {
       const timeStr = (med.times || []).join(' and ') || 'daily';
       return `${med.name}${med.dose ? ' ' + med.dose : ''} at ${timeStr}`;
     }).join(', and ');
+    this._alexaPhrase = `Alexa, open Pulse Nova`;
 
-    this._alexaPhrase = `Alexa, ask PulseNova to remind me to take ${lines}`;
+    if (!this.user?.authenticated) {
+      this.toast('Sign in first to enable Alexa reminders.', 'alert-triangle');
+      setTimeout(() => this.toast('Say: "Alexa, open PulseNova" after signing in', 'mic'), 2600);
+      return;
+    }
 
-    await new Promise(r => setTimeout(r, 700));
-
-    if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Send Request`; }
-    if (window.lucide) lucide.createIcons();
-
-    this.closeAlexaSendModal();
-    this.toast('Queued. Open Alexa to confirm.', 'alarm-clock');
-    setTimeout(() => this.toast('Say: "Alexa, open PulseNova"', 'mic'), 2600);
-  }
+    this.toast('Medications synced! Ask Alexa to set reminders.', 'alarm-clock');
+    setTimeout(() => this.toast('Say: "Alexa, open Pulse Nova" → "Set my medication reminders"', 'mic'), 2600);
+  },
 
   copyAlexaPhrase() {
-    const phrase = this._alexaPhrase || 'Alexa, open PulseNova';
+    const phrase = this._alexaPhrase || 'Alexa, open Pulse Nova';
     navigator.clipboard?.writeText(phrase)
       .then(()  => this.toast('Copied to clipboard', 'copy'))
       .catch(()  => this.toast('Copy failed — try manually', 'alert-triangle'));
   }
 }
-
 // =============================================================================
 // BOOTSTRAP
 // FIX: Full flow is now:
