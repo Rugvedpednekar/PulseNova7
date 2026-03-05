@@ -7,18 +7,12 @@ async function pulseNovaInitAuthNav() {
     const data = await res.json();
     const authed = !!data?.authenticated;
 
-    // FIX: Set isAuthenticated directly on the app instance BEFORE any
-    // downstream code reads it. Previously this was only set on window.app
-    // inside a conditional, causing a race where loadUserHistory() would
-    // see undefined and silently bail out.
     if (window.app) {
       window.app.isAuthenticated = authed;
-      // Also cache the profile so logout / dashboard can read it
       window.app._authProfile = data?.profile || null;
       window.app._authPrefs   = data?.prefs   || null;
     }
 
-    // 1. Top nav bar & mobile menu
     const signin       = document.getElementById('nav-signin');
     const acct         = document.getElementById('nav-account');
     const mobileSignin = document.getElementById('mobile-nav-signin');
@@ -29,7 +23,6 @@ async function pulseNovaInitAuthNav() {
     if (mobileSignin) mobileSignin.style.display = authed ? 'none'        : 'flex';
     if (mobileAcct)   mobileAcct.style.display   = authed ? 'flex'        : 'none';
 
-    // 2. Homepage hero buttons
     const btnSignin      = document.getElementById('btn-hero-signin');
     const btnGuest       = document.getElementById('btn-hero-guest');
     const btnTriageAuth  = document.getElementById('btn-hero-triage-auth');
@@ -41,16 +34,15 @@ async function pulseNovaInitAuthNav() {
       if (btnTriageAuth) { btnTriageAuth.classList.remove('hidden'); btnTriageAuth.classList.add('flex'); }
       if (btnDashboard)  { btnDashboard.classList.remove('hidden');  btnDashboard.classList.add('flex');  }
 
-      // 3. Populate inline dashboard
-      const dashName       = document.getElementById('dash-name');
-      const dashEmail      = document.getElementById('dash-email');
-      const dashStatus     = document.getElementById('dash-status');
-      const dashLoginBtn   = document.getElementById('dash-login-btn');
-      const dashLogoutBtn  = document.getElementById('dash-logout-btn');
+      const dashName        = document.getElementById('dash-name');
+      const dashEmail       = document.getElementById('dash-email');
+      const dashStatus      = document.getElementById('dash-status');
+      const dashLoginBtn    = document.getElementById('dash-login-btn');
+      const dashLogoutBtn   = document.getElementById('dash-logout-btn');
       const dashGuestBanner = document.getElementById('dash-guest-banner');
-      const histAuthChip   = document.getElementById('history-auth-chip');
-      const prefStore      = document.getElementById('pref-store-history');
-      const prefRetention  = document.getElementById('pref-retention');
+      const histAuthChip    = document.getElementById('history-auth-chip');
+      const prefStore       = document.getElementById('pref-store-history');
+      const prefRetention   = document.getElementById('pref-retention');
 
       if (dashName)        dashName.textContent  = data.profile?.name  || data.profile?.sub || 'User';
       if (dashEmail)       dashEmail.textContent = data.profile?.email || '';
@@ -60,9 +52,8 @@ async function pulseNovaInitAuthNav() {
       if (dashGuestBanner) dashGuestBanner.classList.add('hidden');
       if (histAuthChip)    { histAuthChip.textContent = 'Signed In'; histAuthChip.className = 'chip chip-green text-[10px]'; }
 
-      // Pre-fill preference toggles from server prefs
-      if (prefStore     && data.prefs) prefStore.checked    = !!data.prefs.consent_store_history;
-      if (prefRetention && data.prefs) prefRetention.value  = data.prefs.data_retention_days ?? 30;
+      if (prefStore     && data.prefs) prefStore.checked   = !!data.prefs.consent_store_history;
+      if (prefRetention && data.prefs) prefRetention.value = data.prefs.data_retention_days ?? 30;
 
     } else {
       if (btnSignin)     { btnSignin.classList.remove('hidden');     btnSignin.classList.add('flex'); }
@@ -70,7 +61,6 @@ async function pulseNovaInitAuthNav() {
       if (btnTriageAuth) { btnTriageAuth.classList.add('hidden');    btnTriageAuth.classList.remove('flex'); }
       if (btnDashboard)  { btnDashboard.classList.add('hidden');     btnDashboard.classList.remove('flex');  }
 
-      // Show guest banner & history notice
       const dashGuestBanner = document.getElementById('dash-guest-banner');
       const histGuestMsg    = document.getElementById('history-guest-msg');
       if (dashGuestBanner) dashGuestBanner.classList.remove('hidden');
@@ -134,13 +124,8 @@ class PulseNovaApp {
     this.labHistory    = [];
     this.triageHistory = [];
 
-    // FIX: currentChatId is used as the stable identifier sent to the server
-    // so the server can upsert the same session row instead of creating
-    // duplicates on every message.
     this.currentChatId = this._newChatId();
 
-    // FIX: isAuthenticated starts as false (not undefined).
-    // pulseNovaInitAuthNav() sets the real value after /me resolves.
     this.isAuthenticated = false;
     this._authProfile    = null;
     this._authPrefs      = null;
@@ -194,6 +179,10 @@ class PulseNovaApp {
     this.providers         = [];
     this.care              = { userLat: null, userLon: null, centerLabel: null };
 
+    // FIX: Initialize rxSaved and rxSelectedDays that were missing from constructor
+    this.rxSaved        = JSON.parse(localStorage.getItem('pulsenova_rx') || '[]');
+    this.rxSelectedDays = new Set();
+
     // Init
     this.initSpeech();
     this.initCareSearch();
@@ -206,17 +195,12 @@ class PulseNovaApp {
     this.renderProviders();
     this.setVitalsContext('resting');
     this.initRx();
-    // FIX: Do NOT call resetVitalsSummary() in the constructor.
-    // The summary card starts hidden in the HTML and should only
-    // become visible once the user actually starts a reading.
-    // Calling it here was causing the card to flash visible on page load.
   }
 
   // ---------------------------------------------------------------------------
   // HELPERS
   // ---------------------------------------------------------------------------
   _newChatId() {
-    // Generates a stable string ID suitable for both local use and the DB
     return `chat_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   }
 
@@ -236,7 +220,6 @@ class PulseNovaApp {
 
   /* -------------------- NAV -------------------- */
   navigate(pageId) {
-    // NEW: Intercept 'dashboard' clicks and route to the dedicated accounts page
     if (pageId === 'dashboard') {
       window.location.href = '/account';
       return;
@@ -258,10 +241,7 @@ class PulseNovaApp {
   }
 
   toggleMobileMenu() { document.getElementById('mobile-menu')?.classList.toggle('hidden'); }
-  /* -------------------- LOGOUT -------------------- */
-  // FIX: logout() method was missing from the class entirely.
-  // The dashboard "Sign out" button called app.logout() which threw
-  // TypeError: app.logout is not a function and silently did nothing.
+
   async logout() {
     try {
       await fetch('/auth/logout', { method: 'POST' });
@@ -345,7 +325,7 @@ class PulseNovaApp {
     this.selectedLanguage = code;
     localStorage.setItem('pulseNova_lang', code);
     if (this.recognition) this.recognition.lang = code;
-    ['triage-lang-select', 'voice-lang-select', 'mobile-lang-select', 'global-lang-select', 'mobile-lang-select'].forEach(id => {
+    ['triage-lang-select', 'voice-lang-select', 'mobile-lang-select', 'global-lang-select'].forEach(id => {
       const el = document.getElementById(id);
       if (el && el.value !== code) el.value = code;
     });
@@ -431,30 +411,30 @@ class PulseNovaApp {
 
     switch (state) {
       case 'idle':
-        if (title)   title.textContent   = 'Voice Mode';
-        if (subtitle) subtitle.innerHTML = 'Tap <strong class="text-white">Start Listening</strong> to begin.';
-        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-slate-600 inline-block transition-colors duration-300';
-        if (btn)     { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span id="voice-btn-label">Start Listening</span>'; btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all text-sm'; }
-        if (preview) preview.textContent = '';
+        if (title)    title.textContent   = 'Voice Mode';
+        if (subtitle) subtitle.innerHTML  = 'Tap <strong class="text-white">Start Listening</strong> to begin.';
+        if (dot)      dot.className       = 'w-2 h-2 rounded-full bg-slate-600 inline-block transition-colors duration-300';
+        if (btn)      { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span id="voice-btn-label">Start Listening</span>'; btn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all text-sm'; }
+        if (preview)  preview.textContent = '';
         this.voiceLoopActive = false; this.stopBarAnimation(); this.resetBars(); break;
       case 'listening':
-        if (title)   title.textContent   = 'Listening…';
-        if (subtitle) subtitle.innerHTML = "Speak naturally. I'm listening.";
-        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-blue-400 inline-block transition-colors duration-300 status-pulse';
-        if (btn)     { btn.innerHTML = '<i data-lucide="mic-off" class="w-4 h-4"></i><span>Stop</span>'; btn.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
-        if (preview) preview.textContent = '';
+        if (title)    title.textContent   = 'Listening…';
+        if (subtitle) subtitle.innerHTML  = "Speak naturally. I'm listening.";
+        if (dot)      dot.className       = 'w-2 h-2 rounded-full bg-blue-400 inline-block transition-colors duration-300 status-pulse';
+        if (btn)      { btn.innerHTML = '<i data-lucide="mic-off" class="w-4 h-4"></i><span>Stop</span>'; btn.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
+        if (preview)  preview.textContent = '';
         this.startBarAnimation('listening'); break;
       case 'thinking':
-        if (title)   title.textContent   = 'Thinking…';
-        if (subtitle) subtitle.innerHTML = 'PulseNova is processing your message.';
-        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-purple-400 inline-block';
-        if (btn)     { btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Processing…</span>'; btn.className = 'w-full bg-slate-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 opacity-70 cursor-not-allowed text-sm'; }
+        if (title)    title.textContent   = 'Thinking…';
+        if (subtitle) subtitle.innerHTML  = 'PulseNova is processing your message.';
+        if (dot)      dot.className       = 'w-2 h-2 rounded-full bg-purple-400 inline-block';
+        if (btn)      { btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Processing…</span>'; btn.className = 'w-full bg-slate-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 opacity-70 cursor-not-allowed text-sm'; }
         this.stopBarAnimation(); break;
       case 'speaking':
-        if (title)   title.textContent   = 'Speaking…';
-        if (subtitle) subtitle.innerHTML = 'Speak to interrupt.';
-        if (dot)     dot.className       = 'w-2 h-2 rounded-full bg-emerald-400 inline-block status-pulse';
-        if (btn)     { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span>Interrupt</span>'; btn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
+        if (title)    title.textContent   = 'Speaking…';
+        if (subtitle) subtitle.innerHTML  = 'Speak to interrupt.';
+        if (dot)      dot.className       = 'w-2 h-2 rounded-full bg-emerald-400 inline-block status-pulse';
+        if (btn)      { btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i><span>Interrupt</span>'; btn.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm'; }
         this.startBarAnimation('speaking'); break;
     }
     this.initLanguageControls();
@@ -578,10 +558,9 @@ class PulseNovaApp {
     const history = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
     const vt      = await this.callVoiceTurn(history, text);
 
-    // FIX: was referencing undefined `cleanResponse` — use `assistantText` consistently
-    let assistantText      = (vt && vt.reply_local) ? vt.reply_local : "I didn't get a response.";
-    let triggerFirstAid    = false;
-    let triggerCareFinder  = false;
+    let assistantText     = (vt && vt.reply_local) ? vt.reply_local : "I didn't get a response.";
+    let triggerFirstAid   = false;
+    let triggerCareFinder = false;
 
     if (assistantText.includes('[TRIGGER_FIRST_AID]'))   { triggerFirstAid   = true; assistantText = assistantText.replace('[TRIGGER_FIRST_AID]',   '').trim(); }
     if (assistantText.includes('[TRIGGER_CARE_FINDER]')) { triggerCareFinder = true; assistantText = assistantText.replace('[TRIGGER_CARE_FINDER]', '').trim(); }
@@ -590,9 +569,7 @@ class PulseNovaApp {
     if (triggerCareFinder) this.messages.push({ role: 'assistant', type: 'care_finder' });
     this.renderChat();
 
-    // FIX: was `this.speakText(cleanResponse)` — cleanResponse didn't exist here
     this.speakText(assistantText);
-
     await this._saveCurrentTriageChat();
 
     if (vt) {
@@ -623,12 +600,12 @@ class PulseNovaApp {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          transcript:             transcript || '',
-          detected_lang:          this.selectedLanguage,
-          history:                cleanHistory,
-          include_english_reply:  true,
-          max_tokens:             350,
-          temperature:            0.3,
+          transcript:            transcript || '',
+          detected_lang:         this.selectedLanguage,
+          history:               cleanHistory,
+          include_english_reply: true,
+          max_tokens:            350,
+          temperature:           0.3,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -760,8 +737,8 @@ class PulseNovaApp {
     this.clearChatImage();
     this.showLoading();
 
-    const history      = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
-    const rawResponse  = await this.callNovaTriage(history, text, image);
+    const history     = this.messages.filter(m => m.text).slice(0, -1).map(m => ({ role: m.role, text: m.text }));
+    const rawResponse = await this.callNovaTriage(history, text, image);
 
     let cleanResponse     = rawResponse || "I didn't get a response.";
     let triggerFirstAid   = false;
@@ -776,7 +753,6 @@ class PulseNovaApp {
     this.renderChat();
     this.speakText(cleanResponse);
 
-    // Save after every assistant reply
     await this._saveCurrentTriageChat();
 
     if (triggerFirstAid) {
@@ -826,7 +802,7 @@ class PulseNovaApp {
     const img  = document.getElementById('chat-image-preview');
     const box  = document.getElementById('chat-image-preview-container');
     const file = document.getElementById('chat-file-input');
-    if (img)  img.src  = '';
+    if (img)  img.src    = '';
     if (box)  box.classList.add('hidden');
     if (file) file.value = '';
   }
@@ -847,12 +823,10 @@ class PulseNovaApp {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          message:      userMessage    || '',
+          message:      userMessage  || '',
           history:      cleanHistory,
-          image_base64: base64Image    || null,
+          image_base64: base64Image  || null,
           language:     this.selectedLanguage,
-          // FIX: Pass the stable chat_id so the server can upsert instead of
-          // inserting a duplicate row on every single message.
           chat_id:      this.currentChatId,
         }),
       });
@@ -930,14 +904,10 @@ class PulseNovaApp {
 
   /* -------------------- DATABASE SYNC -------------------- */
   async loadUserHistory() {
-    // FIX: Guard uses the correctly-initialised this.isAuthenticated (false by
-    // default) instead of relying on an undefined value set externally.
     if (!this.isAuthenticated) return;
 
     try {
       const response = await fetch('/api/history');
-      // FIX: Previously a non-ok response was silently swallowed.
-      // Now we log it so it's visible in the browser console.
       if (!response.ok) {
         console.warn('loadUserHistory: /api/history returned', response.status);
         return;
@@ -982,10 +952,6 @@ class PulseNovaApp {
   }
 
   /* -------------------- HISTORY OVERLAY -------------------- */
-  // FIX: openHistoryOverlay() and closeHistoryOverlay() were called from the
-  // HTML (nav History button, mobile menu) but never defined on the class,
-  // causing TypeError: app.openHistoryOverlay is not a function.
-
   openHistoryOverlay() {
     this._syncHistoryOverlay();
     document.getElementById('history-overlay')?.classList.remove('hidden');
@@ -996,13 +962,10 @@ class PulseNovaApp {
     document.getElementById('history-overlay')?.classList.add('hidden');
   }
 
-  // Keeps the mobile history overlay list in sync with triageHistory
   _syncHistoryOverlay() {
-    const list  = document.getElementById('history-list-mobile');
-    const empty = document.querySelector('#history-list-mobile + p, #history-list-mobile p');
+    const list = document.getElementById('history-list-mobile');
     if (!list) return;
 
-    // Remove all dynamic items (keep static empty-state paragraph if present)
     Array.from(list.children).forEach(child => {
       if (!child.id?.includes('empty')) child.remove();
     });
@@ -1010,10 +973,10 @@ class PulseNovaApp {
     if (this.triageHistory.length === 0) return;
 
     this.triageHistory.forEach(chat => {
-      const btn       = document.createElement('div');
-      const isActive  = chat.id === this.currentChatId;
-      btn.className   = `group flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors cursor-pointer border ${isActive ? 'bg-blue-50 border-blue-200 text-blue-800 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-600 border-transparent hover:border-slate-200'}`;
-      btn.innerHTML   = `
+      const btn      = document.createElement('div');
+      const isActive = chat.id === this.currentChatId;
+      btn.className  = `group flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors cursor-pointer border ${isActive ? 'bg-blue-50 border-blue-200 text-blue-800 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-600 border-transparent hover:border-slate-200'}`;
+      btn.innerHTML  = `
         <div class="flex flex-col min-w-0 flex-1" onclick="app.loadTriageChat('${chat.id}'); app.closeHistoryOverlay();">
           <span class="text-sm font-medium truncate">${this.escapeHtml(chat.title)}</span>
           <span class="text-[10px] ${isActive ? 'text-blue-500' : 'text-slate-400'} mt-0.5">${chat.time}</span>
@@ -1048,13 +1011,11 @@ class PulseNovaApp {
       time:     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    // 1. Local UI update
     const existingIdx = this.triageHistory.findIndex(h => h.id === this.currentChatId);
     if (existingIdx > -1) this.triageHistory[existingIdx] = chatData;
     else                  this.triageHistory.unshift(chatData);
     this._renderTriageHistory();
 
-    // 2. Persist to PostgreSQL (only if authenticated)
     if (this.isAuthenticated) {
       try {
         await fetch('/api/history/triage', {
@@ -1308,8 +1269,6 @@ List 4 questions the patient should ask about these results.
 
   resetVitalsSummary() {
     this.vitals.lastStableBpm = null; this.vitals.summaryReady = false;
-    // FIX: Only show the summary card when a reading is in progress or
-    // complete. Remove 'hidden' is intentional here (called from startVitals).
     document.getElementById('vitals-summary-card')?.classList.remove('hidden');
     this._setSummaryBadge('Waiting', 'chip-slate');
     this._setText('sum-bpm',        '--');
@@ -1351,8 +1310,8 @@ List 4 questions the patient should ask about these results.
   }
 
   updateVitalsSummary(final = false) {
-    const bpm       = this.vitals.lastStableBpm || (this.vitals.bpmHistory.length ? Math.round(this.vitals.bpmHistory.reduce((a, b) => a + b, 0) / this.vitals.bpmHistory.length) : null);
-    const signalQ   = Math.round(this.vitals.signalQuality || 0);
+    const bpm        = this.vitals.lastStableBpm || (this.vitals.bpmHistory.length ? Math.round(this.vitals.bpmHistory.reduce((a, b) => a + b, 0) / this.vitals.bpmHistory.length) : null);
+    const signalQ    = Math.round(this.vitals.signalQuality || 0);
     const confidence = this._confidenceLabel(this.vitals);
     document.getElementById('vitals-summary-card')?.classList.remove('hidden');
     this._setText('sum-bpm',        bpm ? String(Math.round(bpm)) : '--');
@@ -1394,8 +1353,6 @@ List 4 questions the patient should ask about these results.
     this.vitals.canvas.height = this.vitals.canvas.offsetHeight || 160;
     const statusEl = document.getElementById('vitals-status');
     const qualWrap = document.getElementById('signal-quality-wrap');
-    // resetVitalsSummary() is now only called here (on explicit Start),
-    // not in the constructor, so the card doesn't flash on page load.
     this.resetVitalsSummary();
     try {
       statusEl.innerText = 'Requesting camera…';
@@ -1478,7 +1435,7 @@ List 4 questions the patient should ask about these results.
     this.vitals.redValues.push({ time: now, val: avgRed });
     if (this.vitals.redValues.length > 240) this.vitals.redValues.shift();
     if (this.vitals.redValues.length >= 5) {
-      const last5    = this.vitals.redValues.slice(-5).map(d => d.val);
+      const last5     = this.vitals.redValues.slice(-5).map(d => d.val);
       const smoothVal = last5.reduce((a, b) => a + b, 0) / 5;
       this.vitals.smoothed.push({ time: now, val: smoothVal });
       if (this.vitals.smoothed.length > 240) this.vitals.smoothed.shift();
@@ -1681,9 +1638,9 @@ List 4 questions the patient should ask about these results.
     if (types.includes('hospital'))  type = inferredType === 'Urgent Care' ? 'Urgent Care' : 'Hospital';
     if (types.includes('pharmacy'))  type = 'Pharmacy';
     if (types.includes('dentist'))   type = 'Dentist';
-    if (name.includes('urgent care'))                                        type = 'Urgent Care';
-    if (name.includes('pediatric'))                                          type = 'Pediatrician';
-    if (name.includes('primary care') || name.includes('family medicine'))   type = 'Primary Care';
+    if (name.includes('urgent care'))                                      type = 'Urgent Care';
+    if (name.includes('pediatric'))                                        type = 'Pediatrician';
+    if (name.includes('primary care') || name.includes('family medicine')) type = 'Primary Care';
     if (type === 'Hospital' && (name.includes('emergency') || name.includes(' er '))) type = 'ER';
     const distance = (this.care.userLat != null && lat != null)
       ? this.getDistanceMiles(this.care.userLat, this.care.userLon, lat, lon)
@@ -1717,17 +1674,17 @@ List 4 questions the patient should ask about these results.
         this.textSearchPromise(  { location: center, radius, query: 'pediatrician'         }),
       ]);
       let merged = [
-        ...hospitals.map(p  => this.normalizePlace(p, 'Hospital'     )),
-        ...pharmacies.map(p => this.normalizePlace(p, 'Pharmacy'     )),
-        ...dentists.map(p   => this.normalizePlace(p, 'Dentist'      )),
-        ...urgentCare.map(p => this.normalizePlace(p, 'Urgent Care'  )),
-        ...primaryCare.map(p => this.normalizePlace(p, 'Primary Care')),
-        ...pediatrics.map(p => this.normalizePlace(p, 'Pediatrician' )),
+        ...hospitals.map(p   => this.normalizePlace(p, 'Hospital'     )),
+        ...pharmacies.map(p  => this.normalizePlace(p, 'Pharmacy'     )),
+        ...dentists.map(p    => this.normalizePlace(p, 'Dentist'      )),
+        ...urgentCare.map(p  => this.normalizePlace(p, 'Urgent Care'  )),
+        ...primaryCare.map(p => this.normalizePlace(p, 'Primary Care' )),
+        ...pediatrics.map(p  => this.normalizePlace(p, 'Pediatrician' )),
       ];
       merged = this.dedupeProviders(merged);
       merged.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
       this.providers = merged.slice(0, 30);
-      if (document.getElementById('care-filter'))    document.getElementById('care-filter').value    = 'All';
+      if (document.getElementById('care-filter'))     document.getElementById('care-filter').value     = 'All';
       if (document.getElementById('provider-filter')) document.getElementById('provider-filter').value = '';
       this.renderProviders();
       const visible = this.getFilteredProviders().length;
@@ -1806,90 +1763,112 @@ List 4 questions the patient should ask about these results.
       .replace(/^\*DISCLAIMER:(.*)\*$/gm, '<p class="text-xs text-slate-400 italic mt-4 border-t pt-2">$1</p>')
       .replace(/^\- (.*)$/gm,   '<li class="ml-4 list-disc mb-1.5 text-sm leading-relaxed">$1</li>')
       .replace(/\n/g, '<br>');
-    if (html.includes('<li')) {
-      html = html.replace(/(<li[\s\S]*?<\/li>)/g, '<ul class="my-2 space-y-0.5">$1</ul>').replace(/<\/ul><br><ul[^>]*>/g, '');
+        if (html.includes('<li')) {
+      html = html
+        .replace(/(<li[\s\S]*?<\/li>)/g, '<ul class="my-2 space-y-0.5">$1</ul>')
+        .replace(/<\/ul><br><ul[^>]*>/g, '');
     }
     return html;
   }
 
   /* ------------------------------------------------------------------ */
-  /* RX INIT                                                              */
+  /* RX INIT (FIXED)                                                     */
   /* ------------------------------------------------------------------ */
   initRx() {
-  this.rxMode        = 'list';
-  this.rxExtracted   = [];
-  this.rxManualDraft = [];
+    // State
+    this.rxMode        = 'upload';
+    this.rxExtracted   = Array.isArray(this.rxExtracted) ? this.rxExtracted : [];
+    this.rxManualDraft = Array.isArray(this.rxManualDraft) ? this.rxManualDraft : [];
+    this.rxSaved       = Array.isArray(this.rxSaved) ? this.rxSaved : [];
+    this.rxSelectedDays = this.rxSelectedDays instanceof Set ? this.rxSelectedDays : new Set();
+    this.rxImage       = null;
+    this.rxIsPdf       = false;
+    this._alexaPhrase  = 'Alexa, open Pulse Nova';
 
-  // Load from localStorage first (instant, works offline)
-  try {
-    const stored = localStorage.getItem('pn_prescriptions');
-    if (stored) {
-      this.rxExtracted = JSON.parse(stored);
+    // Load extracted meds cache (for Alexa / reminders)
+    try {
+      const stored = localStorage.getItem('pn_prescriptions');
+      if (stored) {
+        const meds = JSON.parse(stored);
+        if (Array.isArray(meds)) this.rxExtracted = meds;
+      }
+    } catch (e) {
+      console.warn('Could not load prescriptions from localStorage:', e);
     }
-  } catch (e) {
-    console.warn('Could not load prescriptions from localStorage:', e);
-  }
 
-  // If authenticated, also sync from DB (authoritative source)
-  if (this.user?.authenticated) {
-    this._loadPrescriptionsFromDB();
-  }
+    // Load saved meds list
+    try {
+      const saved = localStorage.getItem('pulsenova_rx');
+      if (saved) {
+        const meds = JSON.parse(saved);
+        if (Array.isArray(meds)) this.rxSaved = meds;
+      }
+    } catch (e) {
+      console.warn('Could not load saved prescriptions:', e);
+    }
 
-  this.rxSetMode('list');
-},
+    // If authenticated, sync from DB (authoritative)
+    if (this.isAuthenticated) {
+      this._loadPrescriptionsFromDB();
+    }
+
+    // Wire repeat selector to show custom days
+    const repeatSel = document.getElementById('rx-manual-repeat');
+    if (repeatSel && !repeatSel._pnBound) {
+      repeatSel._pnBound = true;
+      repeatSel.addEventListener('change', () => {
+        const daysWrap = document.getElementById('rx-manual-days');
+        if (daysWrap) daysWrap.classList.toggle('hidden', repeatSel.value !== 'CUSTOM_DAYS');
+      });
+    }
+
+    // Render UI
+    this.rxSetMode(this.rxMode);
+    this._renderRxExtracted();
+    this._renderRxManualList();
+    this._renderRxSaved();
+  }
 
   async _loadPrescriptionsFromDB() {
-  try {
-    const res = await fetch('/api/prescriptions', {
-      credentials: 'include',
-    });
-    if (!res.ok) return; // Not authenticated or no prescriptions yet — silent fail
-    const meds = await res.json();
-    if (Array.isArray(meds) && meds.length > 0) {
-      // DB is authoritative — overwrite local copy
-      this.rxExtracted = meds;
-      // Keep localStorage in sync
-      localStorage.setItem('pn_prescriptions', JSON.stringify(meds));
-      this.rxSetMode('list');
+    try {
+      const res = await fetch('/api/prescriptions', { credentials: 'include' });
+      if (!res.ok) return;
+      const meds = await res.json().catch(() => null);
+      if (Array.isArray(meds)) {
+        this.rxExtracted = meds;
+        try { localStorage.setItem('pn_prescriptions', JSON.stringify(meds)); } catch (_) {}
+        this._renderRxExtracted();
+      }
+    } catch (e) {
+      console.warn('Could not load prescriptions from DB:', e);
     }
-  } catch (e) {
-    console.warn('Could not load prescriptions from DB:', e);
   }
-},
 
   async _savePrescriptionsToDB(meds) {
-  // Always save to localStorage first
-  try {
-    localStorage.setItem('pn_prescriptions', JSON.stringify(meds));
-  } catch (e) {
-    console.warn('localStorage save failed:', e);
-  }
+    // Always cache locally
+    try { localStorage.setItem('pn_prescriptions', JSON.stringify(meds)); } catch (_) {}
 
-  // If authenticated, also push to DB so Alexa can read them
-  if (!this.user?.authenticated) return;
+    // Only push if authenticated
+    if (!this.isAuthenticated) return;
 
-  try {
-    const res = await fetch('/api/prescriptions', {
-      method:      'POST',
-      credentials: 'include',
-      headers:     { 'Content-Type': 'application/json' },
-      body:        JSON.stringify({ prescriptions: meds }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.warn('DB prescription save failed:', err);
-    } else {
-      console.log(`Prescriptions synced to DB: ${meds.length} medication(s)`);
+    try {
+      const res = await fetch('/api/prescriptions', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ prescriptions: meds }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.warn('DB prescription save failed:', err);
+      }
+    } catch (e) {
+      console.warn('Could not sync prescriptions to DB:', e);
     }
-  } catch (e) {
-    console.warn('Could not sync prescriptions to DB:', e);
   }
-},
-
-
 
   /* ------------------------------------------------------------------ */
-  /* TAB SWITCHING                                                        */
+  /* RX TAB SWITCHING                                                    */
   /* ------------------------------------------------------------------ */
   rxSetMode(mode) {
     this.rxMode = mode;
@@ -1910,7 +1889,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* FILE UPLOAD                                                          */
+  /* RX FILE UPLOAD                                                      */
   /* ------------------------------------------------------------------ */
   handleRxUpload(input) {
     const file = input.files?.[0];
@@ -1920,7 +1899,7 @@ List 4 questions the patient should ask about these results.
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      this.rxImage = reader.result.split(',')[1];
+      this.rxImage = String(reader.result || '').split(',')[1] || null;
 
       const previewImg  = document.getElementById('rx-preview-img');
       const previewPdf  = document.getElementById('rx-preview-pdf');
@@ -1933,7 +1912,7 @@ List 4 questions the patient should ask about these results.
         if (previewPdf) previewPdf.classList.remove('hidden');
       } else {
         if (previewPdf) previewPdf.classList.add('hidden');
-        if (previewImg) { previewImg.src = reader.result; previewImg.classList.remove('hidden'); }
+        if (previewImg) { previewImg.src = String(reader.result || ''); previewImg.classList.remove('hidden'); }
       }
 
       const btn = document.getElementById('btn-extract-rx');
@@ -1944,7 +1923,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* EXTRACT FROM IMAGE / PDF VIA AI                                     */
+  /* RX EXTRACT (IMAGE/PDF via /api/vision)                               */
   /* ------------------------------------------------------------------ */
   async extractPrescription() {
     if (!this.rxImage) return;
@@ -1956,15 +1935,15 @@ List 4 questions the patient should ask about these results.
     if (badge) { badge.textContent = 'Processing'; badge.className = 'chip chip-blue'; }
 
     const prompt = `You are a clinical pharmacist assistant. Extract ALL medications visible in this prescription.
-        CRITICAL: Output ONLY a raw valid JSON array. No markdown fences, no preamble, no explanation.
-        Each item must have exactly these keys:
-          "name"   — medication name (string)
-          "dose"   — dosage and unit e.g. "500 mg" (string, empty string if unknown)
-          "times"  — array of 24-hour time strings e.g. ["08:00","20:00"] (empty array if unknown)
-          "repeat" — one of exactly: "DAILY", "WEEKDAYS", "CUSTOM_DAYS"
-          "days"   — array of day codes when repeat is CUSTOM_DAYS e.g. ["MO","WE","FR"], else []
-          "notes"  — special instructions e.g. "Take with food" (string, empty string if none)
-        If no medications are found, return [].`;
+CRITICAL: Output ONLY a raw valid JSON array. No markdown fences, no preamble, no explanation.
+Each item must have exactly these keys:
+  "name"   — medication name (string)
+  "dose"   — dosage and unit e.g. "500 mg" (string, empty string if unknown)
+  "times"  — array of 24-hour time strings e.g. ["08:00","20:00"] (empty array if unknown)
+  "repeat" — one of exactly: "DAILY", "WEEKDAYS", "CUSTOM_DAYS"
+  "days"   — array of day codes when repeat is CUSTOM_DAYS e.g. ["MO","WE","FR"], else []
+  "notes"  — special instructions e.g. "Take with food" (string, empty string if none)
+If no medications are found, return [].`;
 
     try {
       const payload = this.rxIsPdf
@@ -1978,9 +1957,15 @@ List 4 questions the patient should ask about these results.
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const raw  = (data.text || '').replace(/```json|```/g, '').trim();
-      this.rxExtracted = JSON.parse(raw);
+      const data = await res.json().catch(() => ({}));
+      const raw  = String(data.text || '').replace(/```json|```/g, '').trim();
+
+      const parsed = JSON.parse(raw);
+      this.rxExtracted = Array.isArray(parsed) ? parsed : [];
+      try { localStorage.setItem('pn_prescriptions', JSON.stringify(this.rxExtracted)); } catch (_) {}
+
+      // if authed, keep DB synced (so Alexa can read)
+      if (this.isAuthenticated) this._savePrescriptionsToDB(this.rxExtracted);
     } catch (e) {
       console.error('Rx extraction failed:', e);
       this.rxExtracted = [];
@@ -2013,15 +1998,15 @@ List 4 questions the patient should ask about these results.
       card.innerHTML = `
         <div class="flex items-start justify-between gap-2">
           <div>
-            <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med.name)}</div>
-            <div class="text-xs text-slate-500">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
+            <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med?.name || '')}</div>
+            <div class="text-xs text-slate-500">${this.escapeHtml(med?.dose || '')} · ${this.escapeHtml((med?.times || []).join(', ') || '--')}</div>
           </div>
           <button onclick="app.rxRemoveExtracted(${idx})" class="text-slate-300 hover:text-red-400 transition-colors shrink-0">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
-        ${med.notes ? `<div class="text-xs text-slate-400 italic">${this.escapeHtml(med.notes)}</div>` : ''}
-        <div class="text-[10px] text-slate-400">Repeat: ${this.escapeHtml(med.repeat)}${med.days?.length ? ' · ' + med.days.join(', ') : ''}</div>`;
+        ${med?.notes ? `<div class="text-xs text-slate-400 italic">${this.escapeHtml(med.notes)}</div>` : ''}
+        <div class="text-[10px] text-slate-400">Repeat: ${this.escapeHtml(med?.repeat || 'DAILY')}${med?.days?.length ? ' · ' + this.escapeHtml(med.days.join(', ')) : ''}</div>`;
       list.appendChild(card);
     });
     if (window.lucide) lucide.createIcons();
@@ -2029,6 +2014,9 @@ List 4 questions the patient should ask about these results.
 
   rxRemoveExtracted(idx) {
     this.rxExtracted.splice(idx, 1);
+    try { localStorage.setItem('pn_prescriptions', JSON.stringify(this.rxExtracted)); } catch (_) {}
+    if (this.isAuthenticated) this._savePrescriptionsToDB(this.rxExtracted);
+
     this._renderRxExtracted();
     const badge = document.getElementById('rx-extract-badge');
     if (badge) {
@@ -2038,10 +2026,12 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* MANUAL ENTRY                                                         */
+  /* RX MANUAL ENTRY                                                     */
   /* ------------------------------------------------------------------ */
   toggleRxDay(btn) {
-    const day = btn.dataset.day;
+    const day = btn?.dataset?.day;
+    if (!day) return;
+
     if (this.rxSelectedDays.has(day)) {
       this.rxSelectedDays.delete(day);
       btn.className = 'rx-day-btn px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50';
@@ -2081,6 +2071,7 @@ List 4 questions the patient should ask about these results.
     });
     const repeatSel = document.getElementById('rx-manual-repeat');
     if (repeatSel) repeatSel.value = 'DAILY';
+
     document.getElementById('rx-manual-days')?.classList.add('hidden');
     this.rxSelectedDays.clear();
     document.querySelectorAll('.rx-day-btn').forEach(btn => {
@@ -2103,10 +2094,10 @@ List 4 questions the patient should ask about these results.
       card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start justify-between gap-2';
       card.innerHTML = `
         <div class="min-w-0">
-          <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med.name)}</div>
-          <div class="text-xs text-slate-500">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
-          ${med.notes ? `<div class="text-xs text-slate-400 italic mt-0.5">${this.escapeHtml(med.notes)}</div>` : ''}
-          <div class="text-[10px] text-slate-400 mt-0.5">Repeat: ${this.escapeHtml(med.repeat)}${med.days?.length ? ' · ' + med.days.join(', ') : ''}</div>
+          <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med?.name || '')}</div>
+          <div class="text-xs text-slate-500">${this.escapeHtml(med?.dose || '')} · ${this.escapeHtml((med?.times || []).join(', ') || '--')}</div>
+          ${med?.notes ? `<div class="text-xs text-slate-400 italic mt-0.5">${this.escapeHtml(med.notes)}</div>` : ''}
+          <div class="text-[10px] text-slate-400 mt-0.5">Repeat: ${this.escapeHtml(med?.repeat || 'DAILY')}${med?.days?.length ? ' · ' + this.escapeHtml(med.days.join(', ')) : ''}</div>
         </div>
         <button onclick="app.rxRemoveManual(${idx})" class="text-slate-300 hover:text-red-400 transition-colors shrink-0">
           <i data-lucide="x" class="w-4 h-4"></i>
@@ -2122,7 +2113,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* SAVE TO LOCAL STORAGE                                                */
+  /* RX SAVE LIST (pulsenova_rx)                                         */
   /* ------------------------------------------------------------------ */
   savePrescriptions() {
     const toSave = [...this.rxExtracted, ...this.rxManualDraft];
@@ -2130,18 +2121,27 @@ List 4 questions the patient should ask about these results.
 
     const now = new Date().toLocaleDateString();
     let added = 0;
+
     toSave.forEach(med => {
-      const exists = this.rxSaved.some(s => s.name === med.name && s.dose === med.dose);
-      if (!exists) { this.rxSaved.push({ ...med, savedAt: now }); added++; }
+      const exists = this.rxSaved.some(s => (s.name === med.name) && (s.dose === med.dose));
+      if (!exists) {
+        this.rxSaved.push({ ...med, savedAt: now });
+        added++;
+      }
     });
 
-    localStorage.setItem('pulsenova_rx', JSON.stringify(this.rxSaved));
+    try { localStorage.setItem('pulsenova_rx', JSON.stringify(this.rxSaved)); } catch (_) {}
     this._renderRxSaved();
     this.toast(added ? `${added} medication(s) saved` : 'Already saved — no duplicates added', added ? 'check' : 'info');
   }
 
   loadPrescriptions() {
-    this.rxSaved = JSON.parse(localStorage.getItem('pulsenova_rx') || '[]');
+    try {
+      this.rxSaved = JSON.parse(localStorage.getItem('pulsenova_rx') || '[]');
+      if (!Array.isArray(this.rxSaved)) this.rxSaved = [];
+    } catch (_) {
+      this.rxSaved = [];
+    }
     this._renderRxSaved();
     this.toast('Prescriptions refreshed', 'refresh-cw');
   }
@@ -2161,12 +2161,12 @@ List 4 questions the patient should ask about these results.
       card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start justify-between gap-2';
       card.innerHTML = `
         <div class="flex-1 min-w-0">
-          <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med.name)}</div>
-          <div class="text-xs text-slate-500">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
-          ${med.notes ? `<div class="text-xs text-slate-400 italic mt-0.5">${this.escapeHtml(med.notes)}</div>` : ''}
+          <div class="font-bold text-slate-800 text-sm">${this.escapeHtml(med?.name || '')}</div>
+          <div class="text-xs text-slate-500">${this.escapeHtml(med?.dose || '')} · ${this.escapeHtml((med?.times || []).join(', ') || '--')}</div>
+          ${med?.notes ? `<div class="text-xs text-slate-400 italic mt-0.5">${this.escapeHtml(med.notes)}</div>` : ''}
           <div class="text-[10px] text-slate-400 mt-0.5">
-            Repeat: ${this.escapeHtml(med.repeat)}${med.days?.length ? ' · ' + med.days.join(', ') : ''}
-            ${med.savedAt ? ` · Saved ${med.savedAt}` : ''}
+            Repeat: ${this.escapeHtml(med?.repeat || 'DAILY')}${med?.days?.length ? ' · ' + this.escapeHtml(med.days.join(', ')) : ''}
+            ${med?.savedAt ? ` · Saved ${this.escapeHtml(med.savedAt)}` : ''}
           </div>
         </div>
         <button onclick="app.rxDeleteSaved(${idx})" class="text-slate-300 hover:text-red-400 transition-colors shrink-0 p-1">
@@ -2179,13 +2179,13 @@ List 4 questions the patient should ask about these results.
 
   rxDeleteSaved(idx) {
     this.rxSaved.splice(idx, 1);
-    localStorage.setItem('pulsenova_rx', JSON.stringify(this.rxSaved));
+    try { localStorage.setItem('pulsenova_rx', JSON.stringify(this.rxSaved)); } catch (_) {}
     this._renderRxSaved();
     this.toast('Removed', 'trash');
   }
 
   /* ------------------------------------------------------------------ */
-  /* ALEXA MODAL                                                          */
+  /* ALEXA MODAL                                                         */
   /* ------------------------------------------------------------------ */
   openAlexaSendModal() {
     const allMeds  = [...this.rxExtracted, ...this.rxManualDraft];
@@ -2203,11 +2203,11 @@ List 4 questions the patient should ask about these results.
             <div class="flex items-center gap-3 flex-1 min-w-0">
               <input type="checkbox" id="alexa-med-${idx}" checked class="w-4 h-4 accent-blue-600 shrink-0">
               <label for="alexa-med-${idx}" class="min-w-0 cursor-pointer">
-                <div class="font-semibold text-slate-800 text-sm truncate">${this.escapeHtml(med.name)}</div>
-                <div class="text-xs text-slate-400">${this.escapeHtml(med.dose)} · ${this.escapeHtml((med.times || []).join(', ') || '--')}</div>
+                <div class="font-semibold text-slate-800 text-sm truncate">${this.escapeHtml(med?.name || '')}</div>
+                <div class="text-xs text-slate-400">${this.escapeHtml(med?.dose || '')} · ${this.escapeHtml((med?.times || []).join(', ') || '--')}</div>
               </label>
             </div>
-            <span class="chip chip-slate text-[10px] shrink-0">${this.escapeHtml(med.repeat)}</span>`;
+            <span class="chip chip-slate text-[10px] shrink-0">${this.escapeHtml(med?.repeat || 'DAILY')}</span>`;
           configEl.appendChild(row);
         });
       }
@@ -2221,36 +2221,23 @@ List 4 questions the patient should ask about these results.
     document.getElementById('alexa-send-modal')?.classList.add('hidden');
   }
 
-async sendToAlexa() {
+  async sendToAlexa() {
     const allMeds  = [...this.rxExtracted, ...this.rxManualDraft];
-    const selected = allMeds.filter((_, idx) => {
-      return document.getElementById(`alexa-med-${idx}`)?.checked;
-    });
+    const selected = allMeds.filter((_, idx) => document.getElementById(`alexa-med-${idx}`)?.checked);
+
     if (!selected.length) { this.toast('Select at least one medication.', 'alert-triangle'); return; }
 
     const btn = document.getElementById('btn-send-to-alexa');
     if (btn) { btn.disabled = true; btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Syncing…`; }
 
-    // Save to localStorage immediately (works offline)
-    try {
-      localStorage.setItem('pn_prescriptions', JSON.stringify(selected));
-    } catch (e) {
-      console.warn('localStorage save failed:', e);
-    }
+    // Cache locally (works offline)
+    try { localStorage.setItem('pn_prescriptions', JSON.stringify(selected)); } catch (_) {}
+    this.rxExtracted = selected;
+    this._renderRxExtracted();
 
-    // If authenticated, push to DB so Alexa can read them
-    if (this.user?.authenticated) {
-      try {
-        const res = await fetch('/api/prescriptions', {
-          method:      'POST',
-          credentials: 'include',
-          headers:     { 'Content-Type': 'application/json' },
-          body:        JSON.stringify({ prescriptions: selected }),
-        });
-        if (!res.ok) console.warn('DB prescription sync failed:', await res.json().catch(() => ({})));
-      } catch (e) {
-        console.warn('Could not sync prescriptions to DB:', e);
-      }
+    // Push to DB only if authenticated
+    if (this.isAuthenticated) {
+      await this._savePrescriptionsToDB(selected);
     }
 
     if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Send to Alexa`; }
@@ -2258,38 +2245,28 @@ async sendToAlexa() {
 
     this.closeAlexaSendModal();
 
-    // Build the phrase for display / copy
-    const lines = selected.map(med => {
-      const timeStr = (med.times || []).join(' and ') || 'daily';
-      return `${med.name}${med.dose ? ' ' + med.dose : ''} at ${timeStr}`;
-    }).join(', and ');
     this._alexaPhrase = `Alexa, open Pulse Nova`;
 
-    if (!this.user?.authenticated) {
+    if (!this.isAuthenticated) {
       this.toast('Sign in first to enable Alexa reminders.', 'alert-triangle');
-      setTimeout(() => this.toast('Say: "Alexa, open PulseNova" after signing in', 'mic'), 2600);
+      setTimeout(() => this.toast('Say: "Alexa, open Pulse Nova" after signing in', 'mic'), 2600);
       return;
     }
 
     this.toast('Medications synced! Ask Alexa to set reminders.', 'alarm-clock');
     setTimeout(() => this.toast('Say: "Alexa, open Pulse Nova" → "Set my medication reminders"', 'mic'), 2600);
-  },
+  }
 
   copyAlexaPhrase() {
     const phrase = this._alexaPhrase || 'Alexa, open Pulse Nova';
     navigator.clipboard?.writeText(phrase)
-      .then(()  => this.toast('Copied to clipboard', 'copy'))
-      .catch(()  => this.toast('Copy failed — try manually', 'alert-triangle'));
+      .then(() => this.toast('Copied to clipboard', 'copy'))
+      .catch(() => this.toast('Copy failed — try manually', 'alert-triangle'));
   }
 }
+
 // =============================================================================
 // BOOTSTRAP
-// FIX: Full flow is now:
-//  1. Instantiate app (isAuthenticated = false, safe default)
-//  2. Navigate to home
-//  3. Call pulseNovaInitAuthNav() which hits /me
-//  4. Inside .then(): isAuthenticated is now correctly set on the instance
-//  5. Only then call loadUserHistory() — guaranteed to run with the right value
 // =============================================================================
 const app = new PulseNovaApp();
 window.app = app;
