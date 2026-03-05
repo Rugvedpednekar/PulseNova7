@@ -15,7 +15,7 @@ async function pulseNovaInitAuthNav() {
       window.app.isAuthenticated = authed;
       // Also cache the profile so logout / dashboard can read it
       window.app._authProfile = data?.profile || null;
-      window.app._authPrefs   = data?.prefs   || null;
+      window.app._authPrefs   = data?.prefs    || null;
     }
 
     // 1. Top nav bar & mobile menu
@@ -155,7 +155,7 @@ class PulseNovaApp {
       { code: 'es-US', label: 'Español (US)'         },
       { code: 'it-IT', label: 'Italiano (Italy)'     },
       { code: 'pt-BR', label: 'Português (Brazil)'   },
-      { code: 'hi-IN', label: 'हिन्दी (India)'       },
+      { code: 'hi-IN', label: 'हिन्दी (India)'        },
     ];
 
     // Voice
@@ -234,30 +234,66 @@ class PulseNovaApp {
     this._toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
   }
 
-  /* -------------------- NAV -------------------- */
+  /* -------------------- NAV WITH ANIMATION -------------------- */
   navigate(pageId) {
-    // NEW: Intercept 'dashboard' clicks and route to the dedicated accounts page
+    // Intercept 'dashboard' clicks and route to the dedicated accounts page
     if (pageId === 'dashboard') {
       window.location.href = '/account';
       return;
     }
 
     if (pageId !== 'vitals' && this.vitals.isMonitoring) this.stopVitals(false);
-    document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
-    const page = document.getElementById(`page-${pageId}`);
-    if (page) page.classList.remove('hidden');
+    
+    const targetPage = document.getElementById(`page-${pageId}`);
+    const currentPage = document.querySelector('.page-section:not(.hidden)');
 
+    if (currentPage === targetPage) return;
+
+    // Instantly update the nav buttons so the UI feels snappy
     document.querySelectorAll('.nav-btn').forEach(el => {
       el.classList.toggle('active', el.dataset.page === pageId);
     });
     document.getElementById('mobile-menu')?.classList.add('hidden');
 
-    if (pageId !== 'triage')  { this.closeVoiceMode(); try { window.speechSynthesis.cancel(); } catch (_) {} }
-    if (pageId === 'triage')  setTimeout(() => document.getElementById('chat-input')?.focus(), 100);
-    if (pageId === 'xray' || pageId === 'labs') setTimeout(() => this._initVisionLangSelects(), 50);
+    // Handle background cleanup instantly
+    if (pageId !== 'triage') { 
+      this.closeVoiceMode(); 
+      try { window.speechSynthesis.cancel(); } catch (_) {} 
+    }
+
+    // --- NEW: CSS Transition Logic ---
+    if (currentPage) {
+      // 1. Trigger the fade out
+      currentPage.classList.remove('animate-fade-in');
+      currentPage.classList.add('animate-fade-out');
+
+      // 2. Wait 250ms for CSS to finish, then swap visibility
+      setTimeout(() => {
+        currentPage.classList.add('hidden');
+        currentPage.classList.remove('animate-fade-out');
+
+        if (targetPage) {
+          targetPage.classList.remove('hidden');
+          targetPage.classList.add('animate-fade-in');
+        }
+
+        // Trigger delayed page-specific actions after the new page is visible
+        if (pageId === 'triage') setTimeout(() => document.getElementById('chat-input')?.focus(), 100);
+        if (pageId === 'xray' || pageId === 'labs') setTimeout(() => this._initVisionLangSelects(), 50);
+      }, 250);
+    } else {
+      // Fallback if no page is currently visible (e.g. initial load)
+      if (targetPage) {
+        targetPage.classList.remove('hidden');
+        targetPage.classList.add('animate-fade-in');
+      }
+      if (pageId === 'triage') setTimeout(() => document.getElementById('chat-input')?.focus(), 100);
+      if (pageId === 'xray' || pageId === 'labs') setTimeout(() => this._initVisionLangSelects(), 50);
+    }
   }
 
   toggleMobileMenu() { document.getElementById('mobile-menu')?.classList.toggle('hidden'); }
+  
   /* -------------------- LOGOUT -------------------- */
   // FIX: logout() method was missing from the class entirely.
   // The dashboard "Sign out" button called app.logout() which threw
@@ -488,7 +524,7 @@ class PulseNovaApp {
   initSpeech() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
-    this.recognition               = new SR();
+    this.recognition                = new SR();
     this.recognition.continuous     = false;
     this.recognition.interimResults = true;
     this.recognition.lang           = this.selectedLanguage;
@@ -583,7 +619,7 @@ class PulseNovaApp {
     let triggerFirstAid    = false;
     let triggerCareFinder  = false;
 
-    if (assistantText.includes('[TRIGGER_FIRST_AID]'))   { triggerFirstAid   = true; assistantText = assistantText.replace('[TRIGGER_FIRST_AID]',   '').trim(); }
+    if (assistantText.includes('[TRIGGER_FIRST_AID]'))   { triggerFirstAid    = true; assistantText = assistantText.replace('[TRIGGER_FIRST_AID]',   '').trim(); }
     if (assistantText.includes('[TRIGGER_CARE_FINDER]')) { triggerCareFinder = true; assistantText = assistantText.replace('[TRIGGER_CARE_FINDER]', '').trim(); }
 
     this.messages.push({ role: 'assistant', text: assistantText });
@@ -623,12 +659,12 @@ class PulseNovaApp {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          transcript:             transcript || '',
-          detected_lang:          this.selectedLanguage,
-          history:                cleanHistory,
+          transcript:               transcript || '',
+          detected_lang:            this.selectedLanguage,
+          history:                  cleanHistory,
           include_english_reply:  true,
-          max_tokens:             350,
-          temperature:            0.3,
+          max_tokens:               350,
+          temperature:              0.3,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1343,7 +1379,7 @@ List 4 questions the patient should ask about these results.
       if (bpm < 60)        { status = 'Below typical resting range';  badge = ['chip-amber', 'Below Range']; summary = 'A resting pulse under 60 can be normal for some people (especially athletes), but can also happen with fatigue or medications.'; guidance = 'If you feel fine, retake once while seated and relaxed. If you feel dizzy, weak, or faint, seek medical care.'; }
       else if (bpm <= 100) { status = 'Within typical resting range'; badge = ['chip-green', 'Normal Range']; summary = 'This reading is within a common resting heart-rate range for many adults.';                                                       guidance = 'If symptoms continue, use Triage to describe how you feel and get next-step guidance.'; }
       else if (bpm <= 120) { status = 'Mildly elevated';              badge = ['chip-amber', 'Elevated'];     summary = 'Your pulse is mildly elevated. This can happen with stress, anxiety, caffeine, dehydration, fever, or movement.';             guidance = 'Rest for 2–3 minutes, drink water, and retake. If you feel unwell, use Triage or seek urgent care.'; }
-      else                 { status = 'High pulse reading';           badge = ['chip-red',   'High'];         summary = 'Your pulse reading is high and may need attention, especially if you are resting.';                                          guidance = 'Sit down and retake after 2–3 minutes. If it stays high or you have symptoms (chest pain, trouble breathing, fainting), seek urgent care.'; }
+      else                 { status = 'High pulse reading';            badge = ['chip-red',   'High'];         summary = 'Your pulse reading is high and may need attention, especially if you are resting.';                                         guidance = 'Sit down and retake after 2–3 minutes. If it stays high or you have symptoms (chest pain, trouble breathing, fainting), seek urgent care.'; }
     }
     if (ctx === 'feeling_unwell') warning = 'Because you selected "Feeling unwell," take this reading seriously if you also have chest pain, shortness of breath, dizziness, or fainting. Consider urgent evaluation.';
     else                          warning = 'This is a camera-based estimate and not a diagnosis. For severe symptoms, call emergency services or seek urgent care.';
@@ -1791,7 +1827,7 @@ List 4 questions the patient should ask about these results.
 
   /* -------------------- HELPERS -------------------- */
   escapeHtml(str) {
-    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   formatText(text) { return this.escapeHtml(text || '').replace(/\n/g, '<br>'); }
   formatMarkdown(text) {
@@ -1813,7 +1849,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* RX INIT                                                              */
+  /* RX INIT                                                            */
   /* ------------------------------------------------------------------ */
   initRx() {
     this.rxMode         = 'upload';   // 'upload' | 'manual'
@@ -1839,7 +1875,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* TAB SWITCHING                                                        */
+  /* TAB SWITCHING                                                      */
   /* ------------------------------------------------------------------ */
   rxSetMode(mode) {
     this.rxMode = mode;
@@ -1860,7 +1896,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* FILE UPLOAD                                                          */
+  /* FILE UPLOAD                                                        */
   /* ------------------------------------------------------------------ */
   handleRxUpload(input) {
     const file = input.files?.[0];
@@ -1894,7 +1930,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* EXTRACT FROM IMAGE / PDF VIA AI                                     */
+  /* EXTRACT FROM IMAGE / PDF VIA AI                                   */
   /* ------------------------------------------------------------------ */
   async extractPrescription() {
     if (!this.rxImage) return;
@@ -1988,7 +2024,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* MANUAL ENTRY                                                         */
+  /* MANUAL ENTRY                                                       */
   /* ------------------------------------------------------------------ */
   toggleRxDay(btn) {
     const day = btn.dataset.day;
@@ -2072,7 +2108,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* SAVE TO LOCAL STORAGE                                                */
+  /* SAVE TO LOCAL STORAGE                                              */
   /* ------------------------------------------------------------------ */
   savePrescriptions() {
     const toSave = [...this.rxExtracted, ...this.rxManualDraft];
@@ -2135,7 +2171,7 @@ List 4 questions the patient should ask about these results.
   }
 
   /* ------------------------------------------------------------------ */
-  /* ALEXA MODAL                                                          */
+  /* ALEXA MODAL                                                        */
   /* ------------------------------------------------------------------ */
   openAlexaSendModal() {
     // Target the specific config container inside the modal
@@ -2251,6 +2287,7 @@ List 4 questions the patient should ask about these results.
       .then(()  => this.toast('Copied to clipboard', 'copy'))
       .catch(() => this.toast('Copy failed — try manually', 'alert-triangle'));
   }
+}
 
 // =============================================================================
 // BOOTSTRAP
