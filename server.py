@@ -814,6 +814,67 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
     return TextResponse(text=ai_analysis)
 
 # =============================================================================
+# PRESCRIPTIONS (Web UI to Database Sync)
+# =============================================================================
+class PrescriptionRequest(BaseModel):
+    prescriptions: List[dict]
+
+@app.post("/api/prescriptions")
+async def save_prescriptions(req: PrescriptionRequest, req_fastapi: FastAPIRequest, db: Session = Depends(get_db)):
+    session_id = req_fastapi.cookies.get(SESSION_COOKIE)
+    s = _get_session(session_id)
+    if not s:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    u_sub = (s.get("profile") or {}).get("sub")
+    if not u_sub:
+        raise HTTPException(status_code=401, detail="Missing user identifier")
+
+    # 1. Clear old prescriptions for this user to ensure an exact sync with the frontend
+    db.query(Prescription).filter(Prescription.user_sub == u_sub).delete()
+    
+    # 2. Insert the updated list from the UI
+    for med in req.prescriptions:
+        new_rx = Prescription(
+            user_sub=u_sub,
+            name=med.get("name", "Unknown Med"),
+            dose=med.get("dose", ""),
+            times=med.get("times", ["08:00"]),
+            repeat=med.get("repeat", "DAILY"),
+            days=med.get("days", []),
+            notes=med.get("notes", "")
+        )
+        db.add(new_rx)
+        
+    db.commit()
+    return {"ok": True, "saved_count": len(req.prescriptions)}
+
+@app.get("/api/prescriptions")
+def get_prescriptions(req: FastAPIRequest, db: Session = Depends(get_db)):
+    session_id = req.cookies.get(SESSION_COOKIE)
+    s = _get_session(session_id)
+    if not s:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
+    u_sub = (s.get("profile") or {}).get("sub")
+    if not u_sub:
+        raise HTTPException(status_code=401, detail="Missing user identifier")
+        
+    meds = db.query(Prescription).filter(Prescription.user_sub == u_sub).all()
+    
+    result = []
+    for m in meds:
+        result.append({
+            "name": m.name,
+            "dose": m.dose,
+            "times": m.times,
+            "repeat": m.repeat,
+            "days": m.days,
+            "notes": m.notes
+        })
+    return result
+
+# =============================================================================
 # HISTORY
 # =============================================================================
 @app.get("/api/history", response_model=HistoryResponse)
@@ -901,64 +962,7 @@ def voice_turn(req: VoiceTurnRequest):
         reply_en=reply_en,
         internal_language=source_lang,
     )
-# =============================================================================
-# PRESCRIPTIONS SYNC
-# =============================================================================
-@app.post("/api/prescriptions")
-async def sync_prescriptions(req: PrescriptionSyncRequest, req_fastapi: FastAPIRequest, db: Session = Depends(get_db)):
-    """Saves the user's prescription list from the web UI to PostgreSQL."""
-    session_id = req_fastapi.cookies.get(SESSION_COOKIE)
-    s = _get_session(session_id)
-    if not s:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    u_sub = (s.get("profile") or {}).get("sub")
-    if not u_sub:
-        raise HTTPException(status_code=401, detail="Missing user identifier.")
 
-    # Clear existing prescriptions for this user to perform a clean sync
-    db.query(Prescription).filter(Prescription.user_sub == u_sub).delete()
-    
-    # Save the new list
-    for p in req.prescriptions:
-        new_rx = Prescription(
-            user_sub=u_sub,
-            name=p.name,
-            dose=p.dose,
-            times=p.times,
-            repeat=p.repeat,
-            days=p.days,
-            notes=p.notes
-        )
-        db.add(new_rx)
-        
-    db.commit()
-    return {"ok": True, "saved": len(req.prescriptions)}
-
-@app.get("/api/prescriptions")
-def get_prescriptions(req: FastAPIRequest, db: Session = Depends(get_db)):
-    """Loads the user's saved prescriptions when they refresh the page."""
-    session_id = req.cookies.get(SESSION_COOKIE)
-    s = _get_session(session_id)
-    if not s:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    u_sub = (s.get("profile") or {}).get("sub")
-    if not u_sub:
-        raise HTTPException(status_code=401, detail="Missing user identifier.")
-
-    meds = db.query(Prescription).filter(Prescription.user_sub == u_sub).all()
-    return [
-        {
-            "name": m.name,
-            "dose": m.dose,
-            "times": m.times,
-            "repeat": m.repeat,
-            "days": m.days,
-            "notes": m.notes
-        }
-        for m in meds
-    ]
 # =============================================================================
 # ALEXA REMINDERS API HELPERS
 # =============================================================================
