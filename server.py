@@ -321,8 +321,9 @@ def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
         "2) Do not list multiple possible conditions at once.\n"
         "3) EMERGENCY: If symptoms are life-threatening, tell them to call emergency services immediately.\n"
         "4) HOME CARE: If the concern seems minor, say so clearly.\n"
-        "5) FIRST AID GATEKEEPER: If the user describes a minor, treatable physical injury (e.g., a cut, scrape, minor burn), "
-        "append the exact string '[TRIGGER_FIRST_AID]' at the very end of your response so the system knows to generate a visual guide.\n\n"
+        "5) FIRST AID GATEKEEPER: If the user has a minor, treatable physical injury (e.g., cut, scrape, burn), you can generate a visual guide. "
+        "CRITICAL: DO NOT use the trigger tag if you are still asking clarifying questions. "
+        "ONLY append the exact string '[TRIGGER_FIRST_AID]' at the very end of your response AFTER you have gathered all necessary information and are providing the final home care instructions.\n\n"
     )
 
 def _extract_text_from_invoke(data: Dict[str, Any]) -> str:
