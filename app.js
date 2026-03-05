@@ -928,14 +928,22 @@ class PulseNovaApp {
   initDropzones() {
     this.setupDropzone('xray-dropzone', 'xray-input', f => this.handleDroppedFile(f, 'xray'));
     this.setupDropzone('lab-dropzone',  'lab-input',  f => this.handleDroppedFile(f, 'lab'));
+    this.setupDropzone('rx-dropzone',   'rx-input',   f => this.handleDroppedFile(f, 'rx')); // NEW: Added RX Dropzone
   }
+  
   setupDropzone(dropId, inputId, onFile) {
     const zone = document.getElementById(dropId); if (!zone) return;
     ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); }));
     ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-active', 'drag-active-purple'); }));
     zone.addEventListener('drop', e => { const f = e.dataTransfer?.files?.[0]; if (f) onFile(f); });
   }
-  handleDroppedFile(file, type) { if (type === 'xray') this.handleXrayUpload({ files: [file] }); else this.handleLabUpload({ files: [file] }); }
+
+  handleDroppedFile(file, type) { 
+    if (type === 'xray') this.handleXrayUpload({ files: [file] }); 
+    else if (type === 'lab') this.handleLabUpload({ files: [file] }); 
+    else if (type === 'rx') this.handleRxUpload({ files: [file] }); // NEW: Handle RX routing
+  }
+
   handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
   handleLabUpload(input)  { this.handleFileUpload(input, 'lab');  }
 
