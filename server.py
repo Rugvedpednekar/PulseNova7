@@ -986,28 +986,55 @@ def _create_alexa_reminder(api_endpoint, token, med_name, med_time, tz):
         # Fallback if time isn't in HH:MM format
         hour, minute = 8, 0
 
-    now = datetime.now(timezone.utc)
-    trigger = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    if trigger < now:
-        trigger += timedelta(days=1)
+    now = datetime.utcnow()
+    
+    tomorrow = now + timedelta(days=1)
+    
+    # Format the time strictly as "YYYY-MM-DDTHH:MM:SS"
+    scheduled_time = f"{tomorrow.strftime('%Y-%m-%d')}T{hour:02d}:{minute:02d}:00"
 
     payload = {
-        "displayInformation": {"content": [{"textContent": f"Take your {med_name}"}]},
+        "requestTime": now.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         "trigger": {
             "type": "SCHEDULED_ABSOLUTE",
-            "scheduledTime": trigger.strftime("%Y-%m-%dT%H:%M:%S"),
+            "scheduledTime": scheduled_time,
             "timeZoneId": tz,
-            "recurrence": {"recurrenceRules": [f"FREQ=DAILY;BYHOUR={hour};BYMINUTE={minute};BYSECOND=0"]}
+            # FIX 2: Use the correct Alexa recurrence object
+            "recurrence": {
+                "freq": "DAILY"
+            }
         },
-        "alertInfo": {"spokenInfo": {"content": [{"textContent": f"This is a reminder to take your {med_name}"}]}},
-        "pushNotification": {"status": "ENABLED"}
+        "alertInfo": {
+            "spokenInfo": {
+                "content": [{
+                    # FIX 3: Alexa requires 'locale' and 'text' keys
+                    "locale": "en-US",
+                    "text": f"This is a reminder to take your {med_name}"
+                }]
+            }
+        },
+        "pushNotification": {
+            "status": "ENABLED"
+        }
     }
     
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {token}", 
+        "Content-Type": "application/json"
+    }
+    
     req = Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
     try:
         with urlopen(req) as resp:
-            return resp.getcode() == 201
+            return resp.getcode() in [200, 201]
+    except HTTPError as e:
+        # FIX 4: If it fails again, log the EXACT reason Amazon rejected it
+        try:
+            err_body = e.read().decode("utf-8")
+            logger.error(f"Alexa Reminder HTTPError {e.code} for {med_name}: {err_body}")
+        except:
+            logger.error(f"Alexa Reminder HTTPError {e.code} for {med_name}")
+        return False
     except Exception as e:
         logger.error(f"Failed to create reminder for {med_name}: {e}")
         return False
