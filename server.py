@@ -20,10 +20,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from sqlalchemy.orm import Session
-from database import init_db as db_init_db, get_db, User, TriageSession, VitalReading, MedicalDocument
+from database import (
+    init_db as db_init_db, get_db,
+    User, TriageSession, VitalReading, MedicalDocument, Prescription
+)
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
 # =============================================================================
@@ -51,9 +53,15 @@ NOVA_ACT_API_KEY  = os.getenv("NOVA_ACT_API_KEY",  "")
 VOICE_INTERNAL_LANGUAGE = os.getenv("VOICE_INTERNAL_LANGUAGE", "en")
 TRANSLATE_ENABLED       = os.getenv("TRANSLATE_ENABLED", "1") == "1"
 
-MAX_IMAGE_BYTES    = int(os.getenv("MAX_IMAGE_BYTES", str(8  * 1024 * 1024)))
-MAX_PDF_BYTES      = int(os.getenv("MAX_PDF_BYTES",   str(12 * 1024 * 1024)))
+MAX_IMAGE_BYTES     = int(os.getenv("MAX_IMAGE_BYTES", str(8  * 1024 * 1024)))
+MAX_PDF_BYTES       = int(os.getenv("MAX_PDF_BYTES",   str(12 * 1024 * 1024)))
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
+
+# Your Alexa Skill ID — rejects requests from other skills
+ALEXA_SKILL_ID = os.getenv(
+    "ALEXA_SKILL_ID",
+    "amzn1.ask.skill.dee8af9a-0210-4b14-b90d-0ef50921882e"
+)
 
 # ---------------------------------------------------------------------------
 # Cognito OAuth
@@ -81,10 +89,6 @@ _comprehend = boto3.client("comprehend",      region_name=AWS_REGION, config=BED
 
 # =============================================================================
 # IN-MEMORY STORES
-# NOTE: _sessions is intentionally kept in-memory for now.
-# On Railway, this means users are logged out on every redeploy.
-# TODO: Migrate _sessions to a database-backed store (e.g. a Sessions table)
-#       to survive restarts.
 # =============================================================================
 _embed_store: Dict[str, Dict[str, Any]] = {}
 _sessions:    Dict[str, Dict[str, Any]] = {}
@@ -132,14 +136,13 @@ class ChatTurn(BaseModel):
 
 
 class TriageRequest(BaseModel):
-    message:      Optional[str]       = Field(default=None)
-    history:      List[ChatTurn]      = Field(default_factory=list)
-    image_base64: Optional[str]       = Field(default=None)
-    language:     Optional[str]       = Field(default="en-US")
-    # FIX: frontend sends chat_id so the server can upsert instead of insert
-    chat_id:      Optional[str]       = Field(default=None)
-    temperature:  float               = 0.3
-    max_tokens:   int                 = 700
+    message:      Optional[str]  = Field(default=None)
+    history:      List[ChatTurn] = Field(default_factory=list)
+    image_base64: Optional[str]  = Field(default=None)
+    language:     Optional[str]  = Field(default="en-US")
+    chat_id:      Optional[str]  = Field(default=None)
+    temperature:  float          = 0.3
+    max_tokens:   int            = 700
 
     @field_validator("message")
     @classmethod
@@ -155,8 +158,8 @@ class VisionRequest(BaseModel):
     pdf_base64:   Optional[str] = Field(default=None)
     prompt:       str           = Field(...)
     language:     Optional[str] = Field(default="en-US")
-    doc_type:     str           = Field(default="xray")  # <--- Added
-    save_to_db:   bool          = Field(default=True)    # <--- Added
+    doc_type:     str           = Field(default="xray")
+    save_to_db:   bool          = Field(default=True)
     temperature:  float         = 0.2
     max_tokens:   int           = 900
 
@@ -180,12 +183,12 @@ class FirstAidResponse(BaseModel):
 
 
 class VoiceTurnRequest(BaseModel):
-    transcript:             str            = Field(...)
-    detected_lang:          Optional[str]  = Field(default=None)
-    history:                List[ChatTurn] = Field(default_factory=list)
-    include_english_reply:  bool           = Field(default=True)
-    max_tokens:             int            = 350
-    temperature:            float          = 0.3
+    transcript:            str            = Field(...)
+    detected_lang:         Optional[str]  = Field(default=None)
+    history:               List[ChatTurn] = Field(default_factory=list)
+    include_english_reply: bool           = Field(default=True)
+    max_tokens:            int            = 350
+    temperature:           float          = 0.3
 
 
 class VoiceTurnResponse(BaseModel):
@@ -227,46 +230,44 @@ class SearchResponse(BaseModel):
     hits: List[SearchHit]
 
 
-class AlexaTurnRequest(BaseModel):
-    transcript: str
-    locale:     Optional[str]  = "en-US"
-    session:    Optional[dict] = Field(default_factory=dict)
-
-
-class AlexaTurnResponse(BaseModel):
-    speech:           str
-    cardText:         Optional[str] = None
-    shouldEndSession: bool          = False
+# ---------------------------------------------------------------------------
+# Prescription Pydantic models  ← NEW
+# ---------------------------------------------------------------------------
+class PrescriptionIn(BaseModel):
+    name:   str           = Field(...)
+    dose:   Optional[str] = ""
+    times:  List[str]     = Field(default_factory=list)
+    repeat: Optional[str] = "DAILY"
+    days:   List[str]     = Field(default_factory=list)
+    notes:  Optional[str] = ""
 
 
 # =============================================================================
 # PYDANTIC RESPONSE SCHEMAS FOR HISTORY
-# FIX: These tell FastAPI how to serialize SQLAlchemy objects into JSON.
-#      Without these, /api/history returned unserializable ORM objects.
 # =============================================================================
 class TriageSessionOut(BaseModel):
-    id: Optional[str] = None
-    title: Optional[str] = None
-    messages: Any = None
-    created_at: Any = None
+    id:         Optional[str] = None
+    title:      Optional[str] = None
+    messages:   Any           = None
+    created_at: Any           = None
 
     class Config:
         from_attributes = True
 
 
 class MedicalDocumentOut(BaseModel):
-    id: Optional[str] = None
-    doc_type: Optional[str] = None
-    image_b64: Optional[str] = None
+    id:          Optional[str] = None
+    doc_type:    Optional[str] = None
+    image_b64:   Optional[str] = None
     report_html: Optional[str] = None
-    created_at: Any = None
+    created_at:  Any           = None
 
     class Config:
         from_attributes = True
 
 
 class HistoryResponse(BaseModel):
-    triage: List[TriageSessionOut] = []
+    triage:    List[TriageSessionOut]    = []
     documents: List[MedicalDocumentOut] = []
 
 
@@ -301,7 +302,7 @@ def _guess_image_format(raw: bytes) -> str:
         return "webp"
     if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
         return "gif"
-    raise ValueError("Unsupported file format. Please upload PNG, JPEG, WEBP, or GIF.")
+    raise ValueError("Unsupported file format.")
 
 
 def _sanitize_history_for_nova(history: List[ChatTurn]) -> List[dict]:
@@ -327,13 +328,8 @@ def _normalize_lang_code(code: Optional[str]) -> str:
 
 def _language_name(code: str) -> str:
     return {
-        "en": "English",
-        "hi": "Hindi",
-        "mr": "Marathi",
-        "es": "Spanish",
-        "fr": "French",
-        "de": "German",
-        "ar": "Arabic",
+        "en": "English", "hi": "Hindi", "mr": "Marathi",
+        "es": "Spanish", "fr": "French", "de": "German", "ar": "Arabic",
     }.get(code, code or "Unknown")
 
 
@@ -360,7 +356,7 @@ def _translate_text(text: str, source_lang: str, target_lang: str) -> str:
 
 
 def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
-    c        = _normalize_lang_code(ui_lang)
+    c         = _normalize_lang_code(ui_lang)
     lang_name = _language_name(c)
     return (
         f"CRITICAL SYSTEM INSTRUCTION: YOU MUST COMMUNICATE ENTIRELY AND EXCLUSIVELY IN {lang_name.upper()}.\n"
@@ -423,18 +419,13 @@ def _nova_canvas_invoke(prompt: str) -> str:
         "taskType": "TEXT_IMAGE",
         "textToImageParams": {"text": enhanced_prompt[:1000]},
         "imageGenerationConfig": {
-            "numberOfImages": 1,
-            "height": 1024,
-            "width":  1024,
-            "cfgScale": 8.0,
+            "numberOfImages": 1, "height": 1024, "width": 1024, "cfgScale": 8.0,
         },
     }
     try:
         resp = bedrock.invoke_model(
-            modelId=MODEL_ID_CANVAS,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps(body),
+            modelId=MODEL_ID_CANVAS, contentType="application/json",
+            accept="application/json", body=json.dumps(body),
         )
         data = json.loads(resp["body"].read())
         return data["images"][0] if "images" in data and data["images"] else ""
@@ -445,42 +436,32 @@ def _nova_canvas_invoke(prompt: str) -> str:
 
 def _pdf_first_page_to_png_b64(pdf_bytes: bytes) -> str:
     try:
-        import fitz  # PyMuPDF
+        import fitz
         doc  = fitz.open(stream=pdf_bytes, filetype="pdf")
         page = doc.load_page(0)
         return base64.b64encode(page.get_pixmap(dpi=200).tobytes("png")).decode("utf-8")
     except Exception:
         raise HTTPException(status_code=400, detail="Could not read PDF. Try a screenshot.")
 
+
 def _build_patient_context_from_user(user: Optional[User]) -> str:
-    """
-    Build a short, structured patient context block for the model.
-    Keep it compact so it doesn't dominate the prompt.
-    """
     if not user:
         return ""
-
     parts = []
-    if getattr(user, "age", None): parts.append(f"Age: {user.age}")
-    if getattr(user, "gender", None): parts.append(f"Gender: {user.gender}")
-    # Height/Weight stored as strings in your DB
+    if getattr(user, "age",             None): parts.append(f"Age: {user.age}")
+    if getattr(user, "gender",          None): parts.append(f"Gender: {user.gender}")
     hw = []
     if getattr(user, "height", None): hw.append(str(user.height))
     if getattr(user, "weight", None): hw.append(str(user.weight))
     if hw: parts.append(f"Height/Weight: {' / '.join(hw)}")
-    if getattr(user, "allergies", None): parts.append(f"Allergies: {user.allergies}")
+    if getattr(user, "allergies",       None): parts.append(f"Allergies: {user.allergies}")
     if getattr(user, "medical_history", None): parts.append(f"Medical history: {user.medical_history}")
-
     if not parts:
         return ""
-
     return "PATIENT CONTEXT (use this for safety and personalization):\n- " + "\n- ".join(parts)
 
 
 def _allergy_safety_rule_block() -> str:
-    """
-    A hard rule block to force consistent behavior around allergies.
-    """
     return (
         "ALLERGY SAFETY RULE (IMPORTANT):\n"
         "- You must consider the patient's listed allergies in every response.\n"
@@ -495,20 +476,15 @@ def _allergy_safety_rule_block() -> str:
 
 
 # =============================================================================
-# OAuth helpers (Cognito Hosted UI)
+# OAuth helpers
 # =============================================================================
 def _require_oauth_config():
     if not (COGNITO_DOMAIN and COGNITO_CLIENT_ID and COGNITO_REDIRECT_URI):
-        raise HTTPException(
-            status_code=500,
-            detail="Missing Cognito OAuth configuration. Set COGNITO_DOMAIN, COGNITO_CLIENT_ID, COGNITO_REDIRECT_URI in .env",
-        )
+        raise HTTPException(status_code=500, detail="Missing Cognito OAuth configuration.")
 
 
 def _http_post_form(
-    url: str,
-    data: Dict[str, str],
-    headers: Optional[Dict[str, str]] = None,
+    url: str, data: Dict[str, str], headers: Optional[Dict[str, str]] = None
 ) -> Dict[str, Any]:
     encoded = urlencode(data).encode("utf-8")
     req = Request(url, data=encoded, method="POST")
@@ -518,8 +494,7 @@ def _http_post_form(
             req.add_header(k, v)
     try:
         with urlopen(req, timeout=25) as resp:
-            body = resp.read().decode("utf-8")
-            return json.loads(body)
+            return json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
         try:
             body = e.read().decode("utf-8")
@@ -555,16 +530,11 @@ def _create_session(tokens: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
     if id_token:
         profile = _decode_jwt_no_verify(id_token) or {}
     _sessions[session_id] = {
-        "tokens":     tokens,
-        "profile":    profile,
-        "created_at": int(time.time()),
+        "tokens": tokens, "profile": profile, "created_at": int(time.time()),
     }
     return session_id, profile
 
 
-# ---------------------------------------------------------------------------
-# JWT verification for Cognito
-# ---------------------------------------------------------------------------
 _jwks_cache: Dict[str, Any] = {"keys": None, "fetched_at": 0}
 
 
@@ -579,10 +549,7 @@ def _cognito_issuer() -> str:
 def _fetch_jwks() -> Dict[str, Any]:
     issuer = _cognito_issuer()
     if not issuer:
-        raise HTTPException(
-            status_code=500,
-            detail="Missing COGNITO_USER_POOL_ID or COGNITO_ISSUER for JWT verification.",
-        )
+        raise HTTPException(status_code=500, detail="Missing COGNITO_USER_POOL_ID or COGNITO_ISSUER.")
     now = int(time.time())
     if _jwks_cache["keys"] and (now - _jwks_cache["fetched_at"] < 3600):
         return _jwks_cache["keys"]
@@ -597,44 +564,6 @@ def _fetch_jwks() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to fetch JWKS: {e}")
 
 
-def _verify_cognito_jwt(token: str, audience: Optional[str] = None) -> Dict[str, Any]:
-    try:
-        import jwt
-        from jwt.algorithms import RSAAlgorithm
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="PyJWT not installed. Add 'PyJWT' to requirements.txt to verify Cognito tokens securely.",
-        )
-
-    jwks              = _fetch_jwks()
-    unverified_header = jwt.get_unverified_header(token)
-    kid               = unverified_header.get("kid")
-    if not kid:
-        raise HTTPException(status_code=401, detail="Invalid token header (no kid).")
-
-    key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
-    if not key:
-        raise HTTPException(status_code=401, detail="Signing key not found.")
-
-    public_key = RSAAlgorithm.from_jwk(json.dumps(key))
-    issuer     = _cognito_issuer()
-    aud        = audience or COGNITO_CLIENT_ID
-
-    try:
-        claims = jwt.decode(
-            token,
-            public_key,
-            algorithms=["RS256"],
-            audience=aud,
-            issuer=issuer,
-            options={"require": ["exp", "iat"]},
-        )
-        return claims
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")
-
-
 def _get_bearer_token(req: FastAPIRequest) -> str:
     auth = req.headers.get("authorization") or ""
     if not auth.lower().startswith("bearer "):
@@ -647,10 +576,8 @@ def _get_bearer_token(req: FastAPIRequest) -> str:
 # =============================================================================
 def _get_text_embedding(text: str) -> List[float]:
     resp = bedrock.invoke_model(
-        modelId=MODEL_ID_EMBED,
-        contentType="application/json",
-        accept="application/json",
-        body=json.dumps({"inputText": text}),
+        modelId=MODEL_ID_EMBED, contentType="application/json",
+        accept="application/json", body=json.dumps({"inputText": text}),
     )
     return json.loads(resp["body"].read())["embedding"]
 
@@ -660,10 +587,8 @@ def _get_multimodal_embedding(text: str, image_b64: Optional[str]) -> List[float
     if image_b64:
         body["inputImage"] = _strip_data_url(image_b64)
     resp = bedrock.invoke_model(
-        modelId=MODEL_ID_EMBED,
-        contentType="application/json",
-        accept="application/json",
-        body=json.dumps(body),
+        modelId=MODEL_ID_EMBED, contentType="application/json",
+        accept="application/json", body=json.dumps(body),
     )
     return json.loads(resp["body"].read())["embedding"]
 
@@ -673,6 +598,140 @@ def _cosine_similarity(a: List[float], b: List[float]) -> float:
     mag_a = sum(x * x for x in a) ** 0.5
     mag_b = sum(x * x for x in b) ** 0.5
     return dot / (mag_a * mag_b) if mag_a and mag_b else 0.0
+
+
+# =============================================================================
+# ALEXA REMINDERS HELPERS  ← NEW
+# =============================================================================
+def _get_alexa_timezone(api_endpoint: str, device_id: str, api_access_token: str) -> str:
+    """Fetch the Alexa device's configured timezone. Falls back to UTC."""
+    url = f"{api_endpoint}/v2/devices/{device_id}/settings/System.timeZone"
+    req = Request(url, method="GET")
+    req.add_header("Authorization", f"Bearer {api_access_token}")
+    req.add_header("Accept", "application/json")
+    try:
+        with urlopen(req, timeout=8) as resp:
+            return resp.read().decode("utf-8").strip().strip('"') or "UTC"
+    except Exception as e:
+        logger.warning(f"Could not fetch Alexa timezone: {e}")
+        return "UTC"
+
+
+def _create_alexa_reminder(
+    api_endpoint: str,
+    api_access_token: str,
+    med_name: str,
+    med_dose: str,
+    trigger_time: str,   # "HH:MM" 24-hour
+    repeat: str,         # "DAILY" | "WEEKDAYS" | "CUSTOM_DAYS"
+    days: List[str],     # ["MO","TU",...] for CUSTOM_DAYS
+    timezone: str,
+) -> bool:
+    """
+    Create a single recurring Alexa reminder via the Reminders API.
+    Returns True on success, False on failure.
+    """
+    # Build RRULE
+    if repeat == "DAILY":
+        rrule = "FREQ=DAILY"
+    elif repeat == "WEEKDAYS":
+        rrule = "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
+    elif repeat == "CUSTOM_DAYS" and days:
+        rrule = f"FREQ=WEEKLY;BYDAY={','.join(days)}"
+    else:
+        rrule = "FREQ=DAILY"
+
+    # Parse HH:MM
+    try:
+        hour, minute = [int(x) for x in trigger_time.split(":")]
+    except Exception:
+        hour, minute = 8, 0
+
+    scheduled_time = f"2000-01-01T{hour:02d}:{minute:02d}:00"
+    dose_str       = f" {med_dose}" if med_dose else ""
+    speech_text    = f"Time to take your {med_name}{dose_str}."
+
+    payload = {
+        "requestTime": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()),
+        "trigger": {
+            "type":          "SCHEDULED_ABSOLUTE",
+            "scheduledTime": scheduled_time,
+            "timeZoneId":    timezone,
+            "recurrence": {
+                "startDateTime":  scheduled_time,
+                "endDateTime":    "2099-12-31T23:59:59",
+                "recurrenceRules": [rrule],
+            },
+        },
+        "alertInfo": {
+            "spokenInfo": {
+                "content": [{"locale": "en-US", "text": speech_text}]
+            }
+        },
+        "pushNotification": {"status": "ENABLED"},
+    }
+
+    url  = f"{api_endpoint}/v1/alerts/reminders"
+    body = json.dumps(payload).encode("utf-8")
+    req  = Request(url, data=body, method="POST")
+    req.add_header("Authorization", f"Bearer {api_access_token}")
+    req.add_header("Content-Type",  "application/json")
+    req.add_header("Accept",        "application/json")
+
+    try:
+        with urlopen(req, timeout=10) as resp:
+            logger.info(f"Reminder created: {med_name} @ {trigger_time} — HTTP {resp.status}")
+            return True
+    except HTTPError as e:
+        body_text = ""
+        try:
+            body_text = e.read().decode("utf-8")
+        except Exception:
+            pass
+        logger.error(f"Reminder API {e.code} for {med_name}: {body_text}")
+        return False
+    except Exception as e:
+        logger.error(f"Reminder creation error for {med_name}: {e}")
+        return False
+
+
+def _check_reminder_permission(body: dict) -> bool:
+    """Returns True if the user has granted the Reminders permission."""
+    try:
+        scopes = (
+            body.get("context", {})
+                .get("System", {})
+                .get("user", {})
+                .get("permissions", {})
+                .get("scopes", {})
+        )
+        status = scopes.get("alexa::alerts:reminders:skill:readwrite", {}).get("status")
+        return status == "GRANTED"
+    except Exception:
+        return False
+
+
+def _alexa_permissions_card_response(attributes: dict) -> JSONResponse:
+    """Send a permissions consent card so the user can grant Reminders in the Alexa app."""
+    return JSONResponse({
+        "version": "1.0",
+        "sessionAttributes": attributes,
+        "response": {
+            "outputSpeech": {
+                "type": "PlainText",
+                "text": (
+                    "To set medication reminders, I need permission to create reminders on your device. "
+                    "Please check your Alexa app to grant this permission, "
+                    "then say 'set my medication reminders' again."
+                ),
+            },
+            "card": {
+                "type": "AskForPermissionsConsent",
+                "permissions": ["alexa::alerts:reminders:skill:readwrite"],
+            },
+            "shouldEndSession": True,
+        },
+    })
 
 
 # =============================================================================
@@ -690,9 +749,6 @@ def page_login():
 
 @app.get("/account")
 def page_account():
-    # FIX: After login the user is now redirected to "/" (the new dashboard in
-    # index.html). This route still works so old bookmarks don't break, but
-    # auth_callback no longer sends users here.
     return FileResponse("accounts.html")
 
 
@@ -708,28 +764,23 @@ def health():
 
 @app.get("/config")
 def public_config():
-    # NOTE: This exposes the Google Maps API key to any visitor.
-    # Restrict the key to your Railway domain in the Google Cloud Console.
     return {"google_maps_api_key": GOOGLE_MAPS_API_KEY}
 
 
 # =============================================================================
-# AUTH (Cognito Hosted UI)
+# AUTH
 # =============================================================================
 @app.get("/auth/login")
 def auth_login():
     _require_oauth_config()
     params = {
-        "client_id":     COGNITO_CLIENT_ID,
-        "response_type": "code",
-        "scope":         COGNITO_SCOPES,
-        "redirect_uri":  COGNITO_REDIRECT_URI,
-        "state":         str(uuid.uuid4()),
+        "client_id": COGNITO_CLIENT_ID, "response_type": "code",
+        "scope": COGNITO_SCOPES, "redirect_uri": COGNITO_REDIRECT_URI,
+        "state": str(uuid.uuid4()),
     }
     if COGNITO_IDP:
         params["identity_provider"] = COGNITO_IDP
-    url = f"{COGNITO_DOMAIN}/oauth2/authorize?{urlencode(params)}"
-    return RedirectResponse(url=url, status_code=302)
+    return RedirectResponse(url=f"{COGNITO_DOMAIN}/oauth2/authorize?{urlencode(params)}", status_code=302)
 
 
 @app.get("/auth/callback")
@@ -741,20 +792,16 @@ def auth_callback(
 ):
     if error:
         logger.error(f"Cognito returned error: {error}")
-        return {"error": error, "message": "Check server logs for details"}
-
+        return {"error": error}
     _require_oauth_config()
     if not code:
         raise HTTPException(status_code=400, detail="Missing authorization code.")
 
     token_url = f"{COGNITO_DOMAIN}/oauth2/token"
-    form = {
-        "grant_type":   "authorization_code",
-        "client_id":    COGNITO_CLIENT_ID,
-        "code":         code,
-        "redirect_uri": COGNITO_REDIRECT_URI,
+    form      = {
+        "grant_type": "authorization_code", "client_id": COGNITO_CLIENT_ID,
+        "code": code, "redirect_uri": COGNITO_REDIRECT_URI,
     }
-
     headers = {}
     if COGNITO_CLIENT_SECRET:
         basic = base64.b64encode(
@@ -767,7 +814,6 @@ def auth_callback(
         raise HTTPException(status_code=400, detail=f"Token exchange failed: {token_resp}")
 
     session_id, profile = _create_session(token_resp)
-
     sub   = (profile or {}).get("sub") or (profile or {}).get("username")
     email = (profile or {}).get("email")
 
@@ -775,27 +821,16 @@ def auth_callback(
         try:
             user = db.query(User).filter(User.sub == sub).first()
             if not user:
-                user = User(sub=sub, email=email)
-                db.add(user)
+                db.add(User(sub=sub, email=email))
                 db.commit()
         except Exception as e:
             logger.error(f"Failed to upsert user on login: {e}")
 
-    # FIX: Redirect to "/" (the new index.html with the embedded dashboard)
-    # instead of "/account" (the old separate accounts.html page).
-    # This ensures the correct app.js is loaded and loadUserHistory() runs.
-    # FIX: Redirect to the dedicated accounts page after login
     resp = RedirectResponse(url="/account", status_code=302)
-
     secure_cookie = os.getenv("SECURE_COOKIES", "0") == "1"
     resp.set_cookie(
-        key=SESSION_COOKIE,
-        value=session_id,
-        httponly=True,
-        secure=secure_cookie,
-        samesite="lax",
-        max_age=7 * 24 * 3600,
-        path="/",
+        key=SESSION_COOKIE, value=session_id, httponly=True,
+        secure=secure_cookie, samesite="lax", max_age=7 * 24 * 3600, path="/",
     )
     return resp
 
@@ -819,22 +854,18 @@ def me(req: FastAPIRequest, db: Session = Depends(get_db)):
 
     profile = s.get("profile") or {}
     sub     = profile.get("sub") or profile.get("username") or ""
+    user    = db.query(User).filter(User.sub == sub).first()
 
-    user = db.query(User).filter(User.sub == sub).first()
-
-    if user:
-        prefs = {
+    prefs = (
+        {
             "consent_store_history": user.consent_store_history,
             "data_retention_days":   user.data_retention_days,
-            "age":                   user.age,
-            "gender":                user.gender,
-            "height":                user.height,
-            "weight":                user.weight,
-            "allergies":             user.allergies,
-            "medical_history":       user.medical_history,
+            "age": user.age, "gender": user.gender,
+            "height": user.height, "weight": user.weight,
+            "allergies": user.allergies, "medical_history": user.medical_history,
         }
-    else:
-        prefs = {"consent_store_history": False, "data_retention_days": 30}
+        if user else {"consent_store_history": False, "data_retention_days": 30}
+    )
 
     return {
         "authenticated": True,
@@ -855,20 +886,17 @@ async def set_prefs(req: FastAPIRequest, db: Session = Depends(get_db)):
     if not s:
         raise HTTPException(status_code=401, detail="Not authenticated.")
 
-    profile = s.get("profile") or {}
-    sub     = profile.get("sub") or ""
+    sub = (s.get("profile") or {}).get("sub") or ""
     if not sub:
-        raise HTTPException(status_code=400, detail="Missing user identifier in token.")
+        raise HTTPException(status_code=400, detail="Missing user identifier.")
 
     user = db.query(User).filter(User.sub == sub).first()
     if not user:
-        user = User(sub=sub, email=profile.get("email"))
+        user = User(sub=sub, email=(s.get("profile") or {}).get("email"))
         db.add(user)
 
-    if "consent_store_history" in body:
-        user.consent_store_history = bool(body["consent_store_history"])
-    if "data_retention_days" in body:
-        user.data_retention_days = max(1, min(int(body["data_retention_days"]), 3650))
+    if "consent_store_history" in body: user.consent_store_history = bool(body["consent_store_history"])
+    if "data_retention_days"   in body: user.data_retention_days   = max(1, min(int(body["data_retention_days"]), 3650))
     if "age"             in body: user.age             = body["age"]
     if "gender"          in body: user.gender          = body["gender"]
     if "height"          in body: user.height          = body["height"]
@@ -879,6 +907,103 @@ async def set_prefs(req: FastAPIRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return {"ok": True, "message": "Profile saved successfully."}
+
+
+# =============================================================================
+# PRESCRIPTIONS  ← NEW
+# =============================================================================
+@app.get("/api/prescriptions")
+def get_prescriptions(req: FastAPIRequest, db: Session = Depends(get_db)):
+    """Return all saved prescriptions for the authenticated user."""
+    session_id = req.cookies.get(SESSION_COOKIE)
+    s          = _get_session(session_id)
+    if not s:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+
+    sub = (s.get("profile") or {}).get("sub") or ""
+    if not sub:
+        raise HTTPException(status_code=401, detail="Missing user identifier.")
+
+    rows = (
+        db.query(Prescription)
+          .filter(Prescription.user_sub == sub)
+          .order_by(Prescription.created_at.asc())
+          .all()
+    )
+    return [
+        {
+            "id":      r.id,
+            "name":    r.name,
+            "dose":    r.dose   or "",
+            "times":   r.times  or [],
+            "repeat":  r.repeat or "DAILY",
+            "days":    r.days   or [],
+            "notes":   r.notes  or "",
+            "savedAt": r.created_at.strftime("%Y-%m-%d") if r.created_at else "",
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/prescriptions")
+async def save_prescriptions(req: FastAPIRequest, db: Session = Depends(get_db)):
+    """
+    Replace ALL prescriptions for the authenticated user with the new list.
+    Body: { "prescriptions": [{name, dose, times, repeat, days, notes}, ...] }
+    """
+    session_id = req.cookies.get(SESSION_COOKIE)
+    s          = _get_session(session_id)
+    if not s:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+
+    sub = (s.get("profile") or {}).get("sub") or ""
+    if not sub:
+        raise HTTPException(status_code=401, detail="Missing user identifier.")
+
+    user = db.query(User).filter(User.sub == sub).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    body = await req.json()
+    meds = body.get("prescriptions", [])
+
+    # Delete existing and re-insert — simple and correct
+    db.query(Prescription).filter(Prescription.user_sub == sub).delete()
+    for med in meds:
+        db.add(Prescription(
+            user_sub = sub,
+            name     = (med.get("name") or "").strip(),
+            dose     = (med.get("dose") or "").strip(),
+            times    = med.get("times")  or [],
+            repeat   = med.get("repeat") or "DAILY",
+            days     = med.get("days")   or [],
+            notes    = (med.get("notes") or "").strip(),
+        ))
+    db.commit()
+    return {"ok": True, "saved": len(meds)}
+
+
+@app.delete("/api/prescriptions/{prescription_id}")
+def delete_prescription(
+    prescription_id: str, req: FastAPIRequest, db: Session = Depends(get_db)
+):
+    """Delete one prescription by ID."""
+    session_id = req.cookies.get(SESSION_COOKIE)
+    s          = _get_session(session_id)
+    if not s:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+
+    sub = (s.get("profile") or {}).get("sub") or ""
+    row = db.query(Prescription).filter(
+        Prescription.id == prescription_id,
+        Prescription.user_sub == sub,
+    ).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Prescription not found.")
+
+    db.delete(row)
+    db.commit()
+    return {"ok": True}
 
 
 # =============================================================================
@@ -895,108 +1020,50 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
 
     patient_ctx = ""
     if u_sub:
-        user_row = db.query(User).filter(User.sub == u_sub).first()
+        user_row    = db.query(User).filter(User.sub == u_sub).first()
         patient_ctx = _build_patient_context_from_user(user_row)
-    
+
     system_text = _triage_system_prompt(req.language)
-    
-    # Prepend context + allergy rules to the system prompt
     if patient_ctx:
         system_text = patient_ctx + "\n\n" + _allergy_safety_rule_block() + "\n\n" + system_text
     else:
-        # Even without a saved profile, keep an allergy rule so the model asks
-        system_text = (
-            "If the user has allergies, ask them to share them before suggesting foods/medications.\n\n"
-            + system_text
-        )
-    
-    system_list = [{"text": system_text}]
-    messages    = _sanitize_history_for_nova(req.history)
+        system_text = "If the user has allergies, ask them to share them before suggesting foods/medications.\n\n" + system_text
 
+    messages     = _sanitize_history_for_nova(req.history)
     user_content = []
     if req.message:
         user_content.append({"text": req.message})
     if req.image_base64:
         fmt = _guess_image_format(_b64_to_bytes(req.image_base64, MAX_IMAGE_BYTES))
-        user_content.append({
-            "image": {"format": fmt, "source": {"bytes": _strip_data_url(req.image_base64)}}
-        })
-        user_content.append({
-            "text": "If the image matters, mention what you can observe and suggest next steps."
-        })
-
+        user_content.append({"image": {"format": fmt, "source": {"bytes": _strip_data_url(req.image_base64)}}})
+        user_content.append({"text": "If the image matters, mention what you can observe and suggest next steps."})
     messages.append({"role": "user", "content": user_content})
 
-    request_body = {
-        "schemaVersion":    "messages-v1",
-        "system":           system_list,
-        "messages":         messages,
-        "inferenceConfig":  {
-            "maxTokens":  int(req.max_tokens),
-            "temperature": float(req.temperature),
-            "topP":        0.9,
-        },
-    }
+    ai_text = _nova_invoke(MODEL_ID_TEXT, {
+        "schemaVersion":   "messages-v1",
+        "system":          [{"text": system_text}],
+        "messages":        messages,
+        "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature), "topP": 0.9},
+    })
 
-    ai_text = _nova_invoke(MODEL_ID_TEXT, request_body)
-
-    # -------------------------------------------------------------------------
-    # FIX: Upsert triage session instead of inserting a new row every message.
-    #
-    # Old behaviour: every single message created a brand-new TriageSession row,
-    # so a 10-message chat produced 10 duplicate rows in the DB.
-    #
-    # New behaviour:
-    #  1. The frontend passes a stable chat_id for the current conversation.
-    #  2. We look for an existing row with that id.
-    #  3. If found  → update its messages in place (upsert).
-    #  4. If not found → create one new row for the whole conversation.
-    #  5. Only save when the user is authenticated AND has consented.
-    # -------------------------------------------------------------------------
     if u_sub:
         try:
-            # Check consent before writing anything
             user_row = db.query(User).filter(User.sub == u_sub).first()
-            consent  = user_row.consent_store_history if user_row else False
-
-            if consent:
+            if user_row and user_row.consent_store_history:
                 history_list = [
                     h.model_dump() if hasattr(h, "model_dump") else h.dict()
                     for h in req.history
                 ]
                 history_list.append({"role": "user",      "text": req.message or "[Image Uploaded]"})
                 history_list.append({"role": "assistant", "text": ai_text})
-
-                title = (
-                    ((req.message or "Triage")[:47] + "...")
-                    if (req.message and len(req.message) > 50)
-                    else (req.message or "Image Analysis")
-                )
-
-                # Determine the stable chat_id sent from the frontend
+                title          = ((req.message or "Triage")[:47] + "...") if req.message and len(req.message) > 50 else (req.message or "Image Analysis")
                 stable_chat_id = req.chat_id or str(uuid.uuid4())
-
-                existing = db.query(TriageSession).filter(
-                    TriageSession.id       == stable_chat_id,
-                    TriageSession.user_sub == u_sub,
-                ).first()
-
+                existing       = db.query(TriageSession).filter(TriageSession.id == stable_chat_id, TriageSession.user_sub == u_sub).first()
                 if existing:
-                    # Update messages in the existing session row
-                    existing.messages = history_list
-                    existing.title    = title
+                    existing.messages = history_list; existing.title = title
                 else:
-                    # First message of a brand-new chat → create one row
-                    new_session = TriageSession(
-                        id=stable_chat_id,
-                        user_sub=u_sub,
-                        title=title,
-                        messages=history_list,
-                    )
-                    db.add(new_session)
-
+                    db.add(TriageSession(id=stable_chat_id, user_sub=u_sub, title=title, messages=history_list))
                 db.commit()
-
         except Exception as e:
             logger.error(f"Failed to save triage history: {e}")
 
@@ -1007,41 +1074,26 @@ def triage(req: TriageRequest, req_fastapi: FastAPIRequest, db: Session = Depend
 def first_aid_guide(req: FirstAidRequest):
     target_lang   = _language_name(_normalize_lang_code(req.language))
     system_prompt = (
-        "You are a medical first aid expert. The user will describe a minor physical injury. "
-        "You must provide 3 to 4 safe, practical, step-by-step home care instructions. "
-        "CRITICAL: Output ONLY a raw, valid JSON array. Each object must have two keys: "
-        f"'step_text' (instruction written entirely in {target_lang.upper()}) and "
-        "'image_prompt' (a brief English description of the action to generate an illustration)."
+        "You are a medical first aid expert. Provide 3 to 4 step-by-step home care instructions. "
+        f"Output ONLY a raw JSON array. Each object: 'step_text' in {target_lang.upper()}, 'image_prompt' in English."
     )
-
-    request_body = {
+    clean_json = re.sub(r"```json|```", "", _nova_invoke(MODEL_ID_TEXT, {
         "schemaVersion": "messages-v1",
         "system":        [{"text": system_prompt}],
         "messages":      [{"role": "user", "content": [{"text": req.injury_description}]}],
         "inferenceConfig": {"maxTokens": 1000, "temperature": 0.2},
-    }
-
-    clean_json = re.sub(r"```json|```", "", _nova_invoke(MODEL_ID_TEXT, request_body)).strip()
+    })).strip()
     try:
         steps_data = json.loads(clean_json)
     except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to parse instructional steps from the model.",
+        raise HTTPException(status_code=500, detail="Failed to parse steps from model.")
+    return FirstAidResponse(steps=[
+        FirstAidStep(
+            step_text    = s.get("step_text", ""),
+            image_base64 = _nova_canvas_invoke(s.get("image_prompt", "")) if s.get("image_prompt") else "",
         )
-
-    results = []
-    for step in steps_data:
-        results.append(
-            FirstAidStep(
-                step_text=step.get("step_text", ""),
-                image_base64=(
-                    _nova_canvas_invoke(step.get("image_prompt", ""))
-                    if step.get("image_prompt") else ""
-                ),
-            )
-        )
-    return FirstAidResponse(steps=results)
+        for s in steps_data
+    ])
 
 
 # =============================================================================
@@ -1049,76 +1101,41 @@ def first_aid_guide(req: FirstAidRequest):
 # =============================================================================
 @app.post("/api/vision", response_model=TextResponse)
 def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depends(get_db)):
-    # Use a dedicated vision system prompt instead of the triage chat prompt
-    vision_system_prompt = (
+    system_list = [{"text": (
         "You are an expert medical image analysis assistant. "
         "Provide clear, structured, plain-language findings. "
         "Never diagnose. Always recommend professional medical evaluation."
-    )
-    system_list = [{"text": vision_system_prompt}]
+    )}]
 
     if req.pdf_base64 and not req.image_base64:
-        image_b64_for_model = _pdf_first_page_to_png_b64(
-            _b64_to_bytes(req.pdf_base64, MAX_PDF_BYTES)
-        )
-        image_fmt      = "png"
-        raw_payload_b64 = req.pdf_base64
-        doc_type        = req.doc_type
+        image_b64_for_model = _pdf_first_page_to_png_b64(_b64_to_bytes(req.pdf_base64, MAX_PDF_BYTES))
+        image_fmt = "png"; raw_payload_b64 = req.pdf_base64; doc_type = req.doc_type
     else:
         if not req.image_base64:
             raise HTTPException(status_code=400, detail="Provide image_base64 or pdf_base64.")
         image_fmt           = _guess_image_format(_b64_to_bytes(req.image_base64, MAX_IMAGE_BYTES))
         image_b64_for_model = _strip_data_url(req.image_base64)
-        raw_payload_b64     = req.image_base64
-        doc_type            = req.doc_type
+        raw_payload_b64     = req.image_base64; doc_type = req.doc_type
 
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {"text": req.prompt.strip()},
-                {"image": {"format": image_fmt, "source": {"bytes": image_b64_for_model}}},
-            ],
-        }
-    ]
-    request_body = {
+    ai_analysis = _nova_invoke(MODEL_ID_VISION, {
         "schemaVersion":   "messages-v1",
         "system":          system_list,
-        "messages":        messages,
-        "inferenceConfig": {
-            "maxTokens":   int(req.max_tokens),
-            "temperature": float(req.temperature),
-        },
-    }
+        "messages":        [{"role": "user", "content": [
+            {"text": req.prompt.strip()},
+            {"image": {"format": image_fmt, "source": {"bytes": image_b64_for_model}}},
+        ]}],
+        "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature)},
+    })
 
-    ai_analysis = _nova_invoke(MODEL_ID_VISION, request_body)
-
-    # -------------------------------------------------------------------------
-    # FIX: Only save documents for authenticated users who have consented.
-    #
-    # Old behaviour: used u_sub = "anonymous" for guests, which violates the
-    # ForeignKey constraint on medical_documents.user_sub → users.sub and
-    # crashes the endpoint for all users on PostgreSQL.
-    # -------------------------------------------------------------------------
     try:
         session_id = req_fastapi.cookies.get(SESSION_COOKIE)
         s          = _get_session(session_id)
         u_sub      = (s.get("profile") or {}).get("sub") if s else None
-
         if u_sub:
             user_row = db.query(User).filter(User.sub == u_sub).first()
-            consent  = user_row.consent_store_history if user_row else False
-
-            if consent:
-                new_doc = MedicalDocument(
-                    user_sub=u_sub,
-                    doc_type=doc_type,
-                    image_b64=raw_payload_b64 or "",
-                    report_html=ai_analysis,
-                )
-                db.add(new_doc)
+            if user_row and user_row.consent_store_history:
+                db.add(MedicalDocument(user_sub=u_sub, doc_type=doc_type, image_b64=raw_payload_b64 or "", report_html=ai_analysis))
                 db.commit()
-
     except Exception as e:
         logger.error(f"Failed to save document: {e}")
 
@@ -1131,68 +1148,40 @@ def vision(req: VisionRequest, req_fastapi: FastAPIRequest, db: Session = Depend
 @app.get("/api/history", response_model=HistoryResponse)
 def get_all_history(req: FastAPIRequest, db: Session = Depends(get_db)):
     session_id = req.cookies.get(SESSION_COOKIE)
-    s = _get_session(session_id)
+    s          = _get_session(session_id)
     if not s:
         raise HTTPException(status_code=401, detail="Not authenticated")
-
-    # Safely check both 'sub' and 'username'
     profile = s.get("profile") or {}
-    u_sub = profile.get("sub") or profile.get("username")
-    
+    u_sub   = profile.get("sub") or profile.get("username")
     if not u_sub:
         raise HTTPException(status_code=401, detail="Missing user identifier in session.")
-
-    chats = db.query(TriageSession).filter(TriageSession.user_sub == u_sub).all()
-    docs  = db.query(MedicalDocument).filter(MedicalDocument.user_sub == u_sub).all()
-
-    return HistoryResponse(triage=chats, documents=docs)
+    return HistoryResponse(
+        triage    = db.query(TriageSession).filter(TriageSession.user_sub == u_sub).all(),
+        documents = db.query(MedicalDocument).filter(MedicalDocument.user_sub == u_sub).all(),
+    )
 
 
 @app.post("/api/history/triage")
 async def save_triage_history(req: FastAPIRequest, db: Session = Depends(get_db)):
-    """
-    Explicit upsert endpoint called by the frontend after each assistant reply.
-    Accepts the full chat payload and upserts by id.
-    """
     session_id = req.cookies.get(SESSION_COOKIE)
     s          = _get_session(session_id)
     if not s:
         raise HTTPException(status_code=401, detail="Not authenticated")
-
     u_sub = (s.get("profile") or {}).get("sub")
     if not u_sub:
         raise HTTPException(status_code=401, detail="Missing user identifier.")
-
     user_row = db.query(User).filter(User.sub == u_sub).first()
-    consent  = user_row.consent_store_history if user_row else False
-    if not consent:
-        # Consent off — silently accept but don't persist
+    if not (user_row and user_row.consent_store_history):
         return {"ok": True, "saved": False, "reason": "consent_off"}
-
-    body       = await req.json()
-    chat_id    = body.get("id")
-    title      = body.get("title", "Triage Session")
-    messages   = body.get("messages", [])
-
+    body     = await req.json()
+    chat_id  = body.get("id")
     if not chat_id:
         raise HTTPException(status_code=400, detail="Missing chat id.")
-
-    existing = db.query(TriageSession).filter(
-        TriageSession.id       == str(chat_id),
-        TriageSession.user_sub == u_sub,
-    ).first()
-
+    existing = db.query(TriageSession).filter(TriageSession.id == str(chat_id), TriageSession.user_sub == u_sub).first()
     if existing:
-        existing.messages = messages
-        existing.title    = title
+        existing.messages = body.get("messages", []); existing.title = body.get("title", "Triage Session")
     else:
-        db.add(TriageSession(
-            id=str(chat_id),
-            user_sub=u_sub,
-            title=title,
-            messages=messages,
-        ))
-
+        db.add(TriageSession(id=str(chat_id), user_sub=u_sub, title=body.get("title", "Triage Session"), messages=body.get("messages", [])))
     db.commit()
     return {"ok": True, "saved": True}
 
@@ -1202,51 +1191,27 @@ async def save_triage_history(req: FastAPIRequest, db: Session = Depends(get_db)
 # =============================================================================
 @app.post("/api/voice-turn", response_model=VoiceTurnResponse)
 def voice_turn(req: VoiceTurnRequest):
-    session_id           = str(uuid.uuid4())
-    transcript_original  = req.transcript.strip()
-    source_lang          = _detect_language(transcript_original, req.detected_lang)
-
-    messages = _sanitize_history_for_nova(req.history)
+    session_id          = str(uuid.uuid4())
+    transcript_original = req.transcript.strip()
+    source_lang         = _detect_language(transcript_original, req.detected_lang)
+    messages            = _sanitize_history_for_nova(req.history)
     messages.append({"role": "user", "content": [{"text": transcript_original}]})
 
-    voice_system_prompt = (
-        _triage_system_prompt(req.detected_lang)
-        + "\n\nVOICE OUTPUT RULES:\n"
-        "- Keep responses smooth and conversational for speech.\n"
-        "- Use short sentences.\n"
-        "- Avoid heavy formatting."
-    )
-
-    request_body = {
+    reply_local = _nova_invoke(MODEL_ID_TEXT, {
         "schemaVersion":   "messages-v1",
-        "system":          [{"text": voice_system_prompt}],
+        "system":          [{"text": _triage_system_prompt(req.detected_lang) + "\n\nVOICE OUTPUT RULES:\n- Short sentences.\n- Conversational.\n- Avoid heavy formatting."}],
         "messages":        messages,
-        "inferenceConfig": {
-            "maxTokens":   int(req.max_tokens),
-            "temperature": float(req.temperature),
-            "topP":        0.9,
-        },
-    }
+        "inferenceConfig": {"maxTokens": int(req.max_tokens), "temperature": float(req.temperature), "topP": 0.9},
+    })
 
-    reply_local   = _nova_invoke(MODEL_ID_TEXT, request_body)
-    transcript_en = (
-        _translate_text(transcript_original, source_lang, "en")
-        if source_lang != "en" else transcript_original
-    )
-    reply_en = (
-        _translate_text(reply_local, source_lang, "en")
-        if req.include_english_reply and source_lang != "en" else None
-    )
+    transcript_en = _translate_text(transcript_original, source_lang, "en") if source_lang != "en" else transcript_original
+    reply_en      = _translate_text(reply_local, source_lang, "en") if req.include_english_reply and source_lang != "en" else None
 
     return VoiceTurnResponse(
-        session_id=session_id,
-        source_language=source_lang,
+        session_id=session_id, source_language=source_lang,
         source_language_name=_language_name(source_lang),
-        transcript_original=transcript_original,
-        transcript_en=transcript_en,
-        reply_local=reply_local,
-        reply_en=reply_en,
-        internal_language=source_lang,
+        transcript_original=transcript_original, transcript_en=transcript_en,
+        reply_local=reply_local, reply_en=reply_en, internal_language=source_lang,
     )
 
 
@@ -1256,16 +1221,8 @@ def voice_turn(req: VoiceTurnRequest):
 @app.post("/api/embed", response_model=EmbedResponse)
 def embed(req: EmbedRequest):
     doc_id    = req.doc_id or str(uuid.uuid4())
-    embedding = (
-        _get_multimodal_embedding(req.text, req.image_base64)
-        if req.image_base64 else _get_text_embedding(req.text)
-    )
-    _embed_store[doc_id] = {
-        "text":      req.text,
-        "image_b64": req.image_base64,
-        "embedding": embedding,
-        "metadata":  req.metadata,
-    }
+    embedding = _get_multimodal_embedding(req.text, req.image_base64) if req.image_base64 else _get_text_embedding(req.text)
+    _embed_store[doc_id] = {"text": req.text, "image_b64": req.image_base64, "embedding": embedding, "metadata": req.metadata}
     return EmbedResponse(doc_id=doc_id, embedding_dim=len(embedding))
 
 
@@ -1274,21 +1231,14 @@ def search(req: SearchRequest):
     if not _embed_store:
         return SearchResponse(hits=[])
     query_embedding = _get_text_embedding(req.query)
-    scored = [
-        (doc_id, _cosine_similarity(query_embedding, doc["embedding"]))
-        for doc_id, doc in _embed_store.items()
-    ]
-    scored.sort(key=lambda x: x[1], reverse=True)
-    hits = [
-        SearchHit(
-            doc_id=d_id,
-            score=round(s, 6),
-            text=_embed_store[d_id]["text"],
-            metadata=_embed_store[d_id]["metadata"],
-        )
+    scored = sorted(
+        [(d_id, _cosine_similarity(query_embedding, doc["embedding"])) for d_id, doc in _embed_store.items()],
+        key=lambda x: x[1], reverse=True
+    )
+    return SearchResponse(hits=[
+        SearchHit(doc_id=d_id, score=round(s, 6), text=_embed_store[d_id]["text"], metadata=_embed_store[d_id]["metadata"])
         for d_id, s in scored[: req.top_k]
-    ]
-    return SearchResponse(hits=hits)
+    ])
 
 
 # =============================================================================
@@ -1313,20 +1263,15 @@ def _cognito_userinfo(access_token: str) -> Dict[str, Any]:
 
 
 # =============================================================================
-# ALEXA (Native Webhook Handler) 
+# ALEXA WEBHOOK  ← FULL REMINDERS IMPLEMENTATION
 # =============================================================================
 def _alexa_response(
     text: str,
     end_session: bool = False,
     link_account: bool = False,
     attributes: Optional[dict] = None,
-):
-    """
-    Alexa response envelope.
-    - If link_account=True, Alexa shows the LinkAccount card and ends the session.
-    - Otherwise, we keep the session open by default for a conversational flow.
-    """
-    response_body = {
+) -> JSONResponse:
+    body = {
         "version": "1.0",
         "sessionAttributes": attributes or {},
         "response": {
@@ -1335,32 +1280,17 @@ def _alexa_response(
         },
     }
     if link_account:
-        response_body["response"]["card"] = {"type": "LinkAccount"}
-        response_body["response"]["shouldEndSession"] = True
-    return JSONResponse(response_body)
+        body["response"]["card"]             = {"type": "LinkAccount"}
+        body["response"]["shouldEndSession"] = True
+    return JSONResponse(body)
 
 
 def _alexa_get_access_token(body: dict) -> Optional[str]:
-    """
-    IMPORTANT:
-    Use ONLY the Account Linking token:
-      body.session.user.accessToken
-
-    DO NOT use context.System.apiAccessToken:
-    that's an Alexa API token and cannot be validated against Cognito.
-    """
     return body.get("session", {}).get("user", {}).get("accessToken")
 
 
 def _alexa_user_from_token(access_token: str) -> Dict[str, Any]:
-    """
-    Validate the Alexa-linked token by calling Cognito /oauth2/userInfo.
-
-    This avoids 'aud claim missing' problems because Cognito access tokens
-    often don't include aud (they use client_id).
-    """
-    info = _cognito_userinfo(access_token)  # raises HTTPException(401) if invalid/expired
-    # userInfo typically includes: sub, email, username, etc.
+    info = _cognito_userinfo(access_token)
     if not info or not info.get("sub"):
         raise HTTPException(status_code=401, detail="userInfo did not include sub.")
     return info
@@ -1368,179 +1298,204 @@ def _alexa_user_from_token(access_token: str) -> Dict[str, Any]:
 
 @app.post("/alexa/triage-turn")
 async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
-    """
-    Conversational Alexa flow:
-    - User says: "Alexa, open PulseNova"
-    - Skill responds and keeps session open
-    - User continues until they say stop/cancel/exit/close
-    - We store short history in sessionAttributes to preserve context
-    """
     try:
         body = await req.json()
 
-        req_data = body.get("request", {}) or {}
-        req_type = req_data.get("type")
+        # Verify skill ID
+        application_id = (
+            body.get("session", {}).get("application", {}).get("applicationId") or
+            body.get("context", {}).get("System", {}).get("application", {}).get("applicationId")
+        )
+        if ALEXA_SKILL_ID and application_id and application_id != ALEXA_SKILL_ID:
+            logger.warning(f"Rejected request from unknown skill: {application_id}")
+            return _alexa_response("Unauthorized.", end_session=True)
 
-        # Session attributes (persist during the Alexa session)
+        req_data      = body.get("request", {}) or {}
+        req_type      = req_data.get("type")
         session_attrs = body.get("session", {}).get("attributes") or {}
-        history = session_attrs.get("history", [])
+        history       = session_attrs.get("history", [])
         if not isinstance(history, list):
             history = []
 
-        # Handle built-in stop/cancel early
+        # Alexa API context — needed for Reminders API and timezone
+        system_ctx       = body.get("context", {}).get("System", {})
+        api_endpoint     = system_ctx.get("apiEndpoint", "https://api.amazonalexa.com")
+        api_access_token = system_ctx.get("apiAccessToken", "")
+        device_id        = system_ctx.get("device", {}).get("deviceId", "")
+
+        # ---- Built-in intents (before auth check) ----
         if req_type == "IntentRequest":
-            intent = (req_data.get("intent") or {})
-            intent_name = intent.get("name")
-
+            intent_name = (req_data.get("intent") or {}).get("name")
             if intent_name in ("AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.NavigateHomeIntent"):
-                return _alexa_response(
-                    "Okay. Take care. Goodbye.",
-                    end_session=True,
-                    attributes={"history": []},
-                )
-
+                return _alexa_response("Okay. Take care. Goodbye.", end_session=True, attributes={"history": []})
             if intent_name == "AMAZON.HelpIntent":
                 return _alexa_response(
-                    "You can tell me your symptoms, for example: 'I have a headache.' "
-                    "Then answer my follow-up questions. Say 'stop' anytime to exit.",
-                    end_session=False,
-                    attributes={"history": history[-10:]},
+                    "You can describe your symptoms, or say 'set my medication reminders' "
+                    "to schedule your medications. Say 'stop' anytime to exit.",
+                    end_session=False, attributes={"history": history[-10:]},
                 )
 
-        # Require Account Linking token for all requests (Launch + Intent)
+        # ---- Require account linking ----
         access_token = _alexa_get_access_token(body)
         if not access_token:
-            # Clear, accurate message (not "expired")
             return _alexa_response(
                 "Please link your PulseNova account in the Alexa app to continue.",
                 link_account=True,
             )
 
-        # Validate token + identify user using Cognito userInfo
         try:
             user_info = _alexa_user_from_token(access_token)
-            user_sub = user_info.get("sub")
+            user_sub  = user_info.get("sub")
         except HTTPException as e:
-            # Only ask relink if Cognito says token is invalid/expired
             if e.status_code == 401:
                 return _alexa_response(
-                    "Your PulseNova login needs to be refreshed. Please relink your account in the Alexa app.",
+                    "Your PulseNova login needs to be refreshed. "
+                    "Please relink your account in the Alexa app.",
                     link_account=True,
                 )
             raise
 
-        # LaunchRequest: greet and keep session open
+        # ---- LaunchRequest ----
         if req_type == "LaunchRequest":
             return _alexa_response(
-                "Welcome to PulseNova. Tell me what symptoms you're having.",
-                end_session=False,
-                attributes={"history": []},  # start fresh each new session
+                "Welcome to PulseNova. You can describe your symptoms, "
+                "or say 'set my medication reminders' to schedule your medications.",
+                end_session=False, attributes={"history": []},
             )
 
-        # IntentRequest: main conversation
+        # ---- IntentRequest ----
         if req_type == "IntentRequest":
-            intent = (req_data.get("intent") or {})
+            intent      = (req_data.get("intent") or {})
             intent_name = intent.get("name")
-            slots = intent.get("slots") or {}
+            slots       = intent.get("slots") or {}
 
-            # Prefer your TriageIntent slot (symptoms) with AMAZON.SearchQuery
-            user_text = None
-            if slots.get("symptoms", {}).get("value"):
-                user_text = slots["symptoms"]["value"]
+            # ---- SetRemindersIntent ---- NEW
+            if intent_name == "SetRemindersIntent":
 
-            # Safety net: if the model routes a turn to FallbackIntent,
-            # still keep conversation going by using the raw utterance (if available).
-            if intent_name == "AMAZON.FallbackIntent":
-                # Often Alexa doesn't provide the exact text here. Keep it graceful.
-                return _alexa_response(
-                    "Sorry, I didn't catch that. Please repeat what you said.",
-                    end_session=False,
-                    attributes={"history": history[-10:]},
+                # 1. Check permission
+                if not _check_reminder_permission(body):
+                    return _alexa_permissions_card_response({"history": history[-10:]})
+
+                # 2. Load prescriptions from DB
+                prescriptions = (
+                    db.query(Prescription)
+                      .filter(Prescription.user_sub == user_sub)
+                      .all()
                 )
 
-            # You may have other intents; if they don't provide user text, prompt again.
-            if intent_name not in ("TriageIntent", "CatchAllIntent"):
-                # Optional: route unknown intents back into conversation
-                if not user_text:
+                if not prescriptions:
                     return _alexa_response(
-                        "Tell me your symptoms, or say 'stop' to exit.",
-                        end_session=False,
-                        attributes={"history": history[-10:]},
+                        "I don't see any saved medications in your PulseNova account. "
+                        "Please add your prescriptions in the PulseNova app first, "
+                        "then say 'set my medication reminders' again.",
+                        end_session=False, attributes={"history": history[-10:]},
                     )
+
+                # 3. Get device timezone
+                tz = _get_alexa_timezone(api_endpoint, device_id, api_access_token)
+                logger.info(f"Creating reminders for {user_sub}, tz={tz}, meds={len(prescriptions)}")
+
+                # 4. Create reminders
+                created   = 0
+                failed    = 0
+                med_names = []
+
+                for rx in prescriptions:
+                    times = rx.times or ["08:00"]
+                    for t in times:
+                        ok = _create_alexa_reminder(
+                            api_endpoint     = api_endpoint,
+                            api_access_token = api_access_token,
+                            med_name         = rx.name,
+                            med_dose         = rx.dose or "",
+                            trigger_time     = t,
+                            repeat           = rx.repeat or "DAILY",
+                            days             = rx.days   or [],
+                            timezone         = tz,
+                        )
+                        if ok: created += 1
+                        else:  failed  += 1
+                    if rx.name not in med_names:
+                        med_names.append(rx.name)
+
+                # 5. Respond
+                if created > 0 and failed == 0:
+                    med_list = ", ".join(med_names)
+                    reply = (
+                        f"Done! I've set {created} reminder{'s' if created > 1 else ''} "
+                        f"for {med_list}. You'll be reminded at your scheduled times. "
+                        f"Is there anything else I can help you with?"
+                    )
+                elif created > 0:
+                    reply = (
+                        f"I set {created} reminder{'s' if created > 1 else ''} successfully, "
+                        f"but {failed} couldn't be created. Please try again for those."
+                    )
+                else:
+                    reply = (
+                        "I wasn't able to create the reminders. "
+                        "Please make sure reminders are enabled in the Alexa app and try again."
+                    )
+
+                return _alexa_response(reply, end_session=False, attributes={"history": history[-10:]})
+
+            # ---- FallbackIntent ----
+            if intent_name == "AMAZON.FallbackIntent":
+                return _alexa_response(
+                    "Sorry, I didn't catch that. Describe your symptoms "
+                    "or say 'set my medication reminders'.",
+                    end_session=False, attributes={"history": history[-10:]},
+                )
+
+            # ---- Triage / CatchAll / GetMedicalData ----
+            user_text = (
+                slots.get("symptoms", {}).get("value") or
+                slots.get("catchall", {}).get("value") or
+                slots.get("query",    {}).get("value")
+            )
 
             if not user_text:
                 return _alexa_response(
                     "I didn't quite catch that. Could you repeat?",
-                    end_session=False,
-                    attributes={"history": history[-10:]},
+                    end_session=False, attributes={"history": history[-10:]},
                 )
 
-            # Maintain short conversation history (messages-v1 format)
-            # Convert prior saved turns into Nova schema if needed
-            # We'll store in Alexa history as messages-v1 items
-            if history and isinstance(history[0], dict) and "role" in history[0] and "content" in history[0]:
-                nova_history = history
-            else:
-                # If history is in older format, reset safely
-                nova_history = []
-
+            nova_history = history if (history and isinstance(history[0], dict) and "role" in history[0]) else []
             nova_history.append({"role": "user", "content": [{"text": user_text}]})
 
-            user_row = db.query(User).filter(User.sub == user_sub).first()
+            user_row    = db.query(User).filter(User.sub == user_sub).first()
             patient_ctx = _build_patient_context_from_user(user_row)
-            
-            system_prompt = (
-                "You are PulseNova on Alexa. Keep responses short and conversational for voice. "
-                "Ask ONE clarifying question at a time. "
-                "If symptoms sound life-threatening, advise calling emergency services immediately.\n\n"
-            )
-            
-            # Prepend patient context + allergy rule if available
+            system_prompt = "You are PulseNova on Alexa. Short, conversational voice responses. ONE clarifying question at a time. Advise emergency services for life-threatening symptoms.\n\n"
             if patient_ctx:
                 system_prompt = patient_ctx + "\n\n" + _allergy_safety_rule_block() + "\n\n" + system_prompt
             else:
-                system_prompt = (
-                    "If the user has allergies, ask them to share them before suggesting foods/medications.\n\n"
-                    + system_prompt
-                )
-
-            bedrock_req = {
-                "schemaVersion": "messages-v1",
-                "system": [{"text": system_prompt}],
-                "messages": nova_history[-10:],  # keep it short for latency
-                "inferenceConfig": {"maxTokens": 200, "temperature": 0.3},
-            }
+                system_prompt = "If the user has allergies, ask them to share them before suggesting foods/medications.\n\n" + system_prompt
 
             try:
-                reply = _nova_invoke(MODEL_ID_TEXT, bedrock_req).strip()
+                reply = _nova_invoke(MODEL_ID_TEXT, {
+                    "schemaVersion": "messages-v1",
+                    "system":        [{"text": system_prompt}],
+                    "messages":      nova_history[-10:],
+                    "inferenceConfig": {"maxTokens": 200, "temperature": 0.3},
+                }).strip()
             except Exception as e:
                 logger.error(f"Bedrock Alexa Error: {e}")
                 return _alexa_response(
-                    "I'm having trouble reaching the medical model right now. Please try again in a moment.",
-                    end_session=False,
-                    attributes={"history": nova_history[-10:]},
+                    "I'm having trouble reaching the medical model right now. Please try again.",
+                    end_session=False, attributes={"history": nova_history[-10:]},
                 )
 
             nova_history.append({"role": "assistant", "content": [{"text": reply}]})
+            return _alexa_response(reply, end_session=False, attributes={"history": nova_history[-10:]})
 
-            # Keep session open so the user can continue speaking
-            return _alexa_response(
-                reply,
-                end_session=False,
-                attributes={"history": nova_history[-10:]},
-            )
-
-        # Any other request type
         return _alexa_response(
-            "Tell me your symptoms, or say 'stop' to exit.",
-            end_session=False,
-            attributes={"history": history[-10:]},
+            "Tell me your symptoms, or say 'set my medication reminders' to get started.",
+            end_session=False, attributes={"history": history[-10:]},
         )
 
     except Exception as e:
         logger.error(f"Fatal Alexa Webhook Error: {e}")
         return _alexa_response(
             "Sorry, PulseNova encountered an internal error. Please try again.",
-            end_session=False,
-            attributes={"history": []},
+            end_session=False, attributes={"history": []},
         )
