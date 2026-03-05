@@ -19,6 +19,10 @@ body { font-family: 'Sora', system-ui, sans-serif; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fade-in { animation: fadeUp .45s ease-out forwards; }
 
+/* NEW: Fade Out Animation for smooth page transitions */
+@keyframes fadeDownOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(14px); } }
+.animate-fade-out { animation: fadeDownOut .25s ease-in forwards; }
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
