@@ -236,6 +236,12 @@ class PulseNovaApp {
 
   /* -------------------- NAV -------------------- */
   navigate(pageId) {
+    // NEW: Intercept 'dashboard' clicks and route to the dedicated accounts page
+    if (pageId === 'dashboard') {
+      window.location.href = '/account';
+      return;
+    }
+
     if (pageId !== 'vitals' && this.vitals.isMonitoring) this.stopVitals(false);
     document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
     const page = document.getElementById(`page-${pageId}`);
@@ -252,7 +258,6 @@ class PulseNovaApp {
   }
 
   toggleMobileMenu() { document.getElementById('mobile-menu')?.classList.toggle('hidden'); }
-
   /* -------------------- LOGOUT -------------------- */
   // FIX: logout() method was missing from the class entirely.
   // The dashboard "Sign out" button called app.logout() which threw
@@ -884,17 +889,45 @@ class PulseNovaApp {
   }
 
   /* -------------------- DROPZONES -------------------- */
-  initDropzones() {
+ initDropzones() {
     this.setupDropzone('xray-dropzone', 'xray-input', f => this.handleDroppedFile(f, 'xray'));
     this.setupDropzone('lab-dropzone',  'lab-input',  f => this.handleDroppedFile(f, 'lab'));
+    // ADDED: Initialize the prescription dropzone
+    this.setupDropzone('rx-dropzone',   'rx-input',   f => this.handleDroppedFile(f, 'rx'));
   }
+
   setupDropzone(dropId, inputId, onFile) {
     const zone = document.getElementById(dropId); if (!zone) return;
-    ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); }));
-    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-active', 'drag-active-purple'); }));
-    zone.addEventListener('drop', e => { const f = e.dataTransfer?.files?.[0]; if (f) onFile(f); });
+    
+    ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, e => { 
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      zone.classList.add(dropId.includes('lab') ? 'drag-active-purple' : 'drag-active'); 
+    }));
+    
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { 
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      zone.classList.remove('drag-active', 'drag-active-purple'); 
+    }));
+    
+    zone.addEventListener('drop', e => { 
+      const f = e.dataTransfer?.files?.[0]; 
+      if (f) onFile(f); 
+    });
   }
-  handleDroppedFile(file, type) { if (type === 'xray') this.handleXrayUpload({ files: [file] }); else this.handleLabUpload({ files: [file] }); }
+
+  handleDroppedFile(file, type) { 
+    if (type === 'xray') {
+      this.handleXrayUpload({ files: [file] }); 
+    } else if (type === 'lab') {
+      this.handleLabUpload({ files: [file] }); 
+    } else if (type === 'rx') {
+      // ADDED: Route prescription drops to the existing handleRxUpload function
+      this.handleRxUpload({ files: [file] }); 
+    }
+  }
+
   handleXrayUpload(input) { this.handleFileUpload(input, 'xray'); }
   handleLabUpload(input)  { this.handleFileUpload(input, 'lab');  }
 
@@ -922,7 +955,6 @@ class PulseNovaApp {
     };
     reader.readAsDataURL(file);
   }
-
   /* -------------------- DATABASE SYNC -------------------- */
   async loadUserHistory() {
     // FIX: Guard uses the correctly-initialised this.isAuthenticated (false by
@@ -2165,7 +2197,7 @@ List 4 questions the patient should ask about these results.
   closeAlexaSendModal() {
     document.getElementById('alexa-send-modal')?.classList.add('hidden');
   }
-
+  
   async sendToAlexa() {
     const allMeds  = [...this.rxExtracted, ...this.rxManualDraft];
     const selected = allMeds.filter((_, idx) => {
@@ -2177,12 +2209,23 @@ List 4 questions the patient should ask about these results.
     const btn = document.getElementById('btn-send-to-alexa');
     if (btn) { btn.disabled = true; btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sending…`; }
 
-    // Build a human-readable Alexa phrase
+    // --- NEW: Actually send the data to your server ---
+    try {
+      await fetch('/api/alexa/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meds: selected })
+      });
+    } catch (e) {
+      console.error('Failed to queue reminders', e);
+    }
+    // --------------------------------------------------
+
+    // Keep the phrase builder active so the "Copy Phrase" button still works!
     const lines = selected.map(med => {
       const timeStr = (med.times || []).join(' and ') || 'daily';
       return `${med.name}${med.dose ? ' ' + med.dose : ''} at ${timeStr}`;
     }).join(', and ');
-
     this._alexaPhrase = `Alexa, ask PulseNova to remind me to take ${lines}`;
 
     await new Promise(r => setTimeout(r, 700));
@@ -2191,7 +2234,7 @@ List 4 questions the patient should ask about these results.
     if (window.lucide) lucide.createIcons();
 
     this.closeAlexaSendModal();
-    this.toast('Queued. Open Alexa to confirm.', 'alarm-clock');
+    this.toast('Sent! Open Alexa to confirm.', 'check');
     setTimeout(() => this.toast('Say: "Alexa, open PulseNova"', 'mic'), 2600);
   }
 
@@ -2201,8 +2244,6 @@ List 4 questions the patient should ask about these results.
       .then(()  => this.toast('Copied to clipboard', 'copy'))
       .catch(()  => this.toast('Copy failed — try manually', 'alert-triangle'));
   }
-}
-
 // =============================================================================
 // BOOTSTRAP
 // FIX: Full flow is now:
