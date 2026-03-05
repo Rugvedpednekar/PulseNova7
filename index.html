@@ -6,12 +6,16 @@
   <title>PulseNova - AI Medical Assistant</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/static/styles.css" />
 
   <style>
-    :root { --navH: 64px; }
+    :root { 
+      --navH: 64px; 
+      --glow: rgba(45,108,255,.22);
+    }
     html, body { height: 100%; }
 
     /* Allow normal scrolling on the body */
@@ -44,10 +48,86 @@
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
+
+    /* --- Page Transition Animations --- */
+    @keyframes fadeDownOut { 
+      from { opacity: 1; transform: translateY(0); } 
+      to { opacity: 0; transform: translateY(14px); } 
+    }
+    .animate-fade-out { animation: fadeDownOut .25s ease-in forwards; }
+
+    /* --- Intro Sequence CSS --- */
+    .ecgIntro { animation: fadeOut .6s ease-out forwards; animation-delay: 2.2s; }
+    .ecgPath {
+      stroke-dasharray: 2200; stroke-dashoffset: 2200;
+      filter: drop-shadow(0 0 12px var(--glow));
+      animation: draw 1.35s ease-out forwards, shimmer .9s ease-in-out 1.35s 1;
+    }
+    .spark {
+      background: linear-gradient(90deg, rgba(29,78,216,0) 0%, rgba(6,182,212,.65) 55%, rgba(29,78,216,0) 100%);
+      animation: spark 1.0s ease-in-out 0.9s 2;
+    }
+    .scan {
+      background: linear-gradient(90deg, rgba(29,78,216,0) 0%, rgba(29,78,216,.12) 35%, rgba(6,182,212,.40) 55%, rgba(29,78,216,.10) 75%, rgba(29,78,216,0) 100%);
+      animation: scan 0.95s ease-in-out forwards; animation-delay: 1.55s;
+    }
+    .lockup { animation: lockupIn .7s ease-out forwards; animation-delay: 2.4s; }
+    .icon::after {
+      content: ""; position: absolute; inset: -35%;
+      background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.38), rgba(255,255,255,0) 55%);
+      opacity: .6; transform: rotate(10deg); pointer-events: none;
+    }
+    .wave {
+      stroke-dasharray: 260; stroke-dashoffset: 0;
+      animation: waveMove 1.0s ease-in-out 2.55s 2;
+    }
+    .wordmark {
+      transform: translateX(12px);
+      animation: wordIn .55s ease-out forwards, glowSettle 1.0s ease-out forwards;
+      animation-delay: 2.65s, 2.65s;
+    }
+
+    @keyframes lockupIn { from { opacity: 0; transform: translateY(-50%) translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(-50%) translateY(0) scale(1); } }
+    @keyframes wordIn { to { opacity: 1; transform: translateX(0); } }
+    @keyframes glowSettle { 0% { filter: drop-shadow(0 0 26px rgba(29,78,216,.24)); } 100% { filter: drop-shadow(0 0 12px rgba(6,182,212,.14)); } }
+    @keyframes waveMove { 0% { stroke-dashoffset: 0; } 50% { stroke-dashoffset: -60; } 100% { stroke-dashoffset: -120; } }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes shimmer { 0%, 100% { filter: drop-shadow(0 0 10px var(--glow)); } 50% { filter: drop-shadow(0 0 18px rgba(6,182,212,.30)); } }
+    @keyframes spark { 0% { left: -22%; opacity: 0; } 15% { opacity: 1; } 50% { left: 45%; opacity: 1; } 85% { opacity: 1; } 100% { left: 122%; opacity: 0; } }
+    @keyframes scan { 0% { left: -30%; opacity: 0; } 10% { opacity: 1; } 50% { left: 45%; opacity: 1; } 90% { opacity: 1; } 100% { left: 120%; opacity: 0; } }
+    @keyframes fadeOut { to { opacity: 0; } }
   </style>
 </head>
 
 <body class="bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-900 flex flex-col min-h-screen grain">
+
+<div id="intro-overlay" class="fixed inset-0 z-[100] bg-white transition-opacity duration-700 ease-in-out">
+  <div class="h-full grid place-items-center">
+    <div class="w-[min(960px,94vw)] aspect-video relative overflow-hidden bg-white">
+      
+      <div class="ecgIntro absolute inset-0 opacity-1" aria-hidden="true">
+        <div class="spark absolute top-1/2 left-[-22%] w-[18%] h-[8px] -translate-y-1/2 blur-[1px] opacity-0"></div>
+        <svg viewBox="0 0 1920 1080" preserveAspectRatio="none" class="absolute inset-0">
+          <path class="ecgPath fill-none stroke-blue-700 stroke-[9px]" stroke-linecap="round" stroke-linejoin="round"
+            d="M 150 540 L 520 540 L 640 540 L 710 430 L 780 660 L 845 540 L 930 540 L 1770 540" />
+        </svg>
+      </div>
+
+      <div class="scan absolute top-[12%] bottom-[12%] left-[-30%] w-[16%] opacity-0 blur-[1px]" aria-hidden="true"></div>
+
+      <div class="lockup absolute left-[10%] top-[42%] -translate-y-1/2 flex items-center gap-[18px] opacity-0" aria-label="PulseNova logo lockup">
+        <div class="icon w-[84px] h-[84px] rounded-[22px] bg-blue-600 grid place-items-center shadow-[0_14px_38px_rgba(0,0,0,.07)] relative overflow-hidden" aria-hidden="true">
+          <svg viewBox="0 0 64 64" class="w-[64px] h-[64px] relative z-10">
+            <path class="wave fill-none stroke-white stroke-[4px]" stroke-linecap="round" stroke-linejoin="round"
+              d="M 8 34 L 22 34 L 26 34 L 30 12 L 35 56 L 40 34 L 46 34 L 56 34" />
+          </svg>
+        </div>
+        <div class="wordmark text-[48px] leading-none font-bold tracking-tight bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent opacity-0 whitespace-nowrap cursor-default select-none">PulseNova</div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <nav class="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
   <div class="max-w-7xl mx-auto px-4">
@@ -103,13 +183,13 @@
           <i data-lucide="history" class="w-3.5 h-3.5"></i> History
         </button>
 
-        <a id="nav-signin" href="/login"
+        <a id="nav-signin" href="/auth/login"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
           <i data-lucide="log-in" class="w-3.5 h-3.5"></i> Sign in
         </a>
 
         <button id="nav-account" onclick="app.navigate('dashboard')"
-           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+           class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors">
           <i data-lucide="user" class="w-3.5 h-3.5"></i> Dashboard
         </button>
       </div>
@@ -152,8 +232,8 @@
         <i data-lucide="history" class="w-4 h-4"></i> Chat History
       </button>
 
-      <a id="mobile-nav-signin" href="/login" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50"><i data-lucide="log-in" class="w-4 h-4"></i>Sign in</a>
-      <button id="mobile-nav-account" onclick="app.navigate('dashboard')" class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50">
+      <a id="mobile-nav-signin" href="/auth/login" class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50"><i data-lucide="log-in" class="w-4 h-4"></i>Sign in</a>
+      <button id="mobile-nav-account" onclick="app.navigate('dashboard')" class="hidden w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50">
         <i data-lucide="user" class="w-4 h-4"></i>Dashboard
       </button>
     </div>
@@ -703,37 +783,7 @@
                 </button>
               </div>
             </div>
-
-            <div id="alexa-send-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-              <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl animate-fade-in">
-                
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                  <div>
-                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                      <i data-lucide="server" class="w-5 h-5 text-blue-600"></i> Sync with PulseNova Database
-                    </h2>
-                    <p class="text-xs text-slate-500 mt-1">Verify times below. They will be saved to your profile for Alexa to read.</p>
-                  </div>
-                  <button onclick="app.closeAlexaSendModal()" class="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                  </button>
-                </div>
-                
-                <div id="alexa-reminder-config" class="flex-1 overflow-y-auto max-h-[50vh] p-5 bg-slate-50/50">
-                  </div>
-
-                <div class="p-5 border-t border-slate-100 bg-white">
-                  <div class="flex items-center gap-3 bg-amber-50 text-amber-800 p-3 rounded-xl mb-4 text-xs font-medium border border-amber-100">
-                    <i data-lucide="mic" class="w-4 h-4 shrink-0"></i>
-                    <p>After clicking Send Request, go to your Alexa device and say:<br><strong>"Alexa, ask Pulse Nova to sync my meds."</strong></p>
-                  </div>
-                  <button id="btn-send-to-alexa" onclick="app.sendToAlexa()" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-lg shadow-blue-500/30">
-                    <i data-lucide="upload-cloud" class="w-4 h-4"></i> Save & Queue Sync
-                  </button>
-                </div>
-                
-              </div>
-            </div>
+          </div>
 
           <div id="rx-pane-manual" class="space-y-4 hidden">
             <div class="bg-white rounded-2xl border border-slate-200 p-5">
@@ -919,52 +969,39 @@
   </div>
 </div>
 
-<div id="alexa-send-modal" class="hidden fixed inset-0 z-[70]">
-  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="app.closeAlexaSendModal()"></div>
-  <div class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl border-t border-slate-200 shadow-2xl max-h-[90vh] overflow-hidden">
-    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <i data-lucide="alarm-clock" class="w-4 h-4 text-blue-600"></i>
-        <div class="font-bold text-slate-800">Send to Alexa</div>
-        <span class="chip chip-blue text-[10px]">Confirm in Alexa</span>
+<div id="alexa-send-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+  <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl animate-fade-in relative">
+    
+    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="server" class="w-5 h-5 text-blue-600"></i> Sync with PulseNova Database
+        </h2>
+        <p class="text-xs text-slate-500 mt-1">Verify times below. They will be saved to your profile for Alexa to read.</p>
       </div>
-      <button onclick="app.closeAlexaSendModal()" class="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1">
-        <i data-lucide="x" class="w-3.5 h-3.5"></i> Close
+      <button onclick="app.closeAlexaSendModal()" class="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </div>
-
-    <div class="p-4 space-y-3">
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-        <div class="text-sm font-bold text-slate-800 mb-1">Choose reminders to send</div>
-        <div class="text-xs text-slate-500">Edit times and repeat rules below. Alexa will ask you to confirm before creating reminders.</div>
+    
+    <div id="alexa-reminder-config" class="flex-1 overflow-y-auto max-h-[50vh] p-5 bg-slate-50/50">
+      <div class="text-sm text-slate-400 text-center py-8">
+        Add prescriptions first (manual or upload), then open this.
       </div>
+    </div>
 
-      <div id="alexa-reminder-config" class="space-y-2">
-        <div class="text-sm text-slate-400 text-center py-8">
-          Add prescriptions first (manual or upload), then open this.
-        </div>
+    <div class="p-5 border-t border-slate-100 bg-white">
+      <div class="flex items-center gap-3 bg-amber-50 text-amber-800 p-3 rounded-xl mb-4 text-xs font-medium border border-amber-100">
+        <i data-lucide="mic" class="w-4 h-4 shrink-0"></i>
+        <p>After clicking Send Request, go to your Alexa device and say:<br><strong>"Alexa, ask Pulse Nova to sync my meds."</strong></p>
       </div>
-
-      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800">
-        <div class="flex items-start gap-2">
-          <i data-lucide="info" class="w-4 h-4 mt-0.5"></i>
-          <div class="text-xs leading-relaxed">
-            After sending, open Alexa and say:
-            <span class="font-mono bg-amber-100 border border-amber-200 px-2 py-1 rounded-lg">Alexa, open PulseNova</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex gap-2 pb-3">
-        <button onclick="app.sendToAlexa()" id="btn-send-to-alexa"
-                class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-          <i data-lucide="send" class="w-4 h-4"></i> Send Request
-        </button>
-        <button onclick="app.copyAlexaPhrase()" class="bg-white border border-slate-200 text-slate-700 py-3 px-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-          <i data-lucide="copy" class="w-4 h-4"></i> Copy Phrase
+      <div class="flex gap-2">
+        <button id="btn-send-to-alexa" onclick="app.sendToAlexa()" class="flex-1 bg-blue-600 hover:bg-blue-700 transition-colors text-white py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-lg shadow-blue-500/30">
+          <i data-lucide="upload-cloud" class="w-4 h-4"></i> Save & Queue Sync
         </button>
       </div>
     </div>
+    
   </div>
 </div>
 
@@ -1048,23 +1085,35 @@
     });
   })();
 </script>
+
 <script src="https://unpkg.com/lucide@latest"></script>
 
-    <script src="/static/app.js"></script>
+<script src="/static/app.js"></script>
 
-    <script>
-      // Run once when the page loads
-      document.addEventListener('DOMContentLoaded', function() {
-        if (window.lucide) {
-          lucide.createIcons();
-        }
-      });
-      
-      // Run again if the page dynamically changes (like logging in)
-      const observer = new MutationObserver(() => {
-        if (window.lucide) lucide.createIcons();
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-    </script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  });
+  // Watch for dynamically added DOM elements (like modals) and redraw icons
+  const observer = new MutationObserver(() => {
+    if (window.lucide) lucide.createIcons();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+</script>
+
+<script>
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const intro = document.getElementById('intro-overlay');
+      if (intro) {
+        intro.classList.add('opacity-0'); 
+        setTimeout(() => intro.remove(), 700); 
+      }
+    }, 3800); 
+  });
+</script>
+
 </body>
 </html>
