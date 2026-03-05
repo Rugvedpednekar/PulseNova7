@@ -1102,8 +1102,18 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
             user_text = None
             if slots.get("symptoms", {}).get("value"):
                 user_text = slots["symptoms"]["value"]
+            elif slots.get("catchall", {}).get("value"):
+                user_text = slots["catchall"]["value"]
+                
+            # Manually map conversational intents to text so Nova understands them
+            if intent_name == "AMAZON.YesIntent": 
+                user_text = "Yes"
+            elif intent_name == "AMAZON.NoIntent": 
+                user_text = "No"
+            elif intent_name == "GreetingIntent": 
+                user_text = "Hello"
 
-            # Safety net: if the model routes a turn to FallbackIntent,
+            # Safety net for Fallback
             if intent_name == "AMAZON.FallbackIntent":
                 return _alexa_response(
                     "Sorry, I didn't catch that. Please repeat what you said.",
@@ -1111,13 +1121,7 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
                     attributes={"history": history[-10:]},
                 )
 
-            if intent_name not in ("TriageIntent", "CatchAllIntent") and not user_text:
-                return _alexa_response(
-                    "Tell me your symptoms, or say 'stop' to exit.",
-                    end_session=False,
-                    attributes={"history": history[-10:]},
-                )
-
+            # If we still have no text after checking slots and intents, prompt again
             if not user_text:
                 return _alexa_response(
                     "I didn't quite catch that. Could you repeat?",
