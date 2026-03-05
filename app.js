@@ -2182,57 +2182,72 @@ List 4 questions the patient should ask about these results.
   /* ALEXA MODAL                                                        */
   /* ------------------------------------------------------------------ */
   openAlexaSendModal() {
-    // Target the specific config container inside the modal
-    const configEl = document.getElementById('alexa-reminder-config');
-    const modal = document.getElementById('alexa-send-modal');
-    
-    if (!modal || !configEl) return;
+      const configEl = document.getElementById('alexa-reminder-config');
+      const modal = document.getElementById('alexa-send-modal');
+      
+      if (!modal || !configEl) return;
 
-    configEl.innerHTML = '';
-    
-    // Check if there are any saved prescriptions to display
-    if (!this.rxSaved || this.rxSaved.length === 0) {
-      configEl.innerHTML = '<div class="text-sm text-slate-400 text-center py-8">Add and save prescriptions first, then open this.</div>';
+      configEl.innerHTML = '';
+      
+      if (!this.rxSaved || this.rxSaved.length === 0) {
+        configEl.innerHTML = '<div class="text-sm text-slate-400 text-center py-8">Add and save prescriptions first, then open this.</div>';
+        modal.classList.remove('hidden');
+        return;
+      }
+
+      this.rxSaved.forEach((m, idx) => {
+        // Loop through existing times to create individual time picker inputs
+        const medTimes = (m.times && m.times.length) ? m.times : ['08:00'];
+        let timesHtml = '';
+        medTimes.forEach(t => {
+          timesHtml += `<input type="time" class="alexa-rx-time-input border border-slate-200 bg-white rounded-lg px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700" value="${this.escapeHtml(t)}">`;
+        });
+        
+        const row = document.createElement('div');
+        row.className = 'alexa-rx-item bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3 shadow-sm';
+        row.dataset.idx = idx;
+        
+        row.innerHTML = `
+          <div class="flex items-start sm:items-center gap-3 flex-1 min-w-0 w-full">
+            <input type="checkbox" id="alexa-med-${idx}" class="alexa-rx-check w-4 h-4 accent-blue-600 shrink-0 mt-1 sm:mt-0" checked>
+            <label for="alexa-med-${idx}" class="min-w-0 cursor-pointer flex-1">
+              <div class="font-bold text-slate-800 text-base truncate">${this.escapeHtml(m.name)}</div>
+              <div class="text-xs font-medium text-slate-500">${this.escapeHtml(m.dose || '--')}</div>
+            </label>
+          </div>
+          <div class="flex items-start sm:items-center gap-3 w-full sm:w-auto pl-7 sm:pl-0">
+            <div class="flex flex-col sm:items-end w-full">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Reminder Times</label>
+              <div class="flex flex-wrap sm:justify-end gap-1.5 alexa-time-container">
+                ${timesHtml}
+                <button type="button" onclick="app.addAlexaTimeSlot(this)" class="px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-sm">
+                  <i data-lucide="plus" class="w-3 h-3"></i> Add
+                </button>
+              </div>
+            </div>
+            <span class="chip chip-slate text-[10px] shrink-0 mt-5 hidden sm:inline-flex">${this.escapeHtml(m.repeat || 'DAILY')}</span>
+          </div>
+        `;
+        configEl.appendChild(row);
+      });
+
       modal.classList.remove('hidden');
-      return;
+      if (window.lucide) lucide.createIcons();
     }
 
-    // Generate an editable row for each saved prescription
-    this.rxSaved.forEach((m, idx) => {
-      // Convert array ["08:00", "20:00"] to a comma-separated string for easy editing
-      const timeStr = (m.times && m.times.length) ? m.times.join(', ') : '08:00';
-      
-      const row = document.createElement('div');
-      // Adding 'alexa-rx-item' and 'data-idx' so sendToAlexa can loop through them
-      row.className = 'alexa-rx-item bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 mb-2';
-      row.dataset.idx = idx;
-      
-      row.innerHTML = `
-        <div class="flex items-center gap-3 flex-1 min-w-0">
-          <input type="checkbox" id="alexa-med-${idx}" class="alexa-rx-check w-4 h-4 accent-blue-600 shrink-0" checked>
-          <label for="alexa-med-${idx}" class="min-w-0 cursor-pointer flex-1">
-            <div class="font-semibold text-slate-800 text-sm truncate">${this.escapeHtml(m.name)}</div>
-            <div class="text-xs text-slate-400">${this.escapeHtml(m.dose || '--')}</div>
-          </label>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="flex flex-col items-end">
-            <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Times (HH:MM)</label>
-            <input type="text" class="alexa-rx-times border border-slate-200 rounded-lg px-2 py-1.5 text-sm w-32 outline-none focus:border-blue-500 text-right" value="${this.escapeHtml(timeStr)}" placeholder="08:00, 20:00">
-          </div>
-          <span class="chip chip-slate text-[10px] shrink-0 mt-4">${this.escapeHtml(m.repeat || 'DAILY')}</span>
-        </div>
-      `;
-      configEl.appendChild(row);
-    });
+    // NEW HELPER: Dynamically adds a new time picker to the row when "+ Add" is clicked
+    addAlexaTimeSlot(btn) {
+      const container = btn.parentElement;
+      const input = document.createElement('input');
+      input.type = 'time';
+      input.className = 'alexa-rx-time-input border border-slate-200 bg-white rounded-lg px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-700';
+      input.value = '12:00'; 
+      container.insertBefore(input, btn);
+    }
 
-    modal.classList.remove('hidden');
-    if (window.lucide) lucide.createIcons();
-  }
-
-  closeAlexaSendModal() {
-    document.getElementById('alexa-send-modal')?.classList.add('hidden');
-  }
+    closeAlexaSendModal() {
+      document.getElementById('alexa-send-modal')?.classList.add('hidden');
+    }
 
   async sendToAlexa() {
     const btn = document.getElementById('btn-send-to-alexa');
@@ -2248,39 +2263,42 @@ List 4 questions the patient should ask about these results.
     items.forEach(item => {
       const idx = parseInt(item.dataset.idx);
       const isChecked = item.querySelector('.alexa-rx-check').checked;
-      const timesInput = item.querySelector('.alexa-rx-times').value;
-
+      
       if (isChecked && updatedSaved[idx]) {
         selectedCount++;
-        // Parse the comma-separated string and validate military time format (HH:MM)
-        const rawTimes = timesInput.split(',').map(t => t.trim());
-        const validTimes = rawTimes.filter(t => /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(t));
         
-        // Update the array; fallback to 08:00 if the user typed nonsense
+        // Grab all the individual time pickers in this specific row
+        const timeInputs = item.querySelectorAll('.alexa-rx-time-input');
+        const validTimes = [];
+        
+        timeInputs.forEach(ti => {
+          // Native time inputs automatically return the strict 24hr format (e.g., "14:30")
+          const val = ti.value; 
+          if (val && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) {
+            validTimes.push(val);
+          }
+        });
+        
         updatedSaved[idx].times = validTimes.length > 0 ? validTimes : ["08:00"];
       }
     });
 
     if (selectedCount === 0) {
       this.toast('Select at least one medication.', 'alert-triangle');
-      if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Send Request`; }
+      if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="upload-cloud" class="w-4 h-4"></i> Save & Queue Sync`; }
       return;
     }
 
-    // 1. Update local browser state
     this.rxSaved = updatedSaved;
     localStorage.setItem('pulsenova_rx', JSON.stringify(this.rxSaved));
-
-    // 2. Push the updated times to PostgreSQL
+    
+    // Save to PostgreSQL backend
     await this._savePrescriptionsToDB(this.rxSaved);
-
-    // 3. Update the visible saved list in the UI to reflect new times
     this._renderRxSaved();
 
-    // 4. UI Feedback
     if (btn) { 
         btn.disabled = false; 
-        btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Send Request`; 
+        btn.innerHTML = `<i data-lucide="upload-cloud" class="w-4 h-4"></i> Save & Queue Sync`; 
     }
     if (window.lucide) lucide.createIcons();
 
