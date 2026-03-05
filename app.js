@@ -2295,7 +2295,23 @@ List 4 questions the patient should ask about these results.
       .then(()  => this.toast('Copied to clipboard', 'copy'))
       .catch(() => this.toast('Copy failed — try manually', 'alert-triangle'));
   }
+
+  async _savePrescriptionsToDB(prescriptions) {
+    if (!this.isAuthenticated) return;
+    try {
+      // NOTE: Update '/api/prescriptions' to whatever your actual backend URL is for saving meds!
+      const res = await fetch('/api/prescriptions', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prescriptions })
+      });
+      if (!res.ok) console.warn('Failed to sync to database');
+    } catch (err) {
+      console.error('Database sync error:', err);
+    }
+  }
 }
+
 
 // =============================================================================
 // BOOTSTRAP
