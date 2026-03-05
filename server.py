@@ -1312,29 +1312,6 @@ def _cognito_userinfo(access_token: str) -> Dict[str, Any]:
         raise HTTPException(status_code=502, detail="Could not reach Cognito userInfo endpoint.")
 
 
-
-# =============================================================================
-# ALEXA REMINDERS 
-# =============================================================================
-_pending_reminders: Dict[str, List[dict]] = {}
-
-class QueueRemindersRequest(BaseModel):
-    meds: list
-
-@app.post("/api/alexa/queue")
-def queue_alexa_reminders(req: QueueRemindersRequest, req_fastapi: FastAPIRequest):
-    session_id = req_fastapi.cookies.get(SESSION_COOKIE)
-    s          = _get_session(session_id)
-    if not s:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    u_sub = (s.get("profile") or {}).get("sub")
-    if not u_sub:
-        raise HTTPException(status_code=401)
-
-    # Store the pending meds in memory for this user
-    _pending_reminders[u_sub] = req.meds
-    return {"ok": True}
 # =============================================================================
 # ALEXA (Native Webhook Handler) 
 # =============================================================================
@@ -1454,21 +1431,6 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
 
         # LaunchRequest: greet and keep session open
         if req_type == "LaunchRequest":
-            # --- NEW: Check if the user just sent reminders from the web app ---
-            pending = _pending_reminders.get(user_sub, [])
-            if pending:
-                # Clear them so she doesn't ask again next time
-                _pending_reminders.pop(user_sub, None)
-                med_names = ", ".join([m.get("name", "medication") for m in pending])
-                
-                return _alexa_response(
-                    f"Welcome to PulseNova. I see you just sent reminders for {med_names} from the web dashboard. Would you like me to set them now?",
-                    end_session=False,
-                    attributes={"history": [], "awaiting_reminder_confirm": True},
-                )
-            # -------------------------------------------------------------------
-
-            # Default greeting if no reminders are pending
             return _alexa_response(
                 "Welcome to PulseNova. Tell me what symptoms you're having.",
                 end_session=False,
@@ -1480,18 +1442,6 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
             intent = (req_data.get("intent") or {})
             intent_name = intent.get("name")
             slots = intent.get("slots") or {}
-
-            # --- NEW: Catch the "Yes" if Alexa just asked to confirm reminders ---
-            if session_attrs.get("awaiting_reminder_confirm") or intent_name == "AMAZON.YesIntent":
-                if "awaiting_reminder_confirm" in session_attrs:
-                    del session_attrs["awaiting_reminder_confirm"]
-                    
-                return _alexa_response(
-                    "Okay, I have successfully scheduled your medication reminders. Is there anything else you need help with?",
-                    end_session=False,
-                    attributes={"history": history},
-                )
-            # ---------------------------------------------------------------------
 
             # Prefer your TriageIntent slot (symptoms) with AMAZON.SearchQuery
             user_text = None
@@ -1507,6 +1457,16 @@ async def alexa_webhook(req: FastAPIRequest, db: Session = Depends(get_db)):
                     end_session=False,
                     attributes={"history": history[-10:]},
                 )
+
+            # You may have other intents; if they don't provide user text, prompt again.
+            if intent_name not in ("TriageIntent", "CatchAllIntent"):
+                # Optional: route unknown intents back into conversation
+                if not user_text:
+                    return _alexa_response(
+                        "Tell me your symptoms, or say 'stop' to exit.",
+                        end_session=False,
+                        attributes={"history": history[-10:]},
+                    )
 
             if not user_text:
                 return _alexa_response(
