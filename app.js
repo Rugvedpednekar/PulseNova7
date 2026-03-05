@@ -2316,9 +2316,3 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('load', () => {
   if (window.lucide) lucide.createIcons();
 });
-
-// Fallback observer for dynamic content
-const observer = new MutationObserver(() => {
-  if (window.lucide) lucide.createIcons();
-});
-observer.observe(document.body, { childList: true, subtree: true });
