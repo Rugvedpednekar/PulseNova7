@@ -1048,7 +1048,23 @@
     });
   })();
 </script>
+<script src="https://unpkg.com/lucide@latest"></script>
 
-<script src="/static/app.js"></script>
+    <script src="/static/app.js"></script>
+
+    <script>
+      // Run once when the page loads
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      });
+      
+      // Run again if the page dynamically changes (like logging in)
+      const observer = new MutationObserver(() => {
+        if (window.lucide) lucide.createIcons();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    </script>
 </body>
 </html>
