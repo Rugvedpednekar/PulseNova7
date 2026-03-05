@@ -682,26 +682,58 @@
               </button>
             </div>
 
-            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
               <div class="flex items-center justify-between mb-3">
                 <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                  <i data-lucide="list-checks" class="w-4 h-4 text-slate-600"></i> Extracted Medications
+                  <i data-lucide="list-checks" class="w-4 h-4 text-blue-600"></i> Extracted Medications
                 </h3>
                 <span id="rx-extract-badge" class="chip chip-slate">Waiting</span>
               </div>
+              
               <div id="rx-extracted-list" class="space-y-2">
                 <div class="text-sm text-slate-400 text-center py-8">Upload a prescription and click <strong>Extract</strong>.</div>
               </div>
+              
               <div class="mt-4 flex flex-wrap gap-2">
-                <button onclick="app.savePrescriptions()" id="btn-rx-save" class="bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 flex items-center gap-1">
-                  <i data-lucide="save" class="w-3.5 h-3.5"></i> Save to My Prescriptions
+                <button onclick="app.savePrescriptions()" id="btn-rx-save" class="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 flex items-center gap-2 transition-colors shadow-sm">
+                  <i data-lucide="save" class="w-4 h-4"></i> Save to My Prescriptions
                 </button>
-                <button onclick="app.openAlexaSendModal()" id="btn-rx-send-alexa" class="bg-blue-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-blue-700 flex items-center gap-1">
-                  <i data-lucide="alarm-clock" class="w-3.5 h-3.5"></i> Send to Alexa
+                <button onclick="app.openAlexaSendModal()" id="btn-rx-send-alexa" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 flex items-center gap-2 transition-colors shadow-sm shadow-blue-500/20">
+                  <i data-lucide="alarm-clock" class="w-4 h-4"></i> Send to Alexa
                 </button>
               </div>
             </div>
-          </div>
+
+            <div id="alexa-send-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+              <div class="bg-white rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl animate-fade-in">
+                
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <div>
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                      <i data-lucide="server" class="w-5 h-5 text-blue-600"></i> Sync with PulseNova Database
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">Verify times below. They will be saved to your profile for Alexa to read.</p>
+                  </div>
+                  <button onclick="app.closeAlexaSendModal()" class="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                  </button>
+                </div>
+                
+                <div id="alexa-reminder-config" class="flex-1 overflow-y-auto max-h-[50vh] p-5 bg-slate-50/50">
+                  </div>
+
+                <div class="p-5 border-t border-slate-100 bg-white">
+                  <div class="flex items-center gap-3 bg-amber-50 text-amber-800 p-3 rounded-xl mb-4 text-xs font-medium border border-amber-100">
+                    <i data-lucide="mic" class="w-4 h-4 shrink-0"></i>
+                    <p>After clicking Send Request, go to your Alexa device and say:<br><strong>"Alexa, ask Pulse Nova to sync my meds."</strong></p>
+                  </div>
+                  <button id="btn-send-to-alexa" onclick="app.sendToAlexa()" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-lg shadow-blue-500/30">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i> Save & Queue Sync
+                  </button>
+                </div>
+                
+              </div>
+            </div>
 
           <div id="rx-pane-manual" class="space-y-4 hidden">
             <div class="bg-white rounded-2xl border border-slate-200 p-5">
