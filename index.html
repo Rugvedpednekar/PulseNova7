@@ -570,6 +570,13 @@
               <i data-lucide="file-image" class="w-14 h-14"></i>
               <p class="text-center text-sm">Upload and analyze a scan to generate a report.</p>
             </div>
+            <div id="xray-history-panel" class="hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <i data-lucide="history" class="w-4 h-4 text-blue-500"></i> Recent Scans
+              </h3>
+              <div id="xray-history-list" class="space-y-2">
+                </div>
+            </div>
           </div>
         </div>
       </div>
@@ -621,7 +628,14 @@
           <div id="lab-result" class="flex-1 p-5 overflow-y-auto text-slate-700 max-w-none text-sm">
             <div class="flex flex-col items-center justify-center h-full text-slate-300 gap-3 opacity-60">
               <i data-lucide="file-text" class="w-14 h-14"></i>
-              <p class="text-center text-sm">Upload a lab document to get a plain-English explanation.</p>
+              <p class="text-center text-sm">Upload a lab document to get an explanation.</p>
+            </div>
+            <div id="lab-history-panel" class="hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <i data-lucide="history" class="w-4 h-4 text-purple-500"></i> Recent Reports
+              </h3>
+              <div id="lab-history-list" class="space-y-2">
+                </div>
             </div>
           </div>
         </div>
