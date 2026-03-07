@@ -912,12 +912,13 @@ class PulseNovaApp {
     } catch (e) { console.error(e); return null; }
   }
 
-  async callNovaVision(base64Data, prompt) {
+  async callNovaVision(base64Data, prompt, docType = 'xray') {
     try {
       const res = await fetch('/api/vision', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ image_base64: base64Data, prompt, language: this.selectedLanguage, max_tokens: 2000 }),
+        // Notice we are now passing doc_type to the server!
+        body:    JSON.stringify({ image_base64: base64Data, prompt, language: this.selectedLanguage, max_tokens: 2000, doc_type: docType }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).text || "I didn't get a response.";
@@ -1180,10 +1181,21 @@ class PulseNovaApp {
     panel.classList.remove('hidden');
     list.innerHTML = '';
     this.xrayHistory.forEach((entry, idx) => {
-      const card     = document.createElement('button');
-      card.className = 'w-full flex items-center gap-3 p-2 rounded-xl border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-all text-left group';
-      card.onclick   = () => this._restoreXrayEntry(entry);
-      card.innerHTML = `<img src="data:image/png;base64,${entry.thumb}" class="w-12 h-12 rounded-lg object-cover bg-slate-900 shrink-0 border border-slate-200"><div class="flex-1 min-w-0"><p class="text-xs font-semibold text-slate-700 group-hover:text-blue-700">Scan ${this.xrayHistory.length - idx}</p><p class="text-[10px] text-slate-400 mt-0.5">${entry.time}</p></div><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 shrink-0"></i>`;
+      const card = document.createElement('div');
+      card.className = 'w-full flex items-center justify-between p-2 rounded-xl border border-slate-100 hover:bg-blue-50 hover:border-blue-200 transition-all text-left group cursor-pointer';
+      
+      const content = document.createElement('div');
+      content.className = 'flex-1 flex items-center gap-3 min-w-0';
+      content.onclick = () => this._restoreXrayEntry(entry);
+      content.innerHTML = `<img src="data:image/png;base64,${entry.thumb}" class="w-12 h-12 rounded-lg object-cover bg-slate-900 shrink-0 border border-slate-200"><div class="min-w-0"><p class="text-xs font-semibold text-slate-700 group-hover:text-blue-700 truncate">Scan ${this.xrayHistory.length - idx}</p><p class="text-[10px] text-slate-400 mt-0.5">${entry.time}</p></div>`;
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'p-2 text-slate-300 hover:text-red-500 transition-colors shrink-0 opacity-0 group-hover:opacity-100';
+      delBtn.onclick = (e) => this.deleteDocument(entry.id, 'xray', e);
+      delBtn.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i>`;
+
+      card.appendChild(content);
+      card.appendChild(delBtn);
       list.appendChild(card);
     });
     if (window.lucide) lucide.createIcons();
@@ -1212,10 +1224,21 @@ class PulseNovaApp {
     panel.classList.remove('hidden');
     list.innerHTML = '';
     this.labHistory.forEach((entry, idx) => {
-      const card     = document.createElement('button');
-      card.className = 'w-full flex items-center gap-3 p-2 rounded-xl border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition-all text-left group';
-      card.onclick   = () => this._restoreLabEntry(entry);
-      card.innerHTML = `<img src="data:image/png;base64,${entry.thumb}" class="w-12 h-12 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"><div class="flex-1 min-w-0"><p class="text-xs font-semibold text-slate-700 group-hover:text-purple-700">Report ${this.labHistory.length - idx}</p><p class="text-[10px] text-slate-400 mt-0.5">${entry.time}</p></div><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-300 group-hover:text-purple-500 shrink-0"></i>`;
+      const card = document.createElement('div');
+      card.className = 'w-full flex items-center justify-between p-2 rounded-xl border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition-all text-left group cursor-pointer';
+      
+      const content = document.createElement('div');
+      content.className = 'flex-1 flex items-center gap-3 min-w-0';
+      content.onclick = () => this._restoreLabEntry(entry);
+      content.innerHTML = `<img src="data:image/png;base64,${entry.thumb}" class="w-12 h-12 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"><div class="min-w-0"><p class="text-xs font-semibold text-slate-700 group-hover:text-purple-700 truncate">Report ${this.labHistory.length - idx}</p><p class="text-[10px] text-slate-400 mt-0.5">${entry.time}</p></div>`;
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'p-2 text-slate-300 hover:text-red-500 transition-colors shrink-0 opacity-0 group-hover:opacity-100';
+      delBtn.onclick = (e) => this.deleteDocument(entry.id, 'lab', e);
+      delBtn.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i>`;
+
+      card.appendChild(content);
+      card.appendChild(delBtn);
       list.appendChild(card);
     });
     if (window.lucide) lucide.createIcons();
@@ -1229,6 +1252,28 @@ class PulseNovaApp {
     const result = document.getElementById('lab-result'); if (result) result.innerHTML = entry.reportHtml;
     if (window.lucide) lucide.createIcons();
     this.toast('Report restored from session', 'clock');
+  }
+  async deleteDocument(id, type, event) {
+    if (event) event.stopPropagation();
+    
+    // Remove from the UI immediately so it feels fast
+    if (type === 'xray') {
+      this.xrayHistory = this.xrayHistory.filter(h => h.id !== id);
+      this._renderXrayHistory();
+    } else {
+      this.labHistory = this.labHistory.filter(h => h.id !== id);
+      this._renderLabHistory();
+    }
+    this.toast('Deleted from history', 'trash');
+
+    // Tell the database to delete it (only if it has a real database UUID)
+    if (typeof id === 'string' && id.includes('-')) {
+      try {
+        await fetch(`/api/history/document/${id}`, { method: 'DELETE' });
+      } catch (e) {
+        console.error('Failed to delete from DB', e);
+      }
+    }
   }
 
   setXrayLanguage(code) { this.xrayLanguage = code; localStorage.setItem('pulseNova_xray_lang', code); }
@@ -1286,7 +1331,7 @@ List 3–4 questions the patient should ask their specialist.
 ---
 *⚕️ IMPORTANT: This is an AI-assisted observation only and is NOT a medical diagnosis. Always consult a qualified medical professional for evaluation and treatment.*`;
     
-    const text       = await this.callNovaVision(this.xrayImage, prompt);
+    const text       = await this.callNovaVision(this.xrayImage, prompt, 'xray');
     const reportHtml = this.formatMarkdown(text);
     document.getElementById('xray-result').innerHTML = reportHtml;
     this._saveXrayHistory(this.xrayImage, reportHtml);
@@ -1332,7 +1377,7 @@ List 4 questions the patient should ask about these results.
 
 ---
 *⚕️ IMPORTANT: This is an AI-assisted interpretation only and is NOT a medical diagnosis. Lab results must always be reviewed by a qualified healthcare provider.*`;
-    const text       = await this.callNovaVision(this.labImage, prompt);
+    const text       = await this.callNovaVision(this.labImage, prompt, 'lab');
     const reportHtml = this.formatMarkdown(text);
     document.getElementById('lab-result').innerHTML = reportHtml;
     this._saveLabHistory(this.labImage, reportHtml);
