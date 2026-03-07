@@ -1251,37 +1251,41 @@ class PulseNovaApp {
     const langCode = this.xrayLanguage || this.selectedLanguage;
     const langObj  = this.supportedLanguages.find(l => l.code === langCode);
     const langName = langObj ? langObj.label.split(' (')[0] : 'English';
-    const prompt   = `You are an expert radiologist assistant. Analyze this X-Ray, MRI, or CT scan image in thorough detail.
+    
+    // UPDATED PROMPT: Forces AI to look for Oncology/Neurology pathology
+    const prompt   = `You are an expert radiologist and neurologist assistant. Analyze this X-Ray, MRI, or CT scan image in thorough detail.
 CRITICAL: Write this ENTIRE report — every heading, label, and sentence — exclusively in ${langName}. Do NOT use English for any part.
 
 Use exactly this structure:
 
 ### 🏥 Overview
-Describe the scan type (X-Ray / MRI / CT), the body region shown, and the patient position (e.g. AP view, lateral view). State clearly which bone(s) or structure(s) are visible.
+Describe the scan type (X-Ray / MRI / CT), the body region shown, and the patient position. State clearly which organs, brain regions, or structures are visible.
 
-### 🦴 Bone & Structural Findings
-- **Bone(s) Identified:** Name every bone or structure visible in the image.
-- **Fracture / Injury:** State whether a fracture or abnormality is present. If yes, specify: location on the bone (e.g. mid-shaft, distal end, neck), fracture type if visible (e.g. transverse, oblique, comminuted, hairline), and which side of the body (left / right / not determinable).
-- **Alignment:** Is the bone aligned normally or displaced/angulated? Describe the degree if visible.
-- **Soft Tissue:** Note any visible swelling, calcification, or soft-tissue abnormality.
-- **Bone Density & Quality:** Comment on bone density — normal, reduced (possible osteoporosis), or irregular.
-- **Surrounding Structures:** Note any joint involvement, adjacent bone changes, or hardware (screws, plates) if present.
+### 🧠 Pathology, Masses & Soft Tissue (CRITICAL)
+- **Masses & Tumors:** EXPLICITLY SCAN FOR and describe any abnormal growths, tumors, lesions, nodules, or suspicious opacities. Note their relative size, location, and appearance (e.g., hyperintense, bright white mass).
+- **Fluids & Hemorrhage:** Check for signs of bleeding, edema (swelling), midline shift in the brain, or abnormal fluid accumulation.
+- **General Soft Tissue:** Note any other visible swelling, calcification, or soft-tissue abnormalities.
+
+### 🦴 Bone & Alignment
+- **Structures Identified:** Name the primary bones or skeletal regions visible.
+- **Fractures/Trauma:** State if any fractures, breaks, or skeletal injuries are present.
+- **Alignment:** Describe if structures are normally aligned or displaced.
 
 ### ⚠️ Key Concerns
-List any urgent or notable findings in plain language. If this appears to be an emergency finding, state that clearly.
+List any urgent or notable findings in plain language. If this appears to be an emergency finding (like a large tumor, bleed, or fracture), state that clearly.
 
 ### 🩺 Next Steps & Which Doctor to See
-- **Recommended Specialist:** Name the exact type of doctor to consult and explain why.
-- **Urgency:** State whether this needs emergency care, urgent care within 24–48 hours, or a scheduled outpatient appointment.
+- **Recommended Specialist:** Name the exact type of doctor to consult (e.g., Neurologist, Oncologist, Orthopedist) and explain why.
+- **Urgency:** State whether this needs emergency care, urgent care within 24–48 hours, or a scheduled appointment.
 - **Likely Treatment Options:** Briefly describe what treatment may involve.
 - **What to Tell the Doctor:** List 2–3 specific things the patient should mention.
-- **What to Avoid:** Note any activities or movements to avoid until evaluated.
 
 ### 📋 Questions to Ask Your Doctor
 List 3–4 questions the patient should ask their specialist.
 
 ---
 *⚕️ IMPORTANT: This is an AI-assisted observation only and is NOT a medical diagnosis. Always consult a qualified medical professional for evaluation and treatment.*`;
+    
     const text       = await this.callNovaVision(this.xrayImage, prompt);
     const reportHtml = this.formatMarkdown(text);
     document.getElementById('xray-result').innerHTML = reportHtml;
