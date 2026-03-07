@@ -321,9 +321,8 @@ def _triage_system_prompt(ui_lang: Optional[str] = "en-US") -> str:
         "2) Do not list multiple possible conditions at once.\n"
         "3) EMERGENCY: If symptoms are life-threatening, tell them to call emergency services immediately.\n"
         "4) HOME CARE: If the concern seems minor, say so clearly.\n"
-        "5) FIRST AID GATEKEEPER: If the user has a minor, treatable physical injury (e.g., cut, scrape, burn), you can generate a visual guide. "
-        "CRITICAL: DO NOT use the trigger tag if you are still asking clarifying questions. "
-        "ONLY append the exact string '[TRIGGER_FIRST_AID]' at the very end of your response AFTER you have gathered all necessary information and are providing the final home care instructions.\n\n"
+        "5) FIRST AID GATEKEEPER: If the user describes a minor, treatable physical injury (e.g., a cut, scrape, minor burn), "
+        "append the exact string '[TRIGGER_FIRST_AID]' at the very end of your response so the system knows to generate a visual guide.\n\n"
     )
 
 def _extract_text_from_invoke(data: Dict[str, Any]) -> str:
@@ -922,6 +921,23 @@ async def save_triage_history(req: FastAPIRequest, db: Session = Depends(get_db)
 
     db.commit()
     return {"ok": True, "saved": True}
+
+@app.delete("/api/history/document/{doc_id}")
+def delete_document(doc_id: str, req: FastAPIRequest, db: Session = Depends(get_db)):
+    session_id = req.cookies.get(SESSION_COOKIE)
+    s = _get_session(session_id)
+    if not s: raise HTTPException(status_code=401, detail="Not authenticated")
+
+    u_sub = (s.get("profile") or {}).get("sub")
+    if not u_sub: raise HTTPException(status_code=401, detail="Missing user identifier.")
+
+    doc = db.query(MedicalDocument).filter(MedicalDocument.id == doc_id, MedicalDocument.user_sub == u_sub).first()
+    if doc:
+        db.delete(doc)
+        db.commit()
+        return {"ok": True, "deleted": True}
+        
+    raise HTTPException(status_code=404, detail="Document not found")
 
 # =============================================================================
 # VOICE ENDPOINTS
