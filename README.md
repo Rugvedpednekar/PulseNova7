@@ -13,7 +13,7 @@ PulseNova is a multimodal healthcare assistant designed to give users **clarity 
 - Provides structured responses with practical next steps
 - Designed for **first-line guidance**, not diagnosis
 
-✅ **NEW: Patient Context Awareness (Profile + Allergies)**
+✅ **Patient Context Awareness (Profile + Allergies)**
 - If a user is logged in, triage considers:
   - Age, height/weight
   - Allergies (e.g., peanut)
@@ -58,7 +58,7 @@ PulseNova is a multimodal healthcare assistant designed to give users **clarity 
 - Review/edit extracted items before saving
 - Saved prescriptions panel
 
-✅ **NEW: Alexa Reminder Flow (Confirm in Alexa)**
+**Alexa Reminder Flow (Confirm in Alexa)**
 - From the website, user can prepare medication reminders
 - User confirms creation inside Alexa:
   - One-time step: “Alexa, open PulseNova”
